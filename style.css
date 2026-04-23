@@ -1,0 +1,85 @@
+body {
+  font-family: Arial;
+  background: #f4f6f9;
+  padding: 20px;
+}
+
+/* ENTRY LINE */
+.entryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: white;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+/* ITEMS */
+#itemsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.itemRow {
+  display: flex;
+  gap: 5px;
+}
+
+.itemRow input {
+  width: 100px;
+}
+
+/* INPUT */
+input {
+  padding: 6px;
+}
+
+/* BUTTON */
+button {
+  padding: 6px 10px;
+  cursor: pointer;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+}
+
+button:hover {
+  background: #45a049;
+}
+
+/* TABLE */
+table {
+  width: 100%;
+  margin-top: 10px;
+  background: white;
+  border-collapse: collapse;
+}
+
+td, th {
+  padding: 8px;
+  border: 1px solid #ddd;
+}
+
+/* HIDDEN */
+.hidden {
+  display: none;
+}
+#chart {
+  max-width: 600px;
+  max-height: 300px;
+  margin-top: 10px;
+}
+
+#chart {
+  display: block;
+  max-width: 700px;
+  max-height: 350px;
+  margin: 20px auto;
+}
+canvas {
+  width: 100% !important;
+  height: auto !important;
+}

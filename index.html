@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sales Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+</head>
+
+<body>
+
+<h1>Sales Tracker</h1>
+
+<div class="entryRow">
+  <input type="date" id="date">
+  <input type="text" id="customerName" placeholder="Customer">
+  <input type="text" id="phone" placeholder="Phone">
+
+  <div id="itemsContainer"></div>
+
+  <button id="addItemBtn">+</button>
+  <button id="mainBtn">Save</button>
+</div>
+
+<h3>Total Amount: ₹ <span id="liveTotal">0</span></h3>
+
+<h2 onclick="toggleSection('productSection')">▼ Products</h2>
+<div id="productSection">
+  <input id="prodName" placeholder="Product">
+  <input id="prodCost" type="number" placeholder="Cost">
+
+  <!-- ✅ NEW UNIT FIELD -->
+  <select id="prodUnit">
+    <option value="kg">kg</option>
+    <option value="g">gram</option>
+    <option value="piece">piece</option>
+  </select>
+  <button onclick="addOrUpdateProduct()" id="prodBtn">Add</button>
+    <table border="1">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Cost</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="productTable"></tbody>
+  </table>
+   
+</div>
+
+ 
+</div>
+
+<h2 onclick="toggleSection('salesSection')">▼ Sales</h2>
+<div id="salesSection">
+  <table border="1">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Items</th>
+        <th>Total Amount</th>
+        <th>Profit</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="salesTable"></tbody>
+  </table>
+</div>
+
+<h2 onclick="toggleSection('dashboard')">▼ Dashboard</h2>
+<div id="dashboard">
+  <p>Total Sales: <span id="totalSales">0</span></p>
+  <p>Total Profit: <span id="totalProfit">0</span></p>
+  <p>Total Customers: <span id="totalCustomers">0</span></p>
+
+    <label>Filter by Month:</label>
+  <select id="monthFilter">
+    <option value="all">All</option>
+  </select>
+  
+  <canvas id="chart"></canvas>
+</div>
+
+<br>
+<button onclick="generateSummary()">Generate AI Summary</button>
+<p id="summary"></p>
+
+<script type="module" src="script.js"></script>
+
+</body>
+</html>
