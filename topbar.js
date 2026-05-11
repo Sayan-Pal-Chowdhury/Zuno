@@ -9,34 +9,26 @@ style.textContent = `
     position: sticky;
     top: 0;
     z-index: 800;
-    width: 100% !important;
-    max-width: none !important;
-    min-height: 78px;
-    margin: 0 !important;
-    box-sizing: border-box;
     background: rgba(255,255,255,0.92);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid rgba(0,0,0,0.07);
-    padding: 16px 20px;
+    padding: 10px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    max-width: 100%;
     box-shadow: 0 1px 8px rgba(0,0,0,0.04);
-  }
-
-  .zuno-topbar * {
-    box-sizing: border-box;
   }
 
   .zuno-topbar-left {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 1px;
   }
 
   .zuno-topbar-brand {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -45,8 +37,8 @@ style.textContent = `
   }
 
   .zuno-topbar-app {
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     color: #34c98a;
     font-family: 'DM Sans', sans-serif;
     letter-spacing: 0.02em;
@@ -55,19 +47,19 @@ style.textContent = `
   .zuno-topbar-right {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
 
   .zuno-topbar-shop {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 3px;
+    gap: 1px;
   }
 
   .zuno-topbar-shop-name {
-    font-size: 17px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     color: #1a1a18;
     font-family: 'DM Sans', sans-serif;
     max-width: 160px;
@@ -77,21 +69,21 @@ style.textContent = `
   }
 
   .zuno-topbar-shop-sub {
-    font-size: 12px;
+    font-size: 10px;
     color: #aaa;
     font-family: 'DM Sans', sans-serif;
   }
 
   .zuno-topbar-settings {
-    width: 48px;
-    height: 48px;
-    border-radius: 16px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
     background: #f5f5f3;
     border: 1px solid rgba(0,0,0,0.07);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 16px;
     cursor: pointer;
     text-decoration: none;
     transition: background 0.15s, transform 0.1s;
@@ -103,21 +95,6 @@ style.textContent = `
 
   /* push content below topbar */
   body { padding-top: 0 !important; }
-
-  @media (max-width: 380px) {
-    .zuno-topbar {
-      padding-left: 14px;
-      padding-right: 14px;
-    }
-
-    .zuno-topbar-app { font-size: 16px; }
-    .zuno-topbar-shop-name { font-size: 15px; max-width: 130px; }
-    .zuno-topbar-settings {
-      width: 44px;
-      height: 44px;
-      font-size: 22px;
-    }
-  }
 `;
 document.head.appendChild(style);
 
