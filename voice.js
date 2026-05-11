@@ -272,7 +272,7 @@ function resetMicBtn() {
 /* ── AI EXTRACTION ── */
 async function extractOrder(text) {
   try {
-    const response = await fetch("http://127.0.0.1:5000/extract-order", {
+    const response = await fetch("https://zuno-production.up.railway.app/extract-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, userId })

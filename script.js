@@ -952,7 +952,7 @@ window.generateSummary = async function () {
       return;
     }
 
-    const response = await fetch("http://localhost:5000/summary", {
+    const response = await fetch("https://zuno-production.up.railway.app/summary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sales: salesData }),
@@ -969,7 +969,7 @@ window.generateSummary = async function () {
 /* ---------- AI WARMUP ---------- */
 window.addEventListener("load", async () => {
   try {
-    await fetch("http://localhost:5000/summary", {
+    await fetch("https://zuno-production.up.railway.app/summary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sales: [] }),
