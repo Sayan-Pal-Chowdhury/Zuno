@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customers — Zuno</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f6f2;
+      --surface: #ffffff;
+      --border: rgba(0,0,0,0.07);
+      --border2: rgba(0,0,0,0.12);
+      --text: #111111;
+      --text2: #666666;
+      --text3: #aaaaaa;
+      --green: #34c98a;
+      --blue: #5b8ef0;
+      --purple: #a374f7;
+      --coral: #f97066;
+      --amber: #f5a623;
+      --font-display: 'Bricolage Grotesque', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.06);
+      --shadow-md: 0 8px 32px rgba(0,0,0,0.1);
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      font-family: var(--font-body);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ── PAGE WRAPPER ── */
+    .page-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 20px 100px;
+    }
+
+    /* ── HEADER ── */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .page-header-left { flex: 1; }
+
+    .page-eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 4px;
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.1;
+    }
+
+    .page-subtitle {
+      font-size: 13px;
+      color: var(--text2);
+      margin-top: 4px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 9px 16px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--green);
+      color: white;
+      box-shadow: 0 4px 14px rgba(52,201,138,0.3);
+    }
+
+    .btn-primary:hover { background: #2ab578; box-shadow: 0 6px 20px rgba(52,201,138,0.4); }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text2);
+      border: 1px solid var(--border2);
+    }
+
+    .btn-secondary:hover { background: #f0f0ec; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+    }
+
+    .btn-ghost:hover { background: rgba(0,0,0,0.04); }
+
+    .btn-ghost.active {
+      background: var(--text);
+      color: white;
+      border-color: var(--text);
+    }
+
+    .btn-sm {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+
+    .btn-icon {
+      width: 32px; height: 32px;
+      padding: 0;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 600px) { .stats-bar { grid-template-columns: repeat(2, 1fr); } }
+
+    .stat-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+    }
+
+    .stat-chip-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 4px;
+    }
+
+    .stat-chip-value {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--text3);
+      font-size: 15px;
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 14px 10px 36px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border2);
+      background: var(--surface);
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(52,201,138,0.1);
+    }
+
+    .search-input::placeholder { color: var(--text3); }
+
+    .sort-select {
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border2);
+      background: var(--surface);
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+      background: rgba(0,0,0,0.05);
+      padding: 3px;
+      border-radius: 9px;
+    }
+
+    /* ── LIST VIEW (DEFAULT) ── */
+    .list-view, .card-view { display: none; }
+
+    .list-view.active { display: block; }
+    .card-view.active { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+
+    /* LIST TABLE */
+    .customer-table {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .table-header {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 1fr 120px;
+      padding: 10px 16px;
+      background: #f9f9f6;
+      border-bottom: 1px solid var(--border);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text3);
+      gap: 8px;
+    }
+
+    @media (max-width: 700px) {
+      .table-header { display: none; }
+    }
+
+    .customer-row {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 1fr 120px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+
+    .customer-row:last-child { border-bottom: none; }
+    .customer-row:hover { background: #fafaf7; }
+
+    @media (max-width: 700px) {
+      .customer-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        padding: 14px 16px;
+      }
+    }
+
+    .customer-name-cell { display: flex; align-items: center; gap: 10px; }
+
+    .customer-avatar {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .customer-name-info { flex: 1; min-width: 0; }
+
+    .customer-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .customer-phone {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text3);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .no-phone-badge {
+      font-size: 10px;
+      color: var(--amber);
+      background: rgba(245,166,35,0.1);
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(245,166,35,0.2);
+      cursor: pointer;
+    }
+
+    .cell-value {
+      font-size: 13px;
+      color: var(--text);
+      font-family: var(--font-mono);
+    }
+
+    .cell-label {
+      font-size: 11px;
+      color: var(--text3);
+    }
+
+    .credit-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .credit-badge.has-credit {
+      background: rgba(249,112,102,0.1);
+      color: var(--coral);
+      border: 1px solid rgba(249,112,102,0.2);
+    }
+
+    .credit-badge.no-credit {
+      background: rgba(52,201,138,0.1);
+      color: var(--green);
+      border: 1px solid rgba(52,201,138,0.2);
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    /* ── CARD VIEW ── */
+    .customer-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .customer-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+    .card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+
+    .card-avatar {
+      width: 44px; height: 44px;
+      border-radius: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .card-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .card-phone { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+
+    .card-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .card-stat { background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+    .card-stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
+    .card-stat-value { font-size: 14px; font-weight: 600; color: var(--text); font-family: var(--font-mono); }
+
+    .card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* ── SEND TO ALL PANEL ── */
+    .broadcast-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      display: none;
+    }
+
+    .broadcast-panel.open { display: block; }
+
+    .broadcast-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .template-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    .template-chip {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border2);
+      background: var(--bg);
+      cursor: pointer;
+      color: var(--text2);
+      transition: all 0.15s;
+    }
+
+    .template-chip:hover, .template-chip.selected {
+      background: var(--green);
+      color: white;
+      border-color: var(--green);
+    }
+
+    .broadcast-textarea {
+      width: 100%;
+      min-height: 90px;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border2);
+      background: var(--bg);
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      resize: vertical;
+      transition: border-color 0.2s;
+      margin-bottom: 12px;
+    }
+
+    .broadcast-textarea:focus { border-color: var(--green); }
+
+    .broadcast-info {
+      font-size: 12px;
+      color: var(--text3);
+      margin-bottom: 12px;
+    }
+
+    .broadcast-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* ── MODALS ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 500;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+
+    @media (min-width: 600px) {
+      .modal-overlay { align-items: center; }
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 24px 24px 0 0;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px 24px 40px;
+      transform: translateY(40px);
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    @media (min-width: 600px) {
+      .modal { border-radius: 24px; transform: scale(0.95); }
+      .modal-overlay.open .modal { transform: scale(1); }
+    }
+
+    .modal-overlay.open .modal { transform: translateY(0); }
+
+    .modal-handle {
+      width: 36px; height: 4px;
+      background: var(--border2);
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+
+    @media (min-width: 600px) { .modal-handle { display: none; } }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-close {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text2);
+    }
+
+    /* Form inside modal */
+    .form-group { margin-bottom: 14px; }
+
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border2);
+      background: var(--bg);
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(52,201,138,0.1);
+    }
+
+    /* History table inside modal */
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .history-table th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text3);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .history-table td {
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      vertical-align: middle;
+    }
+
+    .history-table tr:last-child td { border-bottom: none; }
+
+    .type-credit { color: var(--coral); font-weight: 600; }
+    .type-payment { color: var(--green); font-weight: 600; }
+
+    /* Duplicate warning */
+    .duplicate-warning {
+      background: rgba(245,166,35,0.08);
+      border: 1px solid rgba(245,166,35,0.25);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 13px;
+      color: #8a5c00;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .duplicate-warning.show { display: block; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .empty-icon { font-size: 48px; margin-bottom: 16px; }
+
+    .empty-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .empty-sub { font-size: 14px; color: var(--text2); margin-bottom: 20px; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--text);
+      color: white;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 20px;
+      z-index: 9999;
+      opacity: 0;
+      transition: all 0.3s;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Loading */
+    .loading-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text3);
+      font-size: 14px;
+    }
+
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-in { animation: fadeUp 0.4s ease forwards; }
+  </style>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00236f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zuno">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="zuno-icon-192.png">
+</head>
+<body>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════
+     ADD / EDIT CUSTOMER MODAL
+══════════════════════════════ -->
+<div class="modal-overlay" id="customerModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      <span id="customerModalTitle">Add Customer</span>
+      <button class="modal-close" onclick="closeModal('customerModal')">✕</button>
+    </div>
+
+    <div class="duplicate-warning" id="duplicateWarning">
+      ⚠ A customer with a similar name exists. <strong id="dupName"></strong> — 
+      <a href="#" onclick="mergeWithDuplicate(); return false;" style="color:var(--amber);font-weight:600;">Merge</a> or continue to create new.
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Customer Name *</label>
+      <input class="form-input" id="custName" placeholder="e.g. Ramesh Kumar" oninput="checkDuplicate()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Phone Number</label>
+      <input class="form-input" id="custPhone" type="tel" placeholder="9831xxxxxx" maxlength="10">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Area / Address</label>
+      <input class="form-input" id="custArea" placeholder="e.g. Barrackpore">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <input class="form-input" id="custNotes" placeholder="Any notes about this customer">
+    </div>
+
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeModal('customerModal')">Cancel</button>
+      <button class="btn btn-primary" style="flex:2" onclick="saveCustomer()">Save Customer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     HISTORY MODAL
+══════════════════════════════ -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      <span id="historyModalTitle">Order History</span>
+      <button class="modal-close" onclick="closeModal('historyModal')">✕</button>
+    </div>
+    <div id="historyModalContent">
+      <div class="loading-state"><div class="spinner"></div>Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SEND MESSAGE MODAL
+══════════════════════════════ -->
+<div class="modal-overlay" id="messageModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      <span id="messageModalTitle">Send Message</span>
+      <button class="modal-close" onclick="closeModal('messageModal')">✕</button>
+    </div>
+    <div id="singleMsgContent"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     MAIN PAGE
+══════════════════════════════ -->
+<div class="page-wrap">
+
+  <!-- HEADER -->
+  <div class="page-header animate-in">
+    <div class="page-header-left">
+      <div class="page-eyebrow">Zuno • AI Business Assistant</div>
+      <div class="page-title">Customers</div>
+      <div class="page-subtitle" id="customerCount">Loading your customers…</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" onclick="toggleBroadcast()">📢 Send to All</button>
+      <button class="btn btn-primary btn-sm" onclick="openAddCustomer()">+ Add Customer</button>
+    </div>
+  </div>
+
+  <!-- STATS BAR -->
+  <div class="stats-bar animate-in">
+    <div class="stat-chip">
+      <div class="stat-chip-label">Total Customers</div>
+      <div class="stat-chip-value" id="statTotal">—</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">Total Business</div>
+      <div class="stat-chip-value" id="statBusiness" style="color:var(--green)">—</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">On Credit</div>
+      <div class="stat-chip-value" id="statCredit" style="color:var(--coral)">—</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">No Phone</div>
+      <div class="stat-chip-value" id="statNoPhone" style="color:var(--amber)">—</div>
+    </div>
+  </div>
+
+  <!-- BROADCAST PANEL -->
+  <div class="broadcast-panel" id="broadcastPanel">
+    <div class="broadcast-title">
+      <span>📢 Send to All Customers</span>
+      <button class="modal-close" onclick="toggleBroadcast()">✕</button>
+    </div>
+    <div class="template-chips" id="templateChips"></div>
+    <textarea class="broadcast-textarea" id="broadcastMsg" placeholder="Type your message… Use {name} to personalize. e.g: Hi {name}, new stock available!"></textarea>
+    <div class="broadcast-info" id="broadcastInfo">Will send to 0 customers with phone numbers via SMS</div>
+    <div class="broadcast-actions">
+      <button class="btn btn-secondary btn-sm" onclick="clearBroadcast()">Clear</button>
+      <button class="btn btn-primary btn-sm" onclick="sendBroadcast('sms')">📱 Send via SMS</button>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar animate-in">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="searchInput" placeholder="Search by name or phone…" oninput="filterAndRender()">
+    </div>
+    <select class="sort-select" id="sortSelect" onchange="filterAndRender()">
+      <option value="recent">Most Recent</option>
+      <option value="name_asc">Name A–Z</option>
+      <option value="name_desc">Name Z–A</option>
+      <option value="sales_high">Highest Sales</option>
+      <option value="orders_high">Most Orders</option>
+      <option value="profit_high">Top Profit</option>
+      <option value="credit_high">Credit Balance</option>
+      <option value="visits">Most Visited</option>
+    </select>
+    <div class="view-toggle">
+      <button class="btn btn-ghost btn-sm active" id="listViewBtn" onclick="setView('list')">☰ List</button>
+      <button class="btn btn-ghost btn-sm" id="cardViewBtn" onclick="setView('card')">⊞ Cards</button>
+    </div>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div class="list-view active" id="listView">
+    <div class="customer-table">
+      <div class="table-header">
+        <div>Customer</div>
+        <div>Phone</div>
+        <div>Orders</div>
+        <div>Sales</div>
+        <div>Profit</div>
+        <div>Credit</div>
+        <div style="text-align:right">Actions</div>
+      </div>
+      <div id="listBody">
+        <div class="loading-state"><div class="spinner"></div>Loading customers…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD VIEW -->
+  <div class="card-view" id="cardView"></div>
+
+</div>
+
+<!-- FIREBASE + AUTH -->
+<script type="module">
+  import { db, auth, userCol } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  collection, doc,
+  getDocs, addDoc, updateDoc, deleteDoc,
+  query, where, orderBy
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  
+  let userId = null;
+  let allCustomers = [];
+  let editingCustomerId = null;
+  let duplicateCandidate = null;
+  let currentView = "list";
+
+  // Avatar colors
+  const avatarColors = ["#34c98a","#5b8ef0","#a374f7","#f97066","#f5a623","#2ec4b6","#ff6b9d","#00b4d8"];
+  function getAvatarColor(name) {
+    let hash = 0;
+    for (let c of name) hash = c.charCodeAt(0) + ((hash << 5) - hash);
+    return avatarColors[Math.abs(hash) % avatarColors.length];
+  }
+
+  function getInitials(name) {
+    return name.trim().split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+  }
+
+  function normalizeCustomerName(name = "") {
+    return name.trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
+  function normalizePhone(phone = "") {
+    return phone.trim();
+  }
+
+  // ── AUTH GATE ──
+  onAuthStateChanged(auth, user => {
+    if (!user) { window.location.href = "/login.html"; return; }
+    userId = user.uid;
+    window._userId = userId;
+    window._db = db;
+    loadCustomers();
+  });
+
+  // ── LOAD CUSTOMERS ──
+  async function loadCustomers() {
+    try {
+      const snap = await getDocs(userCol(userId, "customers"));
+      allCustomers = [];
+      snap.forEach(d => allCustomers.push({ id: d.id, ...d.data() }));
+
+      // Also build from sales if customer not yet in customers collection
+      await syncCustomersFromSales();
+      await syncCreditBalances();
+
+      updateStats();
+      filterAndRender();
+      updateBroadcastInfo();
+
+    } catch (e) {
+      console.error("Load error:", e);
+      document.getElementById("listBody").innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Could not load customers</div></div>`;
+    }
+  }
+
+  // ── SYNC FROM SALES ──
+  async function syncCustomersFromSales() {
+    try {
+      const salesSnap = await getDocs(userCol(userId, "sales"));
+      const existingPhones = new Map();
+      const existingNames = new Map();
+      const totalsByName = {};
+
+      allCustomers.forEach(c => {
+        const phoneKey = normalizePhone(c.phone);
+        const nameKey = normalizeCustomerName(c.name);
+        if (phoneKey && !existingPhones.has(phoneKey)) existingPhones.set(phoneKey, c);
+        if (nameKey && !existingNames.has(nameKey)) existingNames.set(nameKey, c);
+      });
+
+      salesSnap.forEach(d => {
+        const s = d.data();
+        if (!s.customer || s.customer.trim() === "") return;
+
+        const name = s.customer.trim();
+        const phone = normalizePhone(s.phone || "");
+        const key = normalizeCustomerName(name);
+
+        if (!totalsByName[key]) {
+          totalsByName[key] = {
+            name,
+            phone,
+            phones: new Set(),
+            totalOrders: 0,
+            totalSales: 0,
+            totalProfit: 0,
+            lastOrderDate: "",
+            lastOrderNumber: "",
+            paymentModes: {},
+            creditBalance: 0,
+            createdAt: s.date || new Date().toISOString().split("T")[0]
+          };
+        }
+
+        if (phone) {
+          totalsByName[key].phones.add(phone);
+          if (!totalsByName[key].phone) totalsByName[key].phone = phone;
+        }
+
+        totalsByName[key].totalOrders++;
+        totalsByName[key].totalSales += Number(s.totalAmount || 0);
+        totalsByName[key].totalProfit += Number(s.totalProfit || 0);
+        if (!totalsByName[key].lastOrderDate || s.date > totalsByName[key].lastOrderDate) {
+          totalsByName[key].lastOrderDate = s.date;
+          totalsByName[key].lastOrderNumber = s.orderNumber || "";
+        }
+
+        const pm = s.paymentMode || "cash";
+        totalsByName[key].paymentModes[pm] = (totalsByName[key].paymentModes[pm] || 0) + 1;
+      });
+
+      // Add customers not yet in collection.
+      for (const key in totalsByName) {
+        const data = totalsByName[key];
+        const matchedCustomer = existingNames.get(key)
+          || [...data.phones].map(phone => existingPhones.get(phone)).find(Boolean);
+
+        if (!matchedCustomer) {
+          // Find dominant payment mode
+          const pm = Object.entries(data.paymentModes).sort((a, b) => b[1] - a[1])[0];
+          const customerData = {
+            ...data,
+            paymentPreference: pm ? pm[0] : "cash"
+          };
+          delete customerData.paymentModes;
+          delete customerData.phones;
+
+          const ref = await addDoc(userCol(userId, "customers"), customerData);
+          const customer = { id: ref.id, ...customerData };
+          allCustomers.push(customer);
+          if (customer.phone) existingPhones.set(customer.phone, customer);
+          existingNames.set(key, customer);
+        }
+      }
+
+      // Update totals for existing customers
+      for (let c of allCustomers) {
+        const nameKey = normalizeCustomerName(c.name);
+        const phoneKey = normalizePhone(c.phone);
+        const phoneMatch = phoneKey
+          ? Object.values(totalsByName).find(data => data.phones.has(phoneKey))
+          : null;
+        const totals = totalsByName[nameKey] || phoneMatch;
+
+        if (totals) {
+          const updated = {
+            totalOrders: totals.totalOrders,
+            totalSales: Math.round(totals.totalSales),
+            totalProfit: Math.round(totals.totalProfit),
+            lastOrderDate: totals.lastOrderDate,
+            lastOrderNumber: totals.lastOrderNumber,
+          };
+          await updateDoc(doc(db, "users", userId, "customers", c.id), updated);
+          Object.assign(c, updated);
+        }
+      }
+
+    } catch (e) {
+      console.error("Sync error:", e);
+    }
+  }
+
+  async function findCreditCustomer(customer, phone) {
+    const snap = await getDocs(userCol(userId, "credit"));
+    let found = null;
+    snap.forEach(d => {
+      const c = d.data();
+      const phoneMatch = normalizePhone(c.phone) && normalizePhone(c.phone) === normalizePhone(phone);
+      const nameMatch = normalizeCustomerName(c.name) === normalizeCustomerName(customer);
+      if (!found && (phoneMatch || nameMatch)) found = { id: d.id, ...c };
+    });
+    return found;
+  }
+
+  async function syncCreditBalances() {
+    const creditSnap = await getDocs(userCol(userId, "credit"));
+    const credits = [];
+    creditSnap.forEach(d => credits.push({ id: d.id, ...d.data() }));
+
+    for (const c of allCustomers) {
+      const match = credits.find(cr => {
+        const phoneMatch = normalizePhone(cr.phone) && normalizePhone(cr.phone) === normalizePhone(c.phone);
+        const nameMatch = normalizeCustomerName(cr.name) === normalizeCustomerName(c.name);
+        return phoneMatch || nameMatch;
+      });
+
+      const creditBalance = match ? Math.round(Number(match.balance || 0)) : 0;
+      if (Number(c.creditBalance || 0) !== creditBalance) {
+        await updateDoc(doc(db, "users", userId, "customers", c.id), { creditBalance });
+        c.creditBalance = creditBalance;
+      }
+    }
+  }
+
+  // ── STATS ──
+  function updateStats() {
+    document.getElementById("statTotal").textContent = allCustomers.length;
+    const totalBiz = allCustomers.reduce((s, c) => s + (c.totalSales || 0), 0);
+    document.getElementById("statBusiness").textContent = "₹" + Math.round(totalBiz).toLocaleString("en-IN");
+    const onCredit = allCustomers.filter(c => (c.creditBalance || 0) > 0).length;
+    document.getElementById("statCredit").textContent = onCredit;
+    const noPhone = allCustomers.filter(c => !c.phone).length;
+    document.getElementById("statNoPhone").textContent = noPhone;
+    document.getElementById("customerCount").textContent = `${allCustomers.length} customers · ${onCredit} on credit`;
+  }
+
+  // ── FILTER & RENDER ──
+  window.filterAndRender = function() {
+    const search = document.getElementById("searchInput").value.toLowerCase().trim();
+    const sort = document.getElementById("sortSelect").value;
+
+    let filtered = allCustomers.filter(c => {
+      if (!search) return true;
+      return c.name.toLowerCase().includes(search) || (c.phone || "").includes(search);
+    });
+
+    filtered.sort((a, b) => {
+      switch (sort) {
+        case "name_asc": return a.name.localeCompare(b.name);
+        case "name_desc": return b.name.localeCompare(a.name);
+        case "sales_high": return (b.totalSales || 0) - (a.totalSales || 0);
+        case "orders_high": return (b.totalOrders || 0) - (a.totalOrders || 0);
+        case "profit_high": return (b.totalProfit || 0) - (a.totalProfit || 0);
+        case "credit_high": return (b.creditBalance || 0) - (a.creditBalance || 0);
+        case "visits": return (b.totalOrders || 0) - (a.totalOrders || 0);
+        default: return (b.lastOrderDate || "").localeCompare(a.lastOrderDate || "");
+      }
+    });
+
+    renderList(filtered);
+    renderCards(filtered);
+  };
+
+  // ── RENDER LIST ──
+  function renderList(customers) {
+    const body = document.getElementById("listBody");
+
+    if (customers.length === 0) {
+      body.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">👥</div>
+          <div class="empty-title">No customers found</div>
+          <div class="empty-sub">Add a customer or make a sale to get started</div>
+          <button class="btn btn-primary" onclick="openAddCustomer()">+ Add Customer</button>
+        </div>`;
+      return;
+    }
+
+    body.innerHTML = customers.map(c => {
+      const color = getAvatarColor(c.name);
+      const initials = getInitials(c.name);
+      const hasCredit = (c.creditBalance || 0) > 0;
+      const daysSince = c.lastOrderDate
+        ? Math.floor((new Date() - new Date(c.lastOrderDate)) / 86400000)
+        : null;
+
+      return `
+        <div class="customer-row" onclick="openHistory('${c.id}')">
+          <div class="customer-name-cell" onclick="event.stopPropagation()">
+            <div class="customer-avatar" style="background:${color}">${initials}</div>
+            <div class="customer-name-info">
+              <div class="customer-name">${c.name}</div>
+              <div class="customer-phone">
+                ${c.phone
+                  ? `📞 ${c.phone}`
+                  : `<span class="no-phone-badge" onclick="openEditCustomer('${c.id}')">📵 Add phone</span>`
+                }
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="cell-value">${c.phone || "—"}</div>
+            ${c.area ? `<div class="cell-label">${c.area}</div>` : ""}
+          </div>
+          <div>
+            <div class="cell-value">${c.totalOrders || 0}</div>
+            <div class="cell-label">${daysSince !== null ? daysSince === 0 ? "Today" : daysSince + "d ago" : "—"}</div>
+          </div>
+          <div>
+            <div class="cell-value">₹${Math.round(c.totalSales || 0).toLocaleString("en-IN")}</div>
+            <div class="cell-label">${c.paymentPreference || "cash"}</div>
+          </div>
+          <div>
+            <div class="cell-value" style="color:var(--green)">₹${Math.round(c.totalProfit || 0).toLocaleString("en-IN")}</div>
+          </div>
+          <div>
+            <span class="credit-badge ${hasCredit ? "has-credit" : "no-credit"}" onclick="event.stopPropagation(); openCustomerCreditHistory('${c.id}')">
+              ${hasCredit ? "₹" + Math.round(c.creditBalance).toLocaleString("en-IN") : "Clear"}
+            </span>
+          </div>
+          <div class="row-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-ghost btn-icon" title="WhatsApp" onclick="sendWhatsApp('${c.phone}', '${c.name}')" ${!c.phone ? "disabled" : ""}>💬</button>
+            <button class="btn btn-ghost btn-icon" title="Message" onclick="openMessage('${c.id}')">✉️</button>
+            <button class="btn btn-ghost btn-icon" title="History" onclick="openHistory('${c.id}')">📋</button>
+            <button class="btn btn-ghost btn-icon" title="Edit" onclick="openEditCustomer('${c.id}')">✏️</button>
+            <button class="btn btn-ghost btn-icon" title="Delete" onclick="deleteCustomer('${c.id}')">🗑️</button>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  // ── RENDER CARDS ──
+  function renderCards(customers) {
+    const grid = document.getElementById("cardView");
+
+    if (customers.length === 0) {
+      grid.innerHTML = "";
+      return;
+    }
+
+    grid.innerHTML = customers.map(c => {
+      const color = getAvatarColor(c.name);
+      const initials = getInitials(c.name);
+      const hasCredit = (c.creditBalance || 0) > 0;
+
+      return `
+        <div class="customer-card">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${color};border-radius:16px 16px 0 0"></div>
+          <div class="card-top">
+            <div class="card-avatar" style="background:${color}">${initials}</div>
+            <div>
+              <div class="card-name">${c.name}</div>
+              <div class="card-phone">${c.phone || "📵 No phone"}</div>
+              ${c.area ? `<div class="card-phone">${c.area}</div>` : ""}
+            </div>
+          </div>
+          <div class="card-stats">
+            <div class="card-stat">
+              <div class="card-stat-label">Total Sales</div>
+              <div class="card-stat-value" style="color:var(--green)">₹${Math.round(c.totalSales || 0).toLocaleString("en-IN")}</div>
+            </div>
+            <div class="card-stat">
+              <div class="card-stat-label">Orders</div>
+              <div class="card-stat-value">${c.totalOrders || 0}</div>
+            </div>
+            <div class="card-stat">
+              <div class="card-stat-label">Profit</div>
+              <div class="card-stat-value">₹${Math.round(c.totalProfit || 0).toLocaleString("en-IN")}</div>
+            </div>
+            <div class="card-stat">
+              <div class="card-stat-label">Credit</div>
+              <div class="card-stat-value" style="color:${hasCredit ? "var(--coral)" : "var(--green)"};cursor:pointer" onclick="openCustomerCreditHistory('${c.id}')">
+                ${hasCredit ? "₹" + Math.round(c.creditBalance).toLocaleString("en-IN") : "Clear"}
+              </div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-secondary btn-sm" onclick="sendWhatsApp('${c.phone}','${c.name}')" ${!c.phone ? "disabled style='opacity:0.4'" : ""}>💬 WhatsApp</button>
+            <button class="btn btn-secondary btn-sm" onclick="openMessage('${c.id}')">✉️ Message</button>
+            <button class="btn btn-secondary btn-sm" onclick="openHistory('${c.id}')">📋 History</button>
+            <button class="btn btn-ghost btn-sm" onclick="openEditCustomer('${c.id}')">✏️</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteCustomer('${c.id}')">🗑️</button>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  // ── VIEW TOGGLE ──
+  window.setView = function(view) {
+    currentView = view;
+    document.getElementById("listView").classList.toggle("active", view === "list");
+    document.getElementById("cardView").classList.toggle("active", view === "card");
+    document.getElementById("listViewBtn").classList.toggle("active", view === "list");
+    document.getElementById("cardViewBtn").classList.toggle("active", view === "card");
+  };
+
+  // ── ADD CUSTOMER ──
+  window.openAddCustomer = function() {
+    editingCustomerId = null;
+    duplicateCandidate = null;
+    document.getElementById("customerModalTitle").textContent = "Add Customer";
+    document.getElementById("custName").value = "";
+    document.getElementById("custPhone").value = "";
+    document.getElementById("custArea").value = "";
+    document.getElementById("custNotes").value = "";
+    document.getElementById("duplicateWarning").classList.remove("show");
+    openModal("customerModal");
+  };
+
+  // ── EDIT CUSTOMER ──
+  window.openEditCustomer = function(id) {
+    const c = allCustomers.find(x => x.id === id);
+    if (!c) return;
+    editingCustomerId = id;
+    duplicateCandidate = null;
+    document.getElementById("customerModalTitle").textContent = "Edit Customer";
+    document.getElementById("custName").value = c.name;
+    document.getElementById("custPhone").value = c.phone || "";
+    document.getElementById("custArea").value = c.area || "";
+    document.getElementById("custNotes").value = c.notes || "";
+    document.getElementById("duplicateWarning").classList.remove("show");
+    openModal("customerModal");
+  };
+
+  // ── DUPLICATE CHECK ──
+  window.checkDuplicate = function() {
+    if (editingCustomerId) return;
+    const name = document.getElementById("custName").value.toLowerCase().trim();
+    if (name.length < 3) { document.getElementById("duplicateWarning").classList.remove("show"); return; }
+
+    const match = allCustomers.find(c =>
+      c.name.toLowerCase().includes(name) || name.includes(c.name.toLowerCase())
+    );
+
+    if (match) {
+      duplicateCandidate = match;
+      document.getElementById("dupName").textContent = match.name;
+      document.getElementById("duplicateWarning").classList.add("show");
+    } else {
+      duplicateCandidate = null;
+      document.getElementById("duplicateWarning").classList.remove("show");
+    }
+  };
+
+  // ── MERGE DUPLICATE ──
+  window.mergeWithDuplicate = function() {
+    if (!duplicateCandidate) return;
+    openEditCustomer(duplicateCandidate.id);
+  };
+
+  // ── SAVE CUSTOMER ──
+  window.saveCustomer = async function() {
+    const name = document.getElementById("custName").value.trim();
+    const phone = document.getElementById("custPhone").value.trim();
+    const area = document.getElementById("custArea").value.trim();
+    const notes = document.getElementById("custNotes").value.trim();
+
+    if (!name) { showToast("Please enter a customer name"); return; }
+
+    const data = {
+      name, phone, area, notes,
+      updatedAt: new Date().toISOString().split("T")[0]
+    };
+
+    try {
+      if (editingCustomerId) {
+        await updateDoc(doc(db, "users", userId, "customers", editingCustomerId), data);
+        const idx = allCustomers.findIndex(c => c.id === editingCustomerId);
+        if (idx !== -1) Object.assign(allCustomers[idx], data);
+        showToast("Customer updated");
+      } else {
+        data.totalOrders = 0;
+        data.totalSales = 0;
+        data.totalProfit = 0;
+        data.creditBalance = 0;
+        data.createdAt = new Date().toISOString().split("T")[0];
+        const ref = await addDoc(userCol(userId, "customers"), data);
+        allCustomers.push({ id: ref.id, ...data });
+        showToast("Customer added");
+      }
+
+      closeModal("customerModal");
+      updateStats();
+      filterAndRender();
+      updateBroadcastInfo();
+
+    } catch (e) {
+      showToast("Error saving customer");
+      console.error(e);
+    }
+  };
+
+  // ── DELETE CUSTOMER ──
+  window.deleteCustomer = async function(id) {
+    const c = allCustomers.find(x => x.id === id);
+    if (!c) return;
+    if (!confirm(`Delete ${c.name}? This cannot be undone.`)) return;
+
+    try {
+      await deleteDoc(doc(db, "users", userId, "customers", id));
+      allCustomers = allCustomers.filter(x => x.id !== id);
+      updateStats();
+      filterAndRender();
+      updateBroadcastInfo();
+      showToast("Customer deleted");
+    } catch (e) {
+      showToast("Error deleting customer");
+    }
+  };
+
+  // ── HISTORY MODAL ──
+  window.openHistory = async function(id) {
+    const c = allCustomers.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById("historyModalTitle").textContent = `${c.name} — History`;
+    document.getElementById("historyModalContent").innerHTML = `<div class="loading-state"><div class="spinner"></div>Loading…</div>`;
+    openModal("historyModal");
+
+    try {
+      // Load sales for this customer
+      const salesSnap = await getDocs(userCol(userId, "sales"));
+      const sales = [];
+      salesSnap.forEach(d => {
+        const s = d.data();
+        const key = c.phone || c.name.toLowerCase();
+        const sKey = s.phone || (s.customer || "").toLowerCase();
+        if (sKey === key || (s.customer || "").toLowerCase() === c.name.toLowerCase()) {
+          sales.push(s);
+        }
+      });
+
+      sales.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+      if (sales.length === 0) {
+        document.getElementById("historyModalContent").innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No orders yet</div></div>`;
+        return;
+      }
+
+      document.getElementById("historyModalContent").innerHTML = `
+        <div style="margin-bottom:14px;display:flex;gap:12px;flex-wrap:wrap;">
+          <div class="card-stat" style="flex:1;background:var(--bg);border-radius:10px;padding:10px 14px;">
+            <div class="card-stat-label">Total Orders</div>
+            <div class="card-stat-value">${sales.length}</div>
+          </div>
+          <div class="card-stat" style="flex:1;background:var(--bg);border-radius:10px;padding:10px 14px;">
+            <div class="card-stat-label">Total Sales</div>
+            <div class="card-stat-value" style="color:var(--green)">₹${Math.round(sales.reduce((s,x) => s + Number(x.totalAmount||0), 0)).toLocaleString("en-IN")}</div>
+          </div>
+        </div>
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Order</th>
+              <th>Items</th>
+              <th>Amount</th>
+              <th>Payment</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sales.map(s => `
+              <tr>
+                <td>${s.date || "—"}</td>
+                <td style="font-family:var(--font-mono);font-size:12px">${s.orderNumber || "—"}</td>
+                <td style="font-size:12px;color:var(--text2)">${Array.isArray(s.items) ? s.items.map(i => i.product + "(" + i.qty + ")").join(", ") : "—"}</td>
+                <td style="font-family:var(--font-mono)">₹${Math.round(s.totalAmount||0).toLocaleString("en-IN")}</td>
+                <td style="text-transform:capitalize">${s.paymentMode || "cash"}</td>
+                <td>${s.deliveryStatus === "delivered" ? "✅" : "🕐"}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>`;
+
+    } catch (e) {
+      document.getElementById("historyModalContent").innerHTML = `<div class="empty-state"><div class="empty-title">Error loading history</div></div>`;
+    }
+  };
+
+  // ── WHATSAPP ──
+  window.openCustomerCreditHistory = async function(id) {
+    const c = allCustomers.find(x => x.id === id);
+    if (!c) return;
+
+    document.getElementById("historyModalTitle").textContent = `${c.name} — Credit History`;
+    document.getElementById("historyModalContent").innerHTML = `<div class="loading-state"><div class="spinner"></div>Loading…</div>`;
+    openModal("historyModal");
+
+    try {
+      const credit = await findCreditCustomer(c.name, c.phone);
+      if (!credit) {
+        document.getElementById("historyModalContent").innerHTML = `<div class="empty-state"><div class="empty-title">No credit history found</div></div>`;
+        return;
+      }
+
+      const snap = await getDocs(
+        query(
+          userCol(userId, "creditHistory"),
+          where("creditId", "==", credit.id),
+          orderBy("date", "desc")
+        )
+      );
+
+      if (snap.empty) {
+        document.getElementById("historyModalContent").innerHTML = `<div class="empty-state"><div class="empty-title">No credit history found</div></div>`;
+        return;
+      }
+
+      let rows = "";
+      snap.forEach(d => {
+        const h = d.data();
+        const typeClass = h.type === "credit" ? "type-credit" : "type-payment";
+        const typeLabel = h.type === "credit" ? "Credit" : "Payment";
+        const order = h.orderNumber || (Array.isArray(h.allocations)
+          ? h.allocations.map(a => a.orderNumber).filter(Boolean).join(", ")
+          : "");
+        rows += `
+          <tr>
+            <td>${h.date || ""}</td>
+            <td class="${typeClass}">${typeLabel}</td>
+            <td>${order || "—"}</td>
+            <td style="font-family:var(--font-mono)">₹${Math.round(h.amount || 0).toLocaleString("en-IN")}</td>
+            <td style="font-family:var(--font-mono);color:var(--text-muted)">₹${Math.round(h.balanceAfter || 0).toLocaleString("en-IN")}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById("historyModalContent").innerHTML = `
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Order</th>
+              <th>Amount</th>
+              <th>Balance</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    } catch (e) {
+      console.error(e);
+      document.getElementById("historyModalContent").innerHTML = `<div class="empty-state"><div class="empty-title">Error loading credit history</div></div>`;
+    }
+  };
+
+  window.sendWhatsApp = function(phone, name) {
+    if (!phone) { showToast("No phone number for this customer"); return; }
+    const msg = encodeURIComponent(`Hi ${name}, `);
+    window.open(`https://wa.me/91${phone}?text=${msg}`, "_blank");
+  };
+
+  // ── INDIVIDUAL MESSAGE ──
+  window.openMessage = function(id) {
+    const c = allCustomers.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById("messageModalTitle").textContent = `Message — ${c.name}`;
+    document.getElementById("singleMsgContent").innerHTML = `
+      <div style="margin-bottom:14px;">
+        <div class="template-chips" id="singleTemplateChips"></div>
+        <textarea class="broadcast-textarea" id="singleMsgText" placeholder="Type your message…">Hi ${c.name}, </textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary" style="flex:1" onclick="sendSingleSMS('${c.phone}','${c.id}')">📱 SMS</button>
+        <button class="btn btn-primary" style="flex:1" onclick="sendSingleWhatsApp('${c.phone}','${c.id}')">💬 WhatsApp</button>
+      </div>`;
+
+    // Populate templates
+    const chips = document.getElementById("singleTemplateChips");
+    messageTemplates.forEach(t => {
+      const btn = document.createElement("div");
+      btn.className = "template-chip";
+      btn.textContent = t.label;
+      btn.onclick = () => {
+        document.getElementById("singleMsgText").value = t.text.replace("{name}", c.name).replace("{balance}", "₹" + Math.round(c.creditBalance || 0));
+        document.querySelectorAll("#singleTemplateChips .template-chip").forEach(x => x.classList.remove("selected"));
+        btn.classList.add("selected");
+      };
+      chips.appendChild(btn);
+    });
+
+    openModal("messageModal");
+  };
+
+  window.sendSingleSMS = function(phone, id) {
+    if (!phone) { showToast("No phone number"); return; }
+    const msg = document.getElementById("singleMsgText").value;
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(msg)}`;
+  };
+
+  window.sendSingleWhatsApp = function(phone, id) {
+    if (!phone) { showToast("No phone number"); return; }
+    const msg = document.getElementById("singleMsgText").value;
+    window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+
+  // ── BROADCAST ──
+  const messageTemplates = [
+    { label: "Thank you", text: "Hi {name}, thank you for your business! We value your trust. 🙏" },
+    { label: "New stock", text: "Hi {name}, fresh stock available now. Place your order today! 📦" },
+    { label: "Payment reminder", text: "Hi {name}, kindly clear your outstanding balance of {balance}. Thank you! 🙏" },
+    { label: "Festival offer", text: "Hi {name}, special prices this season! Contact us to know more. 🎉" },
+    { label: "Delivery update", text: "Hi {name}, your order is out for delivery. Thank you for your patience! 🚚" },
+  ];
+
+  function initTemplateChips() {
+    const wrap = document.getElementById("templateChips");
+    messageTemplates.forEach(t => {
+      const btn = document.createElement("div");
+      btn.className = "template-chip";
+      btn.textContent = t.label;
+      btn.onclick = () => {
+        document.getElementById("broadcastMsg").value = t.text;
+        document.querySelectorAll("#templateChips .template-chip").forEach(x => x.classList.remove("selected"));
+        btn.classList.add("selected");
+      };
+      wrap.appendChild(btn);
+    });
+  }
+
+  window.toggleBroadcast = function() {
+    document.getElementById("broadcastPanel").classList.toggle("open");
+    updateBroadcastInfo();
+  };
+
+  window.clearBroadcast = function() {
+    document.getElementById("broadcastMsg").value = "";
+    document.querySelectorAll("#templateChips .template-chip").forEach(x => x.classList.remove("selected"));
+  };
+
+  function updateBroadcastInfo() {
+    const withPhone = allCustomers.filter(c => c.phone).length;
+    document.getElementById("broadcastInfo").textContent = `Will send to ${withPhone} customers with phone numbers via SMS`;
+  }
+
+  window.sendBroadcast = function(method) {
+    const msgTemplate = document.getElementById("broadcastMsg").value.trim();
+    if (!msgTemplate) { showToast("Please type a message first"); return; }
+
+    const withPhone = allCustomers.filter(c => c.phone);
+    if (withPhone.length === 0) { showToast("No customers with phone numbers"); return; }
+
+    if (method === "sms") {
+      const numbers = withPhone.map(c => c.phone).join(",");
+      const sampleMsg = msgTemplate.replace("{name}", "").replace("{balance}", "");
+      window.location.href = `sms:${numbers}?body=${encodeURIComponent(sampleMsg)}`;
+      showToast(`Opening SMS for ${withPhone.length} customers`);
+    }
+  };
+
+  // ── MODAL HELPERS ──
+  window.openModal = function(id) {
+    document.getElementById(id).classList.add("open");
+  };
+
+  window.closeModal = function(id) {
+    document.getElementById(id).classList.remove("open");
+  };
+
+  // Close on overlay click
+  document.querySelectorAll(".modal-overlay").forEach(overlay => {
+    overlay.addEventListener("click", e => {
+      if (e.target === overlay) overlay.classList.remove("open");
+    });
+  });
+
+  // ── TOAST ──
+  window.showToast = function(msg, duration = 2500) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), duration);
+  };
+
+  // Init
+  initTemplateChips();
+
+</script>
+
+<link rel="stylesheet" href="voice.css">
+<script type="module" src="voice.js"></script>
+
+<script type="module" src="topbar.js"></script>
+
+<script type="module" src="navbar.js"></script>
+
+  <script src="pwa.js" defer></script>
+</body>
+</html>

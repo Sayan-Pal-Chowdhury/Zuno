@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Inventory — Sales Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="inventory.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00236f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zuno">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="zuno-icon-192.png">
+</head>
+
+<body>
+
+<h1>Inventory</h1>
+
+<!-- LOW STOCK ALERTS -->
+<div id="alertBox" class="alert-box hidden"></div>
+
+<div style="max-width:860px;margin:0 auto 18px;display:flex;justify-content:flex-end;">
+  <button class="btn-primary" onclick="openAddStockModal()">+ Add Stock</button>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="editModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3 style="margin-bottom:16px;font-size:16px;font-weight:600;">Edit Stock</h3>
+    <div class="stock-form" style="flex-direction:column;">
+      <div class="form-group" style="width:100%;">
+        <label>Product Name</label>
+        <input type="text" id="editProduct" style="width:100%;">
+      </div>
+      <div class="form-group" style="width:100%;">
+        <label>Total Quantity (current stock)</label>
+        <input type="number" id="editQty" style="width:100%;">
+      </div>
+      <div class="form-group" style="width:100%;">
+        <label>Total Purchase Cost (₹) — all stock bought</label>
+        <input type="number" id="editPurchaseCost" style="width:100%;">
+      </div>
+      <div class="form-group" style="width:100%;">
+        <label>Purchase Date</label>
+        <input type="date" id="editDate" style="width:100%;">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:6px;">
+        <button class="btn-primary" onclick="saveEdit()" style="flex:1;">Save</button>
+        <button onclick="closeEditModal()" style="flex:1;background:var(--bg);border:1.5px solid var(--border-dark);color:var(--text-secondary);">Cancel</button>
+      </div>
+      <p id="editMsg" class="msg"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ADD STOCK MODAL -->
+<div id="addStockModal" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:720px;">
+    <h3 style="margin-bottom:16px;font-size:16px;font-weight:600;">Add Stock</h3>
+    <div class="stock-form">
+    <div class="form-group">
+      <label>Product</label>
+      <input list="productsList" id="stockProduct" placeholder="Select product">
+      <datalist id="productsList"></datalist>
+    </div>
+    <div class="form-group">
+      <label>Quantity Bought</label>
+      <input type="number" id="stockQty" placeholder="e.g. 100">
+    </div>
+    <div class="form-group">
+      <label>Unit</label>
+      <select id="stockUnit">
+        <option value="kg">kg</option>
+        <option value="g">gram</option>
+        <option value="piece">piece</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Total Purchase Cost (₹)</label>
+      <input type="number" id="stockPurchaseCost" placeholder="e.g. 2000">
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="stockDate">
+    </div>
+    <div class="form-group">
+      <label>Low Stock Alert (qty)</label>
+      <input type="number" id="stockAlert" placeholder="e.g. 20">
+    </div>
+    <div class="form-group">
+  <label>Vendor Name (optional)</label>
+  <input type="text" id="vendorName" placeholder="e.g. Raju Supplier">
+</div>
+<div class="form-group">
+  <label>Vendor Phone (optional)</label>
+  <input type="text" id="vendorPhone" placeholder="e.g. 9876543210">
+</div>
+<div class="form-group">
+  <label>Amount Paid to Vendor (₹)</label>
+  <input type="number" id="vendorAmountPaid" placeholder="e.g. 1500">
+</div>
+    <div class="form-group">
+      <label>Note (optional)</label>
+      <input type="text" id="stockNote" placeholder="e.g. New lot from supplier">
+    </div>
+    <div style="display:flex;gap:10px;width:100%;"><button onclick="addStock()" class="btn-primary" style="flex:1;">Add to Inventory</button><button onclick="closeAddStockModal()" style="flex:1;background:var(--bg);border:1.5px solid var(--border-dark);color:var(--text-secondary);">Cancel</button></div>
+    <p id="stockMsg" class="msg"></p>
+  </div>
+  </div>
+</div>
+
+<!-- CURRENT STOCK -->
+<h2 onclick="toggleSection('currentStockSection')">▼ Current Stock</h2>
+<div id="currentStockSection">
+  <div id="stockCards" class="stock-grid">
+    <p class="empty-msg">No inventory yet</p>
+  </div>
+</div>
+
+<!-- FINISHED / ARCHIVED STOCK -->
+<h2 onclick="toggleSection('finishedStockSection')">▼ Finished Products</h2>
+<div id="finishedStockSection">
+  <div id="finishedCards" class="stock-grid">
+    <p class="empty-msg" id="finishedEmpty">No finished products</p>
+  </div>
+</div>
+
+
+
+<!-- STOCK HISTORY -->
+<h2 onclick="toggleSection('historySection')">▼ Stock History</h2>
+<div id="historySection">
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Product</th>
+        <th>Type</th>
+        <th>Qty</th>
+        <th>Cost/Unit</th>
+        <th>Note</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="historyTable"></tbody>
+  </table>
+</div>
+
+<link rel="stylesheet" href="voice.css">
+<script type="module" src="voice.js"></script>
+
+<script type="module" src="inventory.js"></script>
+<script type="module" src="topbar.js"></script>
+<script type="module" src="navbar.js"></script>
+
+  <script src="pwa.js" defer></script>
+</body>
+</html>

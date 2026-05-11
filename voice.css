@@ -1,0 +1,623 @@
+/* ════════════════════════════════════════
+   ZUNO VOICE ASSISTANT — voice.css
+   Include on any page to activate voice UI
+════════════════════════════════════════ */
+
+/* ── FLOATING MIC BUTTON ── */
+.zuno-mic-btn {
+  position: fixed;
+  bottom: 88px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #34c98a, #2ab578);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+  box-shadow:
+    0 4px 20px rgba(52, 201, 138, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.zuno-mic-btn:hover {
+  transform: scale(1.08);
+  box-shadow:
+    0 6px 28px rgba(52, 201, 138, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.zuno-mic-btn:active {
+  transform: scale(0.95);
+}
+
+.zuno-mic-btn.recording {
+  background: linear-gradient(135deg, #f97066, #e05a50);
+  box-shadow:
+    0 4px 20px rgba(249, 112, 102, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: micRecordPulse 1s ease-in-out infinite;
+}
+
+.zuno-mic-btn.processing {
+  background: linear-gradient(135deg, #5b8ef0, #4a7de0);
+  box-shadow: 0 4px 20px rgba(91, 142, 240, 0.5);
+  animation: none;
+  pointer-events: none;
+}
+
+@keyframes micRecordPulse {
+  0%, 100% {
+    box-shadow:
+      0 4px 20px rgba(249, 112, 102, 0.5),
+      0 0 0 0 rgba(249, 112, 102, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 4px 20px rgba(249, 112, 102, 0.6),
+      0 0 0 14px rgba(249, 112, 102, 0);
+  }
+}
+
+/* Idle pulse ring */
+.zuno-mic-btn::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid rgba(52, 201, 138, 0.3);
+  animation: idleRing 2.5s ease-in-out infinite;
+}
+
+.zuno-mic-btn.recording::before,
+.zuno-mic-btn.processing::before {
+  display: none;
+}
+
+@keyframes idleRing {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.15); opacity: 0; }
+}
+
+.zuno-mic-icon {
+  font-size: 22px;
+  line-height: 1;
+  transition: all 0.2s;
+  pointer-events: none;
+}
+
+/* Spinner for processing state */
+.zuno-mic-spinner {
+  width: 22px; height: 22px;
+  border: 2.5px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spinnerRotate 0.7s linear infinite;
+  display: none;
+}
+
+.zuno-mic-btn.processing .zuno-mic-icon { display: none; }
+.zuno-mic-btn.processing .zuno-mic-spinner { display: block; }
+
+@keyframes spinnerRotate {
+  to { transform: rotate(360deg); }
+}
+
+/* ── STATUS TOOLTIP ── */
+.zuno-mic-tooltip {
+  position: fixed;
+  bottom: 155px;
+  right: 20px;
+  background: rgba(17, 17, 17, 0.88);
+  color: white;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all 0.25s ease;
+  pointer-events: none;
+  z-index: 901;
+  backdrop-filter: blur(8px);
+}
+
+.zuno-mic-tooltip.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── WAVEFORM INDICATOR ── */
+.zuno-waveform {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+}
+
+.zuno-waveform-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: white;
+  animation: waveAnim 0.8s ease-in-out infinite;
+}
+
+.zuno-waveform-bar:nth-child(1) { animation-delay: 0s; height: 6px; }
+.zuno-waveform-bar:nth-child(2) { animation-delay: 0.1s; height: 14px; }
+.zuno-waveform-bar:nth-child(3) { animation-delay: 0.2s; height: 10px; }
+.zuno-waveform-bar:nth-child(4) { animation-delay: 0.3s; height: 16px; }
+.zuno-waveform-bar:nth-child(5) { animation-delay: 0.1s; height: 8px; }
+
+@keyframes waveAnim {
+  0%, 100% { transform: scaleY(0.5); opacity: 0.6; }
+  50% { transform: scaleY(1.3); opacity: 1; }
+}
+
+/* ── REVIEW MODAL OVERLAY ── */
+.zuno-voice-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.zuno-voice-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ── REVIEW MODAL ── */
+.zuno-voice-modal {
+  background: #ffffff;
+  border-radius: 28px 28px 0 0;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 0 0 40px;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.15);
+}
+
+.zuno-voice-overlay.open .zuno-voice-modal {
+  transform: translateY(0);
+}
+
+@media (min-width: 600px) {
+  .zuno-voice-overlay {
+    align-items: center;
+  }
+  .zuno-voice-modal {
+    border-radius: 24px;
+    max-height: 88vh;
+    margin: 20px;
+    transform: scale(0.94) translateY(20px);
+  }
+  .zuno-voice-overlay.open .zuno-voice-modal {
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Modal drag handle */
+.zuno-modal-handle {
+  width: 40px;
+  height: 4px;
+  background: rgba(0,0,0,0.12);
+  border-radius: 2px;
+  margin: 14px auto 0;
+}
+
+@media (min-width: 600px) {
+  .zuno-modal-handle { display: none; }
+}
+
+/* Modal header */
+.zuno-modal-header {
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 2;
+  border-radius: 28px 28px 0 0;
+}
+
+.zuno-modal-title-wrap { display: flex; align-items: center; gap: 10px; }
+
+.zuno-modal-avatar {
+  width: 36px; height: 36px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #34c98a, #5b8ef0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+}
+
+.zuno-modal-title {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #111;
+}
+
+.zuno-modal-sub {
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 1px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.zuno-modal-close {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.06);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: background 0.15s;
+}
+
+.zuno-modal-close:hover { background: rgba(0,0,0,0.1); }
+
+/* Transcript strip */
+.zuno-transcript-strip {
+  margin: 14px 22px 0;
+  background: rgba(52, 201, 138, 0.06);
+  border: 1px solid rgba(52, 201, 138, 0.2);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #444;
+  font-family: 'DM Mono', monospace;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.zuno-transcript-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #34c98a;
+  font-style: normal;
+  margin-bottom: 4px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Modal body */
+.zuno-modal-body {
+  padding: 18px 22px 0;
+}
+
+/* Section label */
+.zuno-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #aaa;
+  margin-bottom: 10px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Customer info row */
+.zuno-customer-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 400px) {
+  .zuno-customer-row { grid-template-columns: 1fr; }
+}
+
+/* Input fields */
+.zuno-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.zuno-field-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #888;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.zuno-field-input {
+  padding: 10px 13px;
+  border-radius: 11px;
+  border: 1.5px solid rgba(0,0,0,0.12);
+  background: #f7f6f2;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: #111;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  width: 100%;
+}
+
+.zuno-field-input:focus {
+  border-color: #34c98a;
+  box-shadow: 0 0 0 3px rgba(52, 201, 138, 0.1);
+  background: white;
+}
+
+.zuno-field-select {
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+/* Items section */
+.zuno-items-wrap {
+  margin-bottom: 16px;
+}
+
+.zuno-item-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 32px;
+  gap: 7px;
+  align-items: center;
+  margin-bottom: 8px;
+  background: #f9f9f6;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0,0,0,0.06);
+  transition: border-color 0.2s;
+}
+
+.zuno-item-row:focus-within {
+  border-color: rgba(52, 201, 138, 0.3);
+  background: white;
+}
+
+@media (max-width: 420px) {
+  .zuno-item-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+}
+
+.zuno-item-input {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: #111;
+  outline: none;
+  transition: all 0.15s;
+  width: 100%;
+}
+
+.zuno-item-input:focus {
+  background: white;
+  border-color: #34c98a;
+}
+
+.zuno-item-select {
+  appearance: none;
+  cursor: pointer;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: #111;
+  outline: none;
+  width: 100%;
+}
+
+.zuno-item-select:focus {
+  background: white;
+  border-color: #34c98a;
+}
+
+.zuno-remove-item {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(249, 112, 102, 0.1);
+  color: #f97066;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.zuno-remove-item:hover { background: rgba(249, 112, 102, 0.2); }
+
+.zuno-add-item-btn {
+  width: 100%;
+  padding: 9px;
+  border-radius: 10px;
+  border: 1.5px dashed rgba(52, 201, 138, 0.4);
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #34c98a;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 4px;
+}
+
+.zuno-add-item-btn:hover {
+  background: rgba(52, 201, 138, 0.06);
+  border-color: #34c98a;
+}
+
+/* Total bar */
+.zuno-total-bar {
+  background: linear-gradient(135deg, rgba(52,201,138,0.08), rgba(91,142,240,0.06));
+  border: 1px solid rgba(52, 201, 138, 0.2);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.zuno-total-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.zuno-total-value {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #34c98a;
+}
+
+/* Options row */
+.zuno-options-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+/* Modal footer */
+.zuno-modal-footer {
+  padding: 0 22px;
+  display: flex;
+  gap: 10px;
+}
+
+.zuno-btn {
+  flex: 1;
+  padding: 13px;
+  border-radius: 13px;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.zuno-btn:active { transform: scale(0.97); }
+
+.zuno-btn-cancel {
+  background: rgba(0,0,0,0.05);
+  color: #666;
+  flex: 0.6;
+}
+
+.zuno-btn-cancel:hover { background: rgba(0,0,0,0.08); }
+
+.zuno-btn-form {
+  background: rgba(91,142,240,0.1);
+  color: #5b8ef0;
+  border: 1px solid rgba(91,142,240,0.2);
+  flex: 0.9;
+}
+
+.zuno-btn-form:hover { background: rgba(91,142,240,0.16); }
+
+.zuno-btn-confirm {
+  background: linear-gradient(135deg, #34c98a, #2ab578);
+  color: white;
+  box-shadow: 0 4px 16px rgba(52,201,138,0.35);
+}
+
+.zuno-btn-confirm:hover {
+  box-shadow: 0 6px 22px rgba(52,201,138,0.45);
+  transform: translateY(-1px);
+}
+
+.zuno-btn-confirm.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* ── ERROR STATE ── */
+.zuno-error-msg {
+  margin: 14px 22px 0;
+  background: rgba(249,112,102,0.08);
+  border: 1px solid rgba(249,112,102,0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #c0392b;
+  font-family: 'DM Sans', sans-serif;
+  display: none;
+}
+
+.zuno-error-msg.show { display: block; }
+
+/* ── TOAST ── */
+.zuno-voice-toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: rgba(17,17,17,0.9);
+  color: white;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 20px;
+  z-index: 2000;
+  opacity: 0;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.zuno-voice-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── MOBILE ADJUSTMENTS ── */
+@media (max-width: 380px) {
+  .zuno-mic-btn { width: 50px; height: 50px; bottom: 84px; right: 16px; }
+  .zuno-mic-icon { font-size: 20px; }
+  .zuno-modal-body { padding: 14px 16px 0; }
+  .zuno-modal-footer { padding: 0 16px; }
+  .zuno-modal-header { padding: 18px 16px 14px; }
+}

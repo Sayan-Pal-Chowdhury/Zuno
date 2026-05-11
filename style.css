@@ -1,85 +1,568 @@
-body {
-  font-family: Arial;
-  background: #f4f6f9;
-  padding: 20px;
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+/* ===== ROOT ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --white: #ffffff;
+  --bg: #f5f5f3;
+  --surface: #ffffff;
+  --border: #e8e8e4;
+  --border-dark: #d0d0c8;
+  --text-primary: #1a1a18;
+  --text-secondary: #6b6b65;
+  --text-muted: #a0a09a;
+  --accent: #2d6a4f;
+  --accent-light: #e8f5ee;
+  --accent-hover: #235c43;
+  --danger: #c0392b;
+  --danger-light: #fdf0ee;
+  --warning: #d4751a;
+  --warning-light: #fef4e8;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  --font: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
 }
 
-/* ENTRY LINE */
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 24px 16px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ===== LAYOUT ===== */
+body > * {
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ===== HEADER ===== */
+h1 {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1.5px solid var(--border);
+}
+
+h2 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 28px 0 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+h2:hover { color: var(--text-primary); }
+
+h3 {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 12px 0;
+}
+
+h3 span {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+/* ===== ORDER BADGE ===== */
+div[style*="orderDisplay"] ,
+body > div:first-of-type {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+#orderDisplay {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 2px 12px;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+/* ===== ENTRY CARD ===== */
 .entryRow {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  background: white;
-  padding: 10px;
-  border-radius: 8px;
+  gap: 10px;
+  align-items: flex-start;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 4px;
 }
 
-/* ITEMS */
+/* ===== INPUTS ===== */
+input, select, textarea {
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  height: 38px;
+}
+
+input::placeholder { color: var(--text-muted); }
+
+input:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(45,106,79,0.1);
+  background: var(--white);
+}
+
+input[type="date"] { width: 150px; }
+input#customerName { width: 480px; }
+input#phone { width: 215px; }
+select#paymentMode { width: 100px; }
+select#deliveryStatus { width: 130px; }
+
+/* ===== ITEM ROWS ===== */
 #itemsContainer {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 
 .itemRow {
   display: flex;
-  gap: 5px;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
 }
 
-.itemRow input {
-  width: 100px;
-}
+.itemRow .product { width: 160px; flex: 1 1 160px; }
+.itemRow .qty { width: 80px; flex: 0 0 80px; }
+.itemRow .unit { width: 90px; flex: 0 0 90px; }
+.itemRow .sellingPrice { width: 100px; flex: 1 1 100px; }
+.itemRow .price { width: 120px; flex: 1 1 120px; }
 
-/* INPUT */
-input {
-  padding: 6px;
-}
-
-/* BUTTON */
+/* ===== BUTTONS ===== */
 button {
-  padding: 6px 10px;
-  cursor: pointer;
-  background: #4CAF50;
-  color: white;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  height: 38px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  white-space: nowrap;
 }
 
-button:hover {
-  background: #45a049;
+button:active { transform: scale(0.97); }
+
+/* Primary — Save */
+#mainBtn {
+  background: var(--accent);
+  color: white;
+  padding: 8px 24px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
 }
 
-/* TABLE */
+#mainBtn:hover {
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-md);
+}
+
+/* Secondary — Add item */
+#addItemBtn {
+  background: var(--white);
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  width: 38px;
+  padding: 0;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#addItemBtn:hover { background: var(--accent-light); }
+
+/* Remove row */
+.removeBtn {
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1.5px solid #f5c6c2;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+}
+
+.removeBtn:hover { background: #f9d8d5; }
+
+/* Product add btn */
+#prodBtn {
+  background: var(--accent);
+  color: white;
+}
+
+#prodBtn:hover { background: var(--accent-hover); }
+
+/* Edit / Delete in table */
+td button {
+  font-size: 12px;
+  height: 28px;
+  padding: 0px 10px;
+  margin-right: 4px;
+}
+
+td button:first-child {
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1.5px solid #c7d2fe;
+}
+
+td button:first-child:hover { background: #e0e7ff; }
+
+td button:last-child {
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1.5px solid #f5c6c2;
+}
+
+td button:last-child:hover { background: #f9d8d5; }
+
+/* AI Summary btn */
+body > button {
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-dark);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body > button:hover { background: var(--bg); }
+
+/* ===== PRODUCT SECTION ===== */
+#productSection {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  box-shadow: var(--shadow-sm);
+}
+
+#prodName { width: 150px; }
+#prodCost { width: 100px; }
+#prodUnit { width: 90px; }
+
+/* ===== TABLES ===== */
 table {
   width: 100%;
-  margin-top: 10px;
-  background: white;
   border-collapse: collapse;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1.5px solid var(--border);
+  font-size: 14px;
+  margin-top: 12px;
 }
 
-td, th {
-  padding: 8px;
-  border: 1px solid #ddd;
+thead {
+  background: #f9f9f7;
+  border-bottom: 1.5px solid var(--border);
 }
 
-/* HIDDEN */
-.hidden {
-  display: none;
-}
-#chart {
-  max-width: 600px;
-  max-height: 300px;
-  margin-top: 10px;
+th {
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+tr:last-child td { border-bottom: none; }
+
+tbody tr {
+  transition: background 0.15s;
+}
+
+tbody tr:hover { background: #fafaf8; }
+
+/* ===== SALES SECTION ===== */
+#salesSection {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+#salesSection table {
+  margin-top: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ===== STATUS BADGES ===== */
+td:nth-child(8) {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ===== DASHBOARD ===== */
+#dashboard {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+#dashboard p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+#dashboard p span {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+#dashboard label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+#monthFilter {
+  margin-left: 8px;
+  width: 140px;
+}
+
+/* ===== CHART ===== */
 #chart {
   display: block;
-  max-width: 700px;
-  max-height: 350px;
-  margin: 20px auto;
+  max-width: 100%;
+  height: 280px !important;
+  margin: 20px 0 4px;
 }
-canvas {
-  width: 100% !important;
-  height: auto !important;
+
+/* ===== AI SUMMARY ===== */
+#summary {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-top: 10px;
+  min-height: 20px;
+  white-space: pre-wrap;
+}
+
+/* ===== ORDER CREDIT MODALS ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.35);
+  padding: 16px;
+}
+
+.modal-box {
+  width: min(100%, 440px);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 22px;
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-close-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  font-size: 18px;
+}
+
+.modal-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.modal-form-group label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.modal-actions button {
+  flex: 1;
+}
+
+.btn-modal-primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-modal-cancel {
+  background: var(--bg);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border-dark);
+}
+
+.credit-mini-btn {
+  height: 24px;
+  padding: 0 8px;
+  margin: 0;
+  font-size: 11px;
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+}
+
+.credit-edit-btn {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: #a8d5bc;
+}
+
+.credit-history-table {
+  margin-top: 0;
+  font-size: 13px;
+}
+
+.credit-history-table th,
+.credit-history-table td {
+  padding: 8px 10px;
+}
+
+/* ===== HIDDEN ===== */
+.hidden { display: none !important; }
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 10px; }
+
+/* ===== MOBILE ===== */
+@media (max-width: 600px) {
+  body { padding: 16px 12px; }
+
+  h1 { font-size: 22px; }
+
+  .entryRow { padding: 14px; gap: 8px; }
+
+  input[type="date"],
+  input#customerName,
+  input#phone,
+  select#paymentMode,
+  select#deliveryStatus { width: 100%; }
+
+  .itemRow { padding: 8px; }
+  .itemRow .product,
+  .itemRow .qty,
+  .itemRow .sellingPrice,
+  .itemRow .price { width: calc(50% - 8px); }
+
+  #prodName, #prodCost { width: 100%; }
+
+  table { font-size: 13px; }
+  th, td { padding: 8px 10px; }
+
+  #dashboard p span { font-size: 18px; }
 }

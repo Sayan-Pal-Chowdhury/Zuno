@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Finance — Zuno</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { padding-bottom: 90px; }
+
+    .finance-header {
+      max-width: 1000px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 16px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .section-title {
+      max-width: 1000px;
+      margin: 24px auto 12px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .overview-grid {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .overview-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .overview-card-accent {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+
+    .overview-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .overview-value {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .overview-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .opening-balance-box {
+      max-width: 1000px;
+      margin: 0 auto 0;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .opening-balance-box label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .opening-balance-box input { width: 160px; height: 38px; }
+
+    .charts-row {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .chart-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .finance-filter {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .finance-filter select { height: 32px; font-size: 12px; width: 120px; }
+
+    .expense-form {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .expense-form .fg { display: flex; flex-direction: column; gap: 4px; }
+    .expense-form .fg label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+    .expense-form input[type="number"] { width: 120px; height: 38px; }
+    .expense-form input[type="text"]   { width: 170px; height: 38px; }
+    .expense-form input[type="date"]   { width: 150px; height: 38px; }
+    .expense-form select               { width: 140px; height: 38px; }
+
+    .finance-table-wrap {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .finance-table-wrap table { margin:0; border:none; border-radius:0; box-shadow:none; }
+
+    .vendor-grid {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+    }
+
+    .vendor-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .vendor-card.has-due { border-left: 4px solid var(--danger); }
+    .vendor-card.paid    { border-left: 4px solid var(--accent); }
+
+    .vendor-name  { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+    .vendor-phone { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 10px; }
+
+    .vendor-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+    }
+
+    .vendor-row span:last-child { font-family: var(--font-mono); font-weight: 500; color: var(--text-primary); }
+
+    .vendor-due {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .vendor-due.red   { background: var(--danger-light); }
+    .vendor-due.green { background: var(--accent-light); }
+
+    .vendor-due-label  { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .vendor-due.red   .vendor-due-label  { color: var(--danger); }
+    .vendor-due.green .vendor-due-label  { color: var(--accent); }
+    .vendor-due-amount { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
+    .vendor-due.red   .vendor-due-amount { color: var(--danger); }
+    .vendor-due.green .vendor-due-amount { color: var(--accent); }
+
+    .vendor-actions { display: flex; gap: 6px; margin-top: 10px; }
+    .vendor-actions button { font-size: 12px; height: 28px; padding: 0 10px; border-radius: var(--radius-sm); border: 1.5px solid; cursor: pointer; font-family: var(--font); font-weight: 500; transition: background 0.15s; }
+    .btn-pay-vendor { background: var(--accent-light); color: var(--accent); border-color: #a8d5bc; }
+    .btn-del-vendor { background: var(--danger-light); color: var(--danger); border-color: #f5c6c2; }
+
+    .summary-grid {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .summary-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .summary-card-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 14px; }
+
+    .top-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .top-item:last-child { border-bottom: none; }
+    .top-item-name  { color: var(--text-primary); font-weight: 500; }
+    .top-item-value { font-family: var(--font-mono); color: var(--accent); font-weight: 500; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-overlay.hidden { display: none; }
+    .modal-box { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 24px; width: 100%; max-width: 400px; box-shadow: var(--shadow-md); }
+    .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+    .modal-form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .modal-form-group label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+    .modal-form-group input { width: 100%; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .modal-actions button { flex: 1; height: 38px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; font-family: var(--font); }
+    .btn-modal-primary { background: var(--accent); color: white; border: none; }
+    .btn-modal-cancel  { background: var(--bg); color: var(--text-secondary); border: 1.5px solid var(--border-dark); }
+
+    @media (max-width: 600px) {
+      .overview-grid { grid-template-columns: 1fr 1fr; }
+      .charts-row    { grid-template-columns: 1fr; }
+      .summary-grid  { grid-template-columns: 1fr; }
+      .vendor-grid   { grid-template-columns: 1fr; }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00236f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zuno">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="zuno-icon-192.png">
+</head>
+<body>
+
+<script type="module">
+import { auth } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+onAuthStateChanged(auth, (user) => {
+  if (!user) window.location.href = "login.html";
+});
+</script>
+
+<!-- VENDOR PAY MODAL -->
+<div id="vendorPayModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-title">Pay Vendor</div>
+    <div id="vendorPayInfo" style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;"></div>
+    <div class="modal-form-group">
+      <label>Amount Paying (₹)</label>
+      <input type="number" id="vendorPayAmount" placeholder="e.g. 500">
+    </div>
+    <div class="modal-form-group">
+      <label>Date</label>
+      <input type="date" id="vendorPayDate">
+    </div>
+    <div class="modal-form-group">
+      <label>Note (optional)</label>
+      <input type="text" id="vendorPayNote" placeholder="e.g. Cash paid">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-primary" onclick="saveVendorPayment()">Save</button>
+      <button class="btn-modal-cancel"  onclick="closeVendorPayModal()">Cancel</button>
+    </div>
+    <p id="vendorPayMsg" style="font-size:13px;color:var(--danger);margin-top:8px;min-height:18px;"></p>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="finance-header">
+  <div>
+    <p style="font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">Zuno</p>
+    <h1 style="margin:0;border:none;padding:0;font-size:24px;">Finance</h1>
+  </div>
+</div>
+
+<!-- OPENING BALANCE -->
+<div class="opening-balance-box">
+  <label>💰 Opening Balance (₹)</label>
+  <input type="number" id="openingBalance" placeholder="e.g. 10000">
+  <button onclick="saveOpeningBalance()" style="height:38px;padding:0 20px;background:var(--accent);color:white;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font);">Save</button>
+  <span id="openingBalanceMsg" style="font-size:13px;color:var(--accent);min-height:18px;"></span>
+</div>
+
+<!-- OVERVIEW -->
+<div class="section-title">Overview</div>
+<div class="overview-grid">
+  <div class="overview-card">
+    <div class="overview-card-accent" style="background:#34c98a;"></div>
+    <div class="overview-label">Cash at Hand</div>
+    <div class="overview-value" id="cashAtHand">₹0</div>
+    <div class="overview-sub" id="cashAtHandSub">Opening + receipts - payments</div>
+  </div>
+  <div class="overview-card">
+    <div class="overview-card-accent" style="background:#5b8ef0;"></div>
+    <div class="overview-label">Total Revenue</div>
+    <div class="overview-value" id="totalRevenue">₹0</div>
+    <div class="overview-sub">All delivered sales</div>
+  </div>
+  <div class="overview-card">
+    <div class="overview-card-accent" style="background:#a374f7;"></div>
+    <div class="overview-label">Total Profit</div>
+    <div class="overview-value" id="totalProfit">₹0</div>
+    <div class="overview-sub">Revenue - COGS</div>
+  </div>
+  <div class="overview-card">
+    <div class="overview-card-accent" style="background:#f97066;"></div>
+    <div class="overview-label">Credit Outstanding</div>
+    <div class="overview-value" id="creditOutstanding">₹0</div>
+    <div class="overview-sub">Owed by customers</div>
+  </div>
+  <div class="overview-card">
+    <div class="overview-card-accent" style="background:#f5a623;"></div>
+    <div class="overview-label">Vendor Payable</div>
+    <div class="overview-value" id="vendorPayable">₹0</div>
+    <div class="overview-sub">Owed to vendors</div>
+  </div>
+  <div class="overview-card">
+    <div class="overview-card-accent" style="background:#2ec4b6;"></div>
+    <div class="overview-label">Stock Value</div>
+    <div class="overview-value" id="stockValue">₹0</div>
+    <div class="overview-sub">Current inventory cost</div>
+  </div>
+</div>
+
+<!-- P&L -->
+<div class="section-title">
+  P&L Report
+  <div class="finance-filter">
+    <select id="plFilter" onchange="applyPLFilter()">
+      <option value="all">All Time</option>
+      <option value="today">Today</option>
+      <option value="week">This Week</option>
+      <option value="month">This Month</option>
+      <option value="year">This Year</option>
+    </select>
+    <select id="plMonth" onchange="applyPLFilter()">
+      <option value="">All Months</option>
+    </select>
+    <select id="plYear" onchange="applyPLFilter()">
+      <option value="">All Years</option>
+    </select>
+  </div>
+</div>
+
+<div class="overview-grid">
+  <div class="overview-card">
+    <div class="overview-label">Revenue</div>
+    <div class="overview-value" id="plRevenue">₹0</div>
+  </div>
+  <div class="overview-card">
+    <div class="overview-label">COGS</div>
+    <div class="overview-value" id="plCOGS">₹0</div>
+    <div class="overview-sub">Cost of goods sold</div>
+  </div>
+  <div class="overview-card">
+    <div class="overview-label">Gross Profit</div>
+    <div class="overview-value" id="plGrossProfit">₹0</div>
+  </div>
+  <div class="overview-card">
+    <div class="overview-label">Expenses</div>
+    <div class="overview-value" id="plExpenses">₹0</div>
+  </div>
+  <div class="overview-card" style="grid-column:span 2;">
+    <div class="overview-card-accent" style="background:#34c98a;"></div>
+    <div class="overview-label">Net Profit</div>
+    <div class="overview-value" id="plNetProfit" style="font-size:26px;">₹0</div>
+  </div>
+</div>
+
+<!-- CHARTS -->
+<div class="section-title">Analytics</div>
+<div class="charts-row">
+  <div class="chart-card">
+    <div class="chart-card-title">Monthly Revenue & Profit</div>
+    <canvas id="revenueChart" height="200"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-card-title">Payment Breakdown</div>
+    <canvas id="paymentChart" height="200"></canvas>
+  </div>
+</div>
+
+<!-- SMART SUMMARY -->
+<div class="section-title">Smart Summary</div>
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="summary-card-title">🏆 Top Customers</div>
+    <div id="topCustomers"><p style="font-size:13px;color:var(--text-muted);">Loading...</p></div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-card-title">📦 Top Products</div>
+    <div id="topProducts"><p style="font-size:13px;color:var(--text-muted);">Loading...</p></div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-card-title">📅 Best Month</div>
+    <div id="bestMonth"><p style="font-size:13px;color:var(--text-muted);">Loading...</p></div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-card-title">⚠️ Credit Risk</div>
+    <div id="creditRisk"><p style="font-size:13px;color:var(--text-muted);">Loading...</p></div>
+  </div>
+</div>
+
+<!-- EXPENSES -->
+<div class="section-title">Add Expense</div>
+<div class="expense-form">
+  <div class="fg">
+    <label>Amount (₹)</label>
+    <input type="number" id="expAmount" placeholder="e.g. 500">
+  </div>
+  <div class="fg">
+    <label>Category</label>
+    <select id="expCategory">
+      <option value="Rent">Rent</option>
+      <option value="Transport">Transport</option>
+      <option value="Labor">Labor</option>
+      <option value="Packaging">Packaging</option>
+      <option value="Utilities">Utilities</option>
+      <option value="Misc">Misc</option>
+      <option value="Other">Other</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label>Date</label>
+    <input type="date" id="expDate">
+  </div>
+  <div class="fg">
+    <label>Note</label>
+    <input type="text" id="expNote" placeholder="e.g. Plastic bags">
+  </div>
+  <button onclick="addExpense()" style="height:38px;padding:0 20px;background:var(--accent);color:white;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font);align-self:flex-end;">Add</button>
+  <p id="expMsg" style="font-size:13px;color:var(--accent);width:100%;min-height:18px;"></p>
+</div>
+
+<div style="max-width:1000px;margin:12px auto 0;">
+  <div class="finance-table-wrap">
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Category</th><th>Note</th><th>Amount</th><th>Action</th></tr>
+      </thead>
+      <tbody id="expenseTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VENDOR PAYABLES -->
+<div class="section-title">Vendor Payables</div>
+<div id="vendorGrid" class="vendor-grid">
+  <p style="font-size:13px;color:var(--text-muted);grid-column:1/-1;">No vendor records yet. Add stock with vendor details in Inventory.</p>
+</div>
+<link rel="stylesheet" href="voice.css">
+<script type="module" src="voice.js"></script>
+
+<script type="module" src="finance.js"></script>
+<script type="module" src="topbar.js"></script>
+<script type="module" src="navbar.js"></script>
+  <script src="pwa.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Settings — Zuno</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { padding-bottom: 90px; }
+
+    .settings-section {
+      max-width: 700px;
+      margin: 24px auto 0;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .settings-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      background: #f9f9f7;
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+    }
+
+    .settings-row:last-child { border-bottom: none; }
+
+    .settings-row-left { flex: 1; }
+
+    .settings-row-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .settings-row-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .settings-row input[type="text"],
+    .settings-row input[type="tel"],
+    .settings-row input[type="email"],
+    .settings-row select {
+      width: 220px;
+      height: 36px;
+      font-size: 13px;
+    }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #ccc;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: white;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+
+    .toggle input:checked + .toggle-slider { background: #34c98a; }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    .save-btn {
+      display: block;
+      max-width: 700px;
+      margin: 16px auto 0;
+      width: 100%;
+      height: 44px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: background 0.15s;
+    }
+
+    .save-btn:hover { background: var(--accent-hover); }
+
+    .save-msg {
+      max-width: 700px;
+      margin: 8px auto 0;
+      font-size: 13px;
+      color: var(--accent);
+      text-align: center;
+      min-height: 18px;
+    }
+  </style>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00236f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zuno">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="zuno-icon-192.png">
+</head>
+<body>
+
+<script type="module">
+import { auth } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+onAuthStateChanged(auth, (user) => {
+  if (!user) window.location.href = "login.html";
+});
+</script>
+
+<!-- SHOP PROFILE -->
+<div class="settings-section">
+  <div class="settings-section-title">Shop Profile</div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Shop Name</div>
+      <div class="settings-row-sub">Appears in the topbar on all pages</div>
+    </div>
+    <input type="text" id="shopName" placeholder="e.g. Sayan Traders">
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Business Type</div>
+      <div class="settings-row-sub">e.g. Wholesale, Retail, Distributor</div>
+    </div>
+    <input type="text" id="shopType" placeholder="e.g. Wholesale">
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Owner Name</div>
+    </div>
+    <input type="text" id="ownerName" placeholder="e.g. Sayan Pal">
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Phone</div>
+    </div>
+    <input type="tel" id="shopPhone" placeholder="e.g. 9876543210">
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Address</div>
+    </div>
+    <input type="text" id="shopAddress" placeholder="e.g. Kolkata, WB">
+  </div>
+</div>
+
+<!-- FORM CUSTOMIZATION -->
+<div class="settings-section">
+  <div class="settings-section-title">Order Form — Show / Hide Fields</div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Customer Name</div>
+      <div class="settings-row-sub">Show customer name field in order entry</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="toggle_customerName" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Phone Number</div>
+      <div class="settings-row-sub">Show phone field in order entry</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="toggle_phone" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Delivery Status</div>
+      <div class="settings-row-sub">Show pending/delivered toggle</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="toggle_deliveryStatus" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Payment Mode</div>
+      <div class="settings-row-sub">Show cash/UPI/credit selector</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="toggle_paymentMode" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Credit Options</div>
+      <div class="settings-row-sub">Show full/partial credit toggle when credit selected</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="toggle_creditOptions" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Selling Price / Unit</div>
+      <div class="settings-row-sub">Show price per unit field in item rows</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="toggle_sellingPrice" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+</div>
+
+<button class="save-btn" onclick="saveSettings()">Save Settings</button>
+<p class="save-msg" id="saveMsg"></p>
+
+<script type="module" src="settings.js"></script>
+<script type="module" src="topbar.js"></script>
+<script type="module" src="navbar.js"></script>
+  <script src="pwa.js" defer></script>
+</body>
+</html>

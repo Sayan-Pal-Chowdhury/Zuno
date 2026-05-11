@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Credit — Zuno</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ===== CREDIT PAGE STYLES ===== */
+    .credit-header {
+      max-width: 1120px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 16px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .credit-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    .credit-list {
+      display: none;
+      max-width: 1120px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .credit-list.active { display: block; }
+
+    .credit-list-header,
+    .credit-list-row {
+      display: grid;
+      grid-template-columns: minmax(150px, 1.4fr) minmax(120px, 1fr) minmax(90px, 0.8fr) minmax(90px, 0.8fr) minmax(100px, 0.9fr) 260px;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 14px;
+    }
+
+    .credit-list-header {
+      background: var(--bg);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .credit-list-row {
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .credit-list-row:last-child { border-bottom: none; }
+    .credit-list-actions { display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; }
+    .credit-list-actions button { font-size: 12px; height: 30px; padding: 0 10px; border-radius: var(--radius-sm); border: 1.5px solid; cursor: pointer; font-family: var(--font); font-weight: 500; white-space: nowrap; }
+
+    .credit-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.2s;
+      position: relative;
+    }
+
+    .credit-card:hover { box-shadow: var(--shadow-md); }
+
+    .credit-card.status-cleared { border-left: 4px solid var(--accent); }
+    .credit-card.status-active  { border-left: 4px solid var(--warning); }
+    .credit-card.status-overdue { border-left: 4px solid var(--danger); }
+
+    .credit-card-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .credit-card-phone {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      font-family: var(--font-mono);
+    }
+
+    .credit-card-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .credit-card-row span:last-child {
+      font-family: var(--font-mono);
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .credit-balance {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .credit-balance.green  { background: var(--accent-light); }
+    .credit-balance.amber  { background: var(--warning-light); }
+    .credit-balance.red    { background: var(--danger-light); }
+
+    .credit-balance-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .credit-balance.green  .credit-balance-label { color: var(--accent); }
+    .credit-balance.amber  .credit-balance-label { color: var(--warning); }
+    .credit-balance.red    .credit-balance-label { color: var(--danger); }
+
+    .credit-balance-amount {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .credit-balance.green  .credit-balance-amount { color: var(--accent); }
+    .credit-balance.amber  .credit-balance-amount { color: var(--warning); }
+    .credit-balance.red    .credit-balance-amount { color: var(--danger); }
+
+    .credit-status-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-top: 8px;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-cleared  { background: var(--accent-light);  color: var(--accent); }
+    .badge-active   { background: var(--warning-light); color: var(--warning); }
+    .badge-overdue  { background: var(--danger-light);  color: var(--danger); }
+
+    .credit-card-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .credit-card-actions button {
+      font-size: 12px;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid;
+      cursor: pointer;
+      font-family: var(--font);
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+
+    .btn-pay      { background: var(--accent-light);  color: var(--accent);   border-color: #a8d5bc; }
+    .btn-pay:hover { background: #d0eddd; }
+    .btn-history  { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+    .btn-history:hover { background: #e0e7ff; }
+    .btn-edit-c   { background: var(--bg); color: var(--text-secondary); border-color: var(--border-dark); }
+    .btn-edit-c:hover { background: var(--border); }
+    .btn-delete-c { background: var(--danger-light); color: var(--danger); border-color: #f5c6c2; }
+    .btn-delete-c:hover { background: #f9d8d5; }
+
+    .reminder-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .reminder-row select {
+      font-size: 12px;
+      height: 26px;
+      padding: 0 6px;
+      border-radius: 4px;
+    }
+
+    .last-order {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* ===== SUMMARY BAR ===== */
+    .credit-summary {
+      max-width: 860px;
+      margin: 0 auto 20px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .credit-summary-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .credit-summary-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .credit-summary-value {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    /* ===== MODALS ===== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.hidden { display: none; }
+
+    .modal-box {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow-md);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+    }
+
+    .modal-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 12px;
+    }
+
+    .modal-form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .modal-form-group input,
+    .modal-form-group select {
+      width: 100%;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .modal-actions button {
+      flex: 1;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--font);
+    }
+
+    .btn-modal-primary {
+      background: var(--accent);
+      color: white;
+      border: none;
+    }
+
+    .btn-modal-primary:hover { background: var(--accent-hover); }
+
+    .btn-modal-cancel {
+      background: var(--bg);
+      color: var(--text-secondary);
+      border: 1.5px solid var(--border-dark);
+    }
+
+    /* ===== HISTORY TABLE IN MODAL ===== */
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .history-table th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .history-table td {
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    .history-table tr:last-child td { border-bottom: none; }
+
+    .type-credit  { color: var(--danger);  font-weight: 600; font-size: 12px; }
+    .type-payment { color: var(--accent);  font-weight: 600; font-size: 12px; }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--text-primary);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 2000;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-credit {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      font-size: 14px;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .empty-credit p { margin-top: 8px; }
+
+    /* ===== FILTER BAR ===== */
+    .credit-filter-bar {
+      max-width: 860px;
+      margin: 0 auto 16px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      font-family: var(--font);
+      color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+
+    .filter-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    /* ===== MOBILE ===== */
+    @media (max-width: 600px) {
+      .credit-grid { grid-template-columns: 1fr; }
+      .credit-summary { grid-template-columns: 1fr 1fr; }
+      .credit-list-header { display: none; }
+      .credit-list-row { grid-template-columns: 1fr; gap: 6px; }
+      .credit-list-actions { justify-content: flex-start; }
+      .modal-box { margin: 0 16px; }
+    }
+  </style>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00236f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zuno">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="zuno-icon-192.png">
+</head>
+
+<body>
+
+<script type="module">
+import { auth } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+onAuthStateChanged(auth, (user) => {
+  if (!user) window.location.href = "login.html";
+});
+</script>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<!-- PAY MODAL -->
+<div id="payModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-title">Record Payment</div>
+    <div id="payModalCustomer" style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;"></div>
+    <div class="modal-form-group">
+      <label>Payment Amount (₹)</label>
+      <input type="number" id="payAmount" placeholder="Enter amount paid">
+    </div>
+    <div class="modal-form-group">
+      <label>Date</label>
+      <input type="date" id="payDate">
+    </div>
+    <div class="modal-form-group">
+      <label>Note (optional)</label>
+      <input type="text" id="payNote" placeholder="e.g. Cash received">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-primary" onclick="savePayment()">Save Payment</button>
+      <button class="btn-modal-cancel" onclick="closePayModal()">Cancel</button>
+    </div>
+    <p id="payMsg" style="font-size:13px;color:var(--danger);margin-top:8px;min-height:18px;"></p>
+  </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div id="historyModal" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:500px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="modal-title" style="margin:0;" id="historyModalTitle">Transaction History</div>
+      <button onclick="closeHistoryModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">×</button>
+    </div>
+    <div id="historyModalContent"></div>
+  </div>
+</div>
+
+<!-- EDIT CUSTOMER MODAL -->
+<div id="editCustomerModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-title">Edit Customer</div>
+    <div class="modal-form-group">
+      <label>Name</label>
+      <input type="text" id="editCustName">
+    </div>
+    <div class="modal-form-group">
+      <label>Phone</label>
+      <input type="text" id="editCustPhone">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-primary" onclick="saveEditCustomer()">Save</button>
+      <button class="btn-modal-cancel" onclick="closeEditCustomerModal()">Cancel</button>
+    </div>
+    <p id="editCustMsg" style="font-size:13px;color:var(--danger);margin-top:8px;min-height:18px;"></p>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="credit-header">
+  <div>
+    <p style="font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">Zuno</p>
+    <h1 style="margin:0;border:none;padding:0;font-size:24px;">Credit Tracker</h1>
+  </div>
+  <button onclick="openAddCreditModal()" style="background:var(--accent);color:white;border:none;padding:8px 18px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font);">+ Add Credit</button>
+</div>
+
+<!-- SUMMARY BAR -->
+<div class="credit-summary">
+  <div class="credit-summary-card">
+    <div class="credit-summary-label">Total Outstanding</div>
+    <div class="credit-summary-value" id="summaryOutstanding">₹0</div>
+  </div>
+  <div class="credit-summary-card">
+    <div class="credit-summary-label">Total Collected</div>
+    <div class="credit-summary-value" id="summaryCollected">₹0</div>
+  </div>
+  <div class="credit-summary-card">
+    <div class="credit-summary-label">Customers</div>
+    <div class="credit-summary-value" id="summaryCustomers">0</div>
+  </div>
+</div>
+
+<!-- ADD CREDIT MODAL -->
+<div id="addCreditModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-title">Add Credit Manually</div>
+    <div class="modal-form-group">
+      <label>Customer Name</label>
+      <input type="text" id="addCreditName" placeholder="e.g. Ramesh Kumar">
+    </div>
+    <div class="modal-form-group">
+      <label>Phone (optional)</label>
+      <input type="text" id="addCreditPhone" placeholder="e.g. 9876543210">
+    </div>
+    <div class="modal-form-group">
+      <label>Credit Amount (₹)</label>
+      <input type="number" id="addCreditAmount" placeholder="e.g. 1500">
+    </div>
+    <div class="modal-form-group">
+      <label>Date</label>
+      <input type="date" id="addCreditDate">
+    </div>
+    <div class="modal-form-group">
+      <label>Note (optional)</label>
+      <input type="text" id="addCreditNote" placeholder="e.g. Old balance, informal credit">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-primary" onclick="saveManualCredit()">Save</button>
+      <button class="btn-modal-cancel" onclick="closeAddCreditModal()">Cancel</button>
+    </div>
+    <p id="addCreditMsg" style="font-size:13px;color:var(--danger);margin-top:8px;min-height:18px;"></p>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="credit-filter-bar">
+  <button class="filter-btn status-filter active" onclick="setFilter('all', this)">All</button>
+  <button class="filter-btn status-filter" onclick="setFilter('active', this)">Active</button>
+  <button class="filter-btn status-filter" onclick="setFilter('overdue', this)">Overdue</button>
+  <button class="filter-btn status-filter" onclick="setFilter('cleared', this)">Cleared</button>
+  <span style="flex:1;"></span>
+  <button id="creditCardViewBtn" class="filter-btn view-filter active" onclick="setCreditView('card')">Cards</button>
+  <button id="creditListViewBtn" class="filter-btn view-filter" onclick="setCreditView('list')">List</button>
+</div>
+
+<!-- CREDIT CARDS GRID -->
+<div id="creditGrid" class="credit-grid">
+  <div class="empty-credit">
+    <div style="font-size:32px;">💳</div>
+    <p>No credit entries yet.</p>
+    <p style="font-size:12px;margin-top:4px;">Credit sales from Orders will appear here automatically.</p>
+  </div>
+</div>
+
+<div id="creditList" class="credit-list"></div>
+
+<link rel="stylesheet" href="voice.css">
+<script type="module" src="voice.js"></script>
+<script type="module" src="topbar.js"></script>
+
+<script type="module" src="navbar.js"></script>
+
+<script type="module" src="credit.js"></script>
+
+  <script src="pwa.js" defer></script>
+</body>
+</html>
