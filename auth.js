@@ -6,6 +6,7 @@ import {
   signInWithPopup,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { checkShopSetup } from "./shop-init.js";
 
 const provider = new GoogleAuthProvider();
 
@@ -55,7 +56,7 @@ mainBtn.onclick = async () => {
     } else {
       await createUserWithEmailAndPassword(auth, email, password);
     }
-    window.location.href = "home.html";
+    await checkShopSetup();
   } catch (error) {
     msg.textContent = cleanFirebaseError(error.message);
   }
@@ -64,7 +65,7 @@ mainBtn.onclick = async () => {
 document.getElementById("googleBtn").onclick = async () => {
   try {
     await signInWithPopup(auth, provider);
-    window.location.href = "home.html";
+    await checkShopSetup();
   } catch (error) {
     msg.textContent = cleanFirebaseError(error.message);
   }
@@ -72,7 +73,7 @@ document.getElementById("googleBtn").onclick = async () => {
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    window.location.href = "home.html";
+    checkShopSetup();
   }
 });
 

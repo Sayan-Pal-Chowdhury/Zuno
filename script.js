@@ -3,7 +3,7 @@ import { db, auth } from "./firebase.js";
 import {
   collection, addDoc, onSnapshot,
   deleteDoc, doc, updateDoc, query,
-  orderBy, where, getDocs, getDoc
+  orderBy, where, getDocs, getDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js";
@@ -90,6 +90,7 @@ if (dateEl) {
   refreshOrderDisplay();
   loadProducts();
   loadSales();
+  loadCustomerOrders();
   initCreditUI();
 });
 
@@ -581,6 +582,144 @@ function loadSales() {
       updateDashboard(allSales);
     }
   );
+}
+
+/* ---------- LIVE CUSTOMER ORDERS ---------- */
+function loadCustomerOrders() {
+  const list = document.getElementById("liveOrdersList");
+  if (!list) return;
+
+  onSnapshot(
+    query(userCol("customerOrders"), orderBy("createdAt", "desc")),
+    snap => {
+      const orders = [];
+      snap.forEach(d => orders.push({ id: d.id, ...d.data() }));
+      renderCustomerOrders(orders.slice(0, 20));
+    },
+    error => {
+      console.error("Customer orders failed:", error);
+      list.innerHTML = `<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--danger);font-size:13px;">Could not load customer orders.</div>`;
+    }
+  );
+}
+
+function renderCustomerOrders(orders) {
+  const list = document.getElementById("liveOrdersList");
+  if (!list) return;
+
+  const activeOrders = orders.filter(order => order.status !== "delivered" && order.status !== "rejected");
+  if (activeOrders.length === 0) {
+    list.innerHTML = `<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text-muted);font-size:13px;">No live customer orders yet.</div>`;
+    return;
+  }
+
+  list.innerHTML = activeOrders.map(order => {
+    const items = Array.isArray(order.items) ? order.items : [];
+    const itemsText = items.map(item => `${item.product} (${item.qty} ${item.unit || ""})`).join(", ");
+    const status = order.status || "new";
+    const statusColor = status === "new" ? "var(--danger)" : status === "accepted" ? "var(--accent)" : "#a05c00";
+
+    return `
+      <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:10px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:${statusColor};text-transform:uppercase;">${status}</div>
+            <div style="font-size:16px;font-weight:700;">${order.customerName || "Customer"}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${order.customerPhone || ""}</div>
+          </div>
+          <div style="font-size:18px;font-weight:700;color:var(--accent);white-space:nowrap;">₹${Math.round(order.totalAmount || 0).toLocaleString("en-IN")}</div>
+        </div>
+        <div style="font-size:13px;color:var(--text-secondary);line-height:1.4;">${itemsText || "No items"}</div>
+        ${order.customerAddress ? `<div style="font-size:12px;color:var(--text-muted);">Address: ${order.customerAddress}</div>` : ""}
+        ${order.note ? `<div style="font-size:12px;color:var(--text-muted);">Note: ${order.note}</div>` : ""}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${status === "new" ? `<button onclick="updateCustomerOrderStatus('${order.id}', 'accepted')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:white;font-weight:600;cursor:pointer;">Accept</button>` : ""}
+          ${status !== "ready" ? `<button onclick="updateCustomerOrderStatus('${order.id}', 'ready')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;">Ready</button>` : ""}
+          <button onclick="completeCustomerOrder('${order.id}')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent-light);color:var(--accent);font-weight:600;cursor:pointer;">Delivered</button>
+          <button onclick="updateCustomerOrderStatus('${order.id}', 'rejected')" style="padding:7px 12px;border-radius:8px;border:1px solid rgba(249,112,102,.35);background:#fff1f1;color:var(--danger);cursor:pointer;">Reject</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+window.updateCustomerOrderStatus = async (orderId, status) => {
+  if (!currentUserId) return;
+  await updateDoc(userDoc("customerOrders", orderId), {
+    status,
+    updatedAt: serverTimestamp()
+  });
+};
+
+window.completeCustomerOrder = async (orderId) => {
+  if (!currentUserId) return;
+
+  const orderRef = userDoc("customerOrders", orderId);
+  const orderSnap = await getDoc(orderRef);
+  if (!orderSnap.exists()) return;
+
+  const order = orderSnap.data();
+  if (order.saleId) {
+    await updateDoc(orderRef, { status: "delivered", updatedAt: serverTimestamp() });
+    return;
+  }
+
+  const items = normalizeCustomerOrderItems(order.items || []);
+  const orderNumber = await getNextOrderNumber();
+  const date = new Date().toISOString().split("T")[0];
+  const totalAmount = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const totalProfit = items.reduce((sum, item) => sum + (item.profit === null ? 0 : Number(item.profit || 0)), 0);
+
+  const saleRef = await addDoc(userCol("sales"), {
+    orderNumber,
+    date,
+    customer: order.customerName || "Online customer",
+    phone: order.customerPhone || "",
+    items,
+    totalProfit,
+    totalAmount,
+    paymentMode: "cash",
+    deliveryStatus: "delivered",
+    source: "customer-shop",
+    customerOrderId: orderId
+  });
+
+  await deductInventory(items);
+  await updateDoc(orderRef, {
+    status: "delivered",
+    saleId: saleRef.id,
+    orderNumber,
+    updatedAt: serverTimestamp()
+  });
+
+  showToast(`Customer order delivered as ${orderNumber}`);
+};
+
+function normalizeCustomerOrderItems(orderItems) {
+  return orderItems.map(item => {
+    const product = (item.product || "").toLowerCase();
+    const qty = Number(item.qty || 0);
+    const unit = item.unit || "kg";
+    const price = Number(item.price || 0);
+    const sellingPrice = Number(item.sellingPrice || (qty ? price / qty : 0));
+    const productData = productCosts[product];
+    let finalQty = qty;
+
+    if (productData) {
+      if (unit === "g" && productData.unit === "kg") finalQty = qty / 1000;
+      if (unit === "kg" && productData.unit === "g") finalQty = qty * 1000;
+    }
+
+    return {
+      product,
+      qty,
+      unit,
+      price,
+      sellingPrice,
+      profit: productData ? price - (Number(productData.cost || 0) * finalQty) : null,
+      hasCost: !!productData
+    };
+  });
 }
 
 /* ---------- UPDATE STATUS FROM TABLE ---------- */

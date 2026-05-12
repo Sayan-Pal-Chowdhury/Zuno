@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set up your shop — Zuno</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d0d0d;
+      --surface:  #1a1a1a;
+      --surface2: #222222;
+      --border:   rgba(255,255,255,0.08);
+      --ink:      #ffffff;
+      --ink2:     rgba(255,255,255,0.5);
+      --ink3:     rgba(255,255,255,0.25);
+      --green:    #1DBF73;
+      --green-d:  #17a362;
+      --orange:   #FF6B35;
+      --radius:   16px;
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      font-family: 'Poppins', sans-serif;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── BACKGROUND BLOBS ── */
+    .bg-blob1 {
+      position: fixed; top: -100px; right: -100px;
+      width: 350px; height: 350px;
+      background: radial-gradient(circle, rgba(29,191,115,0.12), transparent 70%);
+      border-radius: 50%; pointer-events: none; z-index: 0;
+    }
+    .bg-blob2 {
+      position: fixed; bottom: -80px; left: -80px;
+      width: 280px; height: 280px;
+      background: radial-gradient(circle, rgba(255,107,53,0.1), transparent 70%);
+      border-radius: 50%; pointer-events: none; z-index: 0;
+    }
+
+    /* ── LAYOUT ── */
+    .page {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      padding: 0 0 40px;
+    }
+
+    /* ── TOP BRAND ── */
+    .brand-bar {
+      padding: 52px 28px 0;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .brand-logo {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #FF6B35, #FF9D6C);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 900; color: white;
+      box-shadow: 0 6px 20px rgba(255,107,53,0.35);
+    }
+    .brand-name {
+      font-size: 20px; font-weight: 800; color: var(--ink);
+      letter-spacing: -0.5px;
+    }
+
+    /* ── HERO TEXT ── */
+    .hero-text {
+      padding: 36px 28px 0;
+    }
+    .step-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(29,191,115,0.12);
+      border: 1px solid rgba(29,191,115,0.2);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11px; font-weight: 600; color: var(--green);
+      margin-bottom: 16px;
+      letter-spacing: 0.04em;
+    }
+    .hero-h {
+      font-size: 32px; font-weight: 900; line-height: 1.1;
+      letter-spacing: -0.8px; margin-bottom: 10px;
+    }
+    .hero-h span { color: var(--green); }
+    .hero-sub {
+      font-size: 14px; color: var(--ink2); font-weight: 400;
+      line-height: 1.5;
+    }
+
+    /* ── FORM CARD ── */
+    .form-card {
+      margin: 32px 20px 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px 20px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 8px; }
+
+    .field-label {
+      font-size: 12px; font-weight: 600;
+      color: var(--ink2); letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .field-input-wrap { position: relative; }
+
+    .field-icon {
+      position: absolute; left: 14px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 18px; pointer-events: none;
+    }
+
+    .field-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 14px 14px 44px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 15px; font-weight: 600;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field-input::placeholder { color: var(--ink3); font-weight: 400; }
+    .field-input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(29,191,115,0.12);
+    }
+
+    /* Location row */
+    .loc-row { display: flex; gap: 10px; align-items: flex-start; }
+    .loc-row .field-input-wrap { flex: 1; }
+
+    .gps-btn {
+      width: 52px; height: 52px; flex-shrink: 0;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 0;
+    }
+    .gps-btn:hover { border-color: var(--green); background: rgba(29,191,115,0.08); }
+    .gps-btn.loading { animation: spin 1s linear infinite; }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    .field-hint {
+      font-size: 11px; color: var(--ink3); font-weight: 400;
+      padding-left: 2px;
+    }
+    .field-hint.success { color: var(--green); }
+    .field-hint.error   { color: #FF6B35; }
+
+    /* Preview pill */
+    .preview-pill {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px 14px;
+    }
+    .preview-av {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #667EEA, #764BA2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; color: white;
+      flex-shrink: 0;
+    }
+    .preview-text {}
+    .preview-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+    .preview-loc  { font-size: 11px; color: var(--ink2); margin-top: 1px; }
+    .preview-live {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 5px;
+      font-size: 10px; font-weight: 600; color: var(--green);
+    }
+    .live-dot {
+      width: 7px; height: 7px; background: var(--green);
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* ── SUBMIT BTN ── */
+    .submit-btn {
+      margin: 8px 20px 0;
+      width: calc(100% - 40px);
+      padding: 16px;
+      background: var(--green);
+      border: none; border-radius: 16px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 15px; font-weight: 700;
+      color: white; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: 0 8px 24px rgba(29,191,115,0.35);
+      transition: all 0.2s;
+    }
+    .submit-btn:hover { background: var(--green-d); transform: translateY(-1px); }
+    .submit-btn:active { transform: scale(0.98); }
+    .submit-btn:disabled {
+      background: var(--surface2); color: var(--ink3);
+      box-shadow: none; cursor: not-allowed; transform: none;
+    }
+    .submit-btn.loading {
+      background: var(--green-d); cursor: not-allowed;
+    }
+
+    /* ── NOTE ── */
+    .note {
+      margin: 16px 28px 0;
+      font-size: 12px; color: var(--ink3);
+      text-align: center; line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-blob1"></div>
+<div class="bg-blob2"></div>
+
+<div class="page">
+
+  <div class="brand-bar">
+    <div class="brand-logo">Z</div>
+    <span class="brand-name">Zuno</span>
+  </div>
+
+  <div class="hero-text">
+    <div class="step-tag">✦ One time setup</div>
+    <h1 class="hero-h">Set up your<br><span>shop listing</span></h1>
+    <p class="hero-sub">Your shop will appear to customers automatically. Takes 30 seconds.</p>
+  </div>
+
+  <div class="form-card">
+
+    <!-- SHOP NAME -->
+    <div class="field">
+      <label class="field-label">Shop Name</label>
+      <div class="field-input-wrap">
+        <span class="field-icon">🏪</span>
+        <input
+          class="field-input"
+          id="shopName"
+          type="text"
+          placeholder="e.g. Raju Traders"
+          maxlength="40"
+          oninput="onNameInput()"
+          autocomplete="off"
+        >
+      </div>
+    </div>
+
+    <!-- LOCATION -->
+    <div class="field">
+      <label class="field-label">Location</label>
+      <div class="loc-row">
+        <div class="field-input-wrap">
+          <span class="field-icon">📍</span>
+          <input
+            class="field-input"
+            id="shopLocation"
+            type="text"
+            placeholder="e.g. Barrackpore, WB"
+            maxlength="60"
+            oninput="onLocationInput()"
+            autocomplete="off"
+          >
+        </div>
+        <button class="gps-btn" id="gpsBtn" onclick="getGPS()" title="Detect my location">
+          🎯
+        </button>
+      </div>
+      <span class="field-hint" id="locHint">Tap 🎯 to auto-detect your location</span>
+    </div>
+
+    <!-- LIVE PREVIEW -->
+    <div class="field">
+      <label class="field-label">Preview — how customers see you</label>
+      <div class="preview-pill">
+        <div class="preview-av" id="previewAv">?</div>
+        <div class="preview-text">
+          <div class="preview-name" id="previewName">Your Shop Name</div>
+          <div class="preview-loc"  id="previewLoc">Your Location</div>
+        </div>
+        <div class="preview-live">
+          <div class="live-dot"></div>
+          Live
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <button class="submit-btn" id="submitBtn" onclick="submitSetup()" disabled>
+    <span id="submitLabel">Open My Shop →</span>
+  </button>
+
+  <p class="note">You can change your shop name and location anytime from Zuno settings.</p>
+
+</div>
+
+<script type="module">
+import { db, auth } from "./firebase.js";
+import {
+  doc, getDoc, setDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+let currentUser = null;
+
+onAuthStateChanged(auth, async user => {
+  if (!user) { window.location.href = "login.html"; return; }
+  currentUser = user;
+
+  const profileSnap = await getDoc(doc(db, "users", user.uid, "settings", "profile"));
+  if (profileSnap.exists() && profileSnap.data().storeId) {
+    window.location.href = "home.html";
+  }
+});
+
+/* ── LIVE PREVIEW ── */
+window.onNameInput = function() {
+  const val = document.getElementById("shopName").value.trim();
+  const av  = document.getElementById("previewAv");
+  const nm  = document.getElementById("previewName");
+
+  nm.textContent = val || "Your Shop Name";
+  av.textContent = val
+    ? val.trim().split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
+    : "?";
+
+  checkReady();
+};
+
+window.onLocationInput = function() {
+  const val = document.getElementById("shopLocation").value.trim();
+  document.getElementById("previewLoc").textContent = val || "Your Location";
+  checkReady();
+};
+
+function checkReady() {
+  const name = document.getElementById("shopName").value.trim();
+  const loc  = document.getElementById("shopLocation").value.trim();
+  document.getElementById("submitBtn").disabled = !(name && loc);
+}
+
+/* ── GPS ── */
+window.getGPS = function() {
+  const btn  = document.getElementById("gpsBtn");
+  const hint = document.getElementById("locHint");
+
+  if (!navigator.geolocation) {
+    hint.textContent = "GPS not supported on this device";
+    hint.className   = "field-hint error";
+    return;
+  }
+
+  btn.classList.add("loading");
+  btn.textContent = "⏳";
+  hint.textContent = "Detecting your location…";
+  hint.className   = "field-hint";
+
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      try {
+        const { latitude, longitude } = pos.coords;
+        const res  = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+        );
+        const data = await res.json();
+
+        const addr    = data.address || {};
+        const suburb  = addr.suburb || addr.village || addr.town || addr.city_district || "";
+        const city    = addr.city || addr.town || addr.county || "";
+        const state   = addr.state || "";
+        const location = [suburb, city, state].filter(Boolean).join(", ");
+
+        document.getElementById("shopLocation").value = location;
+        document.getElementById("previewLoc").textContent = location;
+        hint.textContent  = "✓ Location detected";
+        hint.className    = "field-hint success";
+        btn.textContent   = "✓";
+        btn.classList.remove("loading");
+        checkReady();
+      } catch {
+        hint.textContent = "Could not read location. Type it manually.";
+        hint.className   = "field-hint error";
+        btn.textContent  = "🎯";
+        btn.classList.remove("loading");
+      }
+    },
+    () => {
+      hint.textContent = "GPS denied. Please type your location.";
+      hint.className   = "field-hint error";
+      btn.textContent  = "🎯";
+      btn.classList.remove("loading");
+    },
+    { timeout: 10000 }
+  );
+};
+
+/* ── GENERATE STORE ID ── */
+function makeStoreId(name) {
+  return name.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 30)
+    + "-" + Math.random().toString(36).slice(2, 6);
+}
+
+/* ── SUBMIT ── */
+window.submitSetup = async function() {
+  if (!currentUser) return;
+
+  const name     = document.getElementById("shopName").value.trim();
+  const location = document.getElementById("shopLocation").value.trim();
+  const tagline  = location ? `Fresh daily in ${location}` : "Fresh products, fair prices";
+
+  if (!name || !location) return;
+
+  const btn   = document.getElementById("submitBtn");
+  const label = document.getElementById("submitLabel");
+
+  btn.disabled   = true;
+  btn.classList.add("loading");
+  label.textContent = "Setting up your shop…";
+
+  try {
+    const storeId = makeStoreId(name);
+    const profileRef = doc(db, "users", currentUser.uid, "settings", "profile");
+    const profileSnap = await getDoc(profileRef);
+    const profileData = profileSnap.exists() ? profileSnap.data() : {};
+
+    // 1. Save profile under user's settings
+    await setDoc(
+      profileRef,
+      {
+        name,
+        location,
+        tagline,
+        storeId,
+        isLive:    true,
+        createdAt: profileData.createdAt || serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    // 2. Create storeIndex entry so shop URL works
+    await setDoc(
+      doc(db, "storeIndex", storeId),
+      {
+        uid:      currentUser.uid,
+        name,
+        location,
+        tagline,
+        isLive:   true,
+        createdAt: serverTimestamp(),
+      }
+    );
+
+    // 3. Done — go to Zuno dashboard
+    window.location.href = "home.html";
+
+  } catch (err) {
+    console.error("Setup error:", err);
+    label.textContent = "Something went wrong. Try again.";
+    btn.classList.remove("loading");
+    btn.disabled = false;
+  }
+};
+</script>
+
+</body>
+</html>

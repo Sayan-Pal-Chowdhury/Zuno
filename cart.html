@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Cart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shop.css?v=4">
+</head>
+<body>
+  <div id="shop-topbar"></div>
+
+  <main class="shop-main">
+    <div class="section-head">
+      <h2>Your Cart</h2>
+      <a id="continueShop" href="shop.html">Add more</a>
+    </div>
+
+    <section class="cart-list" id="cartList"></section>
+
+    <section class="checkout-panel" id="checkoutPanel">
+      <div class="checkout-total">
+        <span>Total</span>
+        <span id="cartTotal">Rs 0</span>
+      </div>
+      <input id="customerName" placeholder="Your name">
+      <input id="customerPhone" inputmode="tel" placeholder="Phone number">
+      <textarea id="customerAddress" rows="3" placeholder="Address or delivery note"></textarea>
+      <textarea id="orderNote" rows="2" placeholder="Any item note? Optional"></textarea>
+      <button class="primary-btn" id="placeOrderBtn" onclick="placeOrder()">Place order</button>
+      <p class="muted" id="checkoutMsg"></p>
+    </section>
+  </main>
+
+  <div id="shop-navbar"></div>
+
+  <script type="module" src="cart.js"></script>
+</body>
+</html>

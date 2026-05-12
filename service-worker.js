@@ -1,4 +1,4 @@
-const CACHE_NAME = "zuno-pwa-v1";
+const CACHE_NAME = "zuno-pwa-v4";
 
 const APP_SHELL = [
   "/",
@@ -10,11 +10,26 @@ const APP_SHELL = [
   "/credit.html",
   "/finance.html",
   "/settings.html",
+  "/shop-setup.html",
+  "/shops.html",
+  "/shop.html",
+  "/cart.html",
+  "/orders.html",
   "/inventory.htm",
   "/style.css",
   "/inventory.css",
   "/voice.css",
   "/auth.js",
+  "/shop-init.js",
+  "/shop-store.js",
+  "/shop-topbar.js",
+  "/shop-navbar.js",
+  "/shop-cart.js",
+  "/shops.js",
+  "/shop.js",
+  "/cart.js",
+  "/orders.js",
+  "/shop.css",
   "/credit.js",
   "/editSaleModal.js",
   "/finance.js",

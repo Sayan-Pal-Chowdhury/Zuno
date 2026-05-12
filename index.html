@@ -83,6 +83,13 @@ onAuthStateChanged(auth, (user) => {
 
 <h3>Total Amount: ₹ <span id="liveTotal">0</span></h3>
 
+<h2 onclick="toggleSection('liveOrdersSection')">▼ Live Customer Orders</h2>
+<div id="liveOrdersSection" style="margin-bottom:18px;">
+  <div id="liveOrdersList" style="display:grid;gap:10px;">
+    <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text-muted);font-size:13px;">Loading customer orders...</div>
+  </div>
+</div>
+
 <h2 onclick="toggleSection('productSection')">▼ Products</h2>
 <div id="productSection">
   <input id="prodName" placeholder="Product">

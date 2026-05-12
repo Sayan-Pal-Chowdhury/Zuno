@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zuno Shops</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shop.css?v=4">
+</head>
+<body>
+  <div id="shop-topbar"></div>
+  <main class="shop-main">
+    <section class="hero-card">
+      <div class="hero-copy">
+        <small>Available near you</small>
+        <h1>Shop from local stores</h1>
+        <p>Fresh stock, live availability, simple ordering.</p>
+      </div>
+      <div class="hero-market-stack" aria-hidden="true">
+        <span>Zuno</span>
+        <b>Shops</b>
+      </div>
+    </section>
+
+    <div class="toolbar">
+      <input class="search-input" id="shopSearch" type="search" placeholder="Search shops..." oninput="filterShops()">
+    </div>
+
+    <div class="section-head">
+      <h2>Open Shops</h2>
+      <span id="shopCount">Loading</span>
+    </div>
+
+    <section class="shops-grid" id="shopsGrid">
+      <div class="empty-state">Loading shops...</div>
+    </section>
+  </main>
+
+  <script type="module" src="shops.js"></script>
+</body>
+</html>

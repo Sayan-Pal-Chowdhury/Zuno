@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shop.css?v=4">
+</head>
+<body>
+  <div id="shop-topbar"></div>
+
+  <main class="shop-main">
+    <section class="hero-card">
+      <div class="hero-copy">
+        <small>Today's picks</small>
+        <h1 id="heroTitle">Fresh from the market</h1>
+        <p id="heroSub">Loading shop...</p>
+      </div>
+      <div class="hero-market-stack" aria-hidden="true">
+        <span>Fresh</span>
+        <b>Local</b>
+      </div>
+    </section>
+
+    <div class="toolbar">
+      <input class="search-input" id="searchInput" type="search" placeholder="Search products..." oninput="filterProducts()">
+      <button class="filter-button" type="button" aria-label="Filter">Filter</button>
+    </div>
+
+    <div class="quick-strip">
+      <div class="quick-card"><strong>Express</strong><span>Fast pickup</span></div>
+      <div class="quick-card"><strong>Live stock</strong><span>Updated now</span></div>
+      <div class="quick-card"><strong>COD</strong><span>Pay later</span></div>
+    </div>
+
+    <div class="section-head category-head">
+      <h2>Shop by type</h2>
+      <span>See all</span>
+    </div>
+
+    <div class="category-row">
+      <button class="category-chip" onclick="setSearchTerm('potato')"><span>PT</span>Veggies</button>
+      <button class="category-chip" onclick="setSearchTerm('rice')"><span>RC</span>Grains</button>
+      <button class="category-chip" onclick="setSearchTerm('milk')"><span>MK</span>Dairy</button>
+      <button class="category-chip" onclick="setSearchTerm('ginger')"><span>GG</span>Fresh</button>
+      <button class="category-chip" onclick="setSearchTerm('oil')"><span>OL</span>Essentials</button>
+    </div>
+
+    <div class="chip-row" id="filterChips">
+      <button class="chip active" onclick="setFilter('all', this)">All items</button>
+      <button class="chip" onclick="setFilter('kg', this)">By kg</button>
+      <button class="chip" onclick="setFilter('piece', this)">By piece</button>
+      <button class="chip" onclick="setFilter('g', this)">By gram</button>
+    </div>
+
+    <div class="section-head">
+      <h2>Everything fresh</h2>
+      <a href="shops.html">All shops</a>
+    </div>
+
+    <section class="products-grid" id="productsGrid">
+      <div class="empty-state">Loading products...</div>
+    </section>
+  </main>
+
+  <div id="shop-navbar"></div>
+
+  <script type="module" src="shop.js"></script>
+</body>
+</html>
