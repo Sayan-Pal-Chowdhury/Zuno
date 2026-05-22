@@ -9,8 +9,12 @@ import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { checkShopSetup } from "./shop-init.js";
+import {
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const provider = new GoogleAuthProvider();
 
@@ -18,6 +22,7 @@ let confirmationResult = null;
 let recaptchaVerifier = null;
 let routing = false;
 
+const nameInput = document.getElementById("customerName");
 const phoneInput = document.getElementById("phone");
 const passwordInput = document.getElementById("password");
 const phonePasswordLoginBtn = document.getElementById("phonePasswordLoginBtn");
@@ -36,14 +41,15 @@ phonePasswordSignupBtn.onclick = () => signInWithPhonePassword("signup");
 sendOtpBtn.onclick = sendOtp;
 verifyOtpBtn.onclick = verifyOtp;
 googleBtn.onclick = signInWithGoogle;
-roleLogoutBtn.onclick = logoutForVendor;
+roleLogoutBtn.onclick = logoutForCustomer;
 
-onAuthStateChanged(auth, user => {
-  if (user && !routing) {
-    routeVendor();
+onAuthStateChanged(auth, async user => {
+  if (!user || routing) return;
+  if (await isVendor(user.uid)) {
+    showVendorGuard(user.uid);
     return;
   }
-  document.body.classList.remove("auth-checking");
+  prefillExistingCustomer(user);
 });
 
 async function sendOtp() {
@@ -83,12 +89,10 @@ async function signInWithPhonePassword(mode) {
   try {
     setBusy(button, true, mode === "login" ? "Logging in..." : "Creating...");
     msg.textContent = "";
-    if (mode === "login") {
-      await signInWithEmailAndPassword(auth, email, password);
-    } else {
-      await createUserWithEmailAndPassword(auth, email, password);
-    }
-    await routeVendor();
+    const credential = mode === "login"
+      ? await signInWithEmailAndPassword(auth, email, password)
+      : await createUserWithEmailAndPassword(auth, email, password);
+    await finishCustomerLogin(credential.user);
   } catch (error) {
     console.error(error);
     showMessage(cleanFirebaseError(error.message));
@@ -106,8 +110,8 @@ async function verifyOtp() {
 
   try {
     setBusy(verifyOtpBtn, true, "Verifying...");
-    await confirmationResult.confirm(otp);
-    await routeVendor();
+    const credential = await confirmationResult.confirm(otp);
+    await finishCustomerLogin(credential.user);
   } catch (error) {
     console.error(error);
     showMessage(cleanFirebaseError(error.message));
@@ -119,55 +123,78 @@ async function verifyOtp() {
 async function signInWithGoogle() {
   try {
     msg.textContent = "";
-    await signInWithPopup(auth, provider);
-    await routeVendor();
+    const credential = await signInWithPopup(auth, provider);
+    await finishCustomerLogin(credential.user);
   } catch (error) {
     console.error(error);
     showMessage(cleanFirebaseError(error.message));
   }
 }
 
-async function routeVendor() {
-  if (routing) return;
-  const user = auth.currentUser;
-  if (!user) return;
-  if (await isCustomerOnly(user.uid)) {
-    showCustomerGuard(user.uid);
+async function finishCustomerLogin(user) {
+  if (!user || routing) return;
+  if (await isVendor(user.uid)) {
+    showVendorGuard(user.uid);
     return;
   }
   routing = true;
-  await checkShopSetup();
+
+  const existingSnap = await getDoc(doc(db, "customers", user.uid));
+  const existing = existingSnap.exists() ? existingSnap.data() : {};
+  const name = nameInput.value.trim() || user.displayName || existing.name || "Customer";
+  const phone = normalizePhone(phoneInput.value) || user.phoneNumber || existing.phone || "";
+
+  await setDoc(doc(db, "customers", user.uid), {
+    name,
+    phone,
+    email: user.email || existing.email || "",
+    photoURL: user.photoURL || existing.photoURL || "",
+    updatedAt: serverTimestamp(),
+    ...(existingSnap.exists() ? {} : { createdAt: serverTimestamp() })
+  }, { merge: true });
+
+  localStorage.setItem("zunoCustomer", JSON.stringify({ uid: user.uid, name, phone }));
+  window.location.href = "shops.html";
 }
 
-async function isCustomerOnly(uid) {
+async function isVendor(uid) {
   try {
-    const [profileSnap, customerSnap] = await Promise.all([
-      getDoc(doc(db, "users", uid, "settings", "profile")),
-      getDoc(doc(db, "customers", uid))
-    ]);
-    return customerSnap.exists() && !profileSnap.exists();
+    const snap = await getDoc(doc(db, "users", uid, "settings", "profile"));
+    return snap.exists();
   } catch {
     return false;
   }
 }
 
-function showCustomerGuard(uid) {
-  document.body.classList.remove("auth-checking");
+function showVendorGuard(uid) {
   routing = false;
-  localStorage.removeItem("zunoShopProfile_" + uid);
+  localStorage.removeItem("zunoCustomer");
   roleGuard.classList.add("show");
   loginForm.hidden = true;
   msg.textContent = "";
+  localStorage.removeItem("zunoShopProfile_" + uid);
 }
 
-async function logoutForVendor() {
+async function logoutForCustomer() {
   const uid = auth.currentUser?.uid;
   if (uid) localStorage.removeItem("zunoShopProfile_" + uid);
   localStorage.removeItem("zunoCustomer");
   await signOut(auth);
   roleGuard.classList.remove("show");
   loginForm.hidden = false;
-  document.body.classList.remove("auth-checking");
+}
+
+async function prefillExistingCustomer(user) {
+  try {
+    const snap = await getDoc(doc(db, "customers", user.uid));
+    if (!snap.exists()) return;
+    const customer = snap.data();
+    if (customer.name && !nameInput.value.trim()) nameInput.value = customer.name;
+    if (customer.phone && !phoneInput.value.trim()) phoneInput.value = customer.phone;
+    localStorage.setItem("zunoCustomer", JSON.stringify({ uid: user.uid, ...customer }));
+  } catch (error) {
+    console.warn("Customer prefill failed:", error);
+  }
 }
 
 function getRecaptcha() {

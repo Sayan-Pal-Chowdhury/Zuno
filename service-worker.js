@@ -1,8 +1,10 @@
-const CACHE_NAME = "zuno-pwa-v4";
+const CACHE_NAME = "zuno-pwa-v18";
 
 const APP_SHELL = [
   "/",
   "/login.html",
+  "/customer-login.html",
+  "/account-type.html",
   "/home.html",
   "/index.html",
   "/sales.html",
@@ -10,6 +12,7 @@ const APP_SHELL = [
   "/credit.html",
   "/finance.html",
   "/settings.html",
+  "/admin.html",
   "/shop-setup.html",
   "/shops.html",
   "/shop.html",
@@ -20,11 +23,18 @@ const APP_SHELL = [
   "/inventory.css",
   "/voice.css",
   "/auth.js",
+  "/customer-login.js",
+  "/account-type.js",
   "/shop-init.js",
   "/shop-store.js",
   "/shop-topbar.js",
   "/shop-navbar.js",
   "/shop-cart.js",
+  "/marketplace-categories.js",
+  "/marketplace-visuals.js",
+  "/product-images.js",
+  "/item-suggestions.js",
+  "/unit-pricing.js",
   "/shops.js",
   "/shop.js",
   "/cart.js",
@@ -39,12 +49,14 @@ const APP_SHELL = [
   "/sales.js",
   "/script.js",
   "/settings.js",
+  "/admin.js",
   "/topbar.js",
   "/voice.js",
   "/pwa.js",
   "/manifest.json",
   "/zuno-icon-192.png",
-  "/zuno-icon-512.png"
+  "/zuno-icon-512.png",
+  "/zuno-logo.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -89,6 +101,21 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => caches.match(request).then((cached) => cached || caches.match("/login.html")))
+    );
+    return;
+  }
+
+  if (["script", "style"].includes(request.destination)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }

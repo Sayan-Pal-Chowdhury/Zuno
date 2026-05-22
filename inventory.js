@@ -5,6 +5,10 @@ import {
   query, orderBy, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { findProductImage } from "./product-images.js";
+import { shouldReplaceAutoImage } from "./marketplace-visuals.js";
+import { attachSuggestionDropdown, COMMON_ITEM_NAMES, mergeSuggestions, renderOptions } from "./item-suggestions.js";
+import { normalizeSellingUnit, sellingUnitLabel } from "./unit-pricing.js";
 
 /* ---------- STATE ---------- */
 let currentUserId  = null;
@@ -13,6 +17,7 @@ let salesData      = [];
 let historyDocs    = [];
 let editingId      = null;
 let hiddenProducts = [];
+let productSuggestions = COMMON_ITEM_NAMES;
 
 /* ---------- USER COLLECTION HELPER ---------- */
 function userCol(colName) {
@@ -57,12 +62,14 @@ onAuthStateChanged(auth, (user) => {
 function loadProducts() {
   onSnapshot(userCol("products"), snap => {
     const dl = document.getElementById("productsList");
-    dl.innerHTML = "";
+    const names = [];
     snap.forEach(d => {
-      const opt = document.createElement("option");
-      opt.value = d.data().name;
-      dl.appendChild(opt);
+      names.push(d.data().name);
     });
+    productSuggestions = mergeSuggestions(names, COMMON_ITEM_NAMES);
+    dl.innerHTML = renderOptions(productSuggestions);
+    attachSuggestionDropdown(document.getElementById("stockProduct"), () => productSuggestions);
+    attachSuggestionDropdown(document.getElementById("editProduct"), () => productSuggestions);
   });
 }
 
@@ -95,15 +102,34 @@ function loadInventory() {
         unit:              item.unit,
         alertThreshold:    Number(item.alertThreshold   || 0),
         weightedAvgCost:   Number(item.weightedAvgCost  || 0),
+        sellingPrice:      Number(item.sellingPrice     || item.price || 0),
+        sellingUnit:       normalizeSellingUnit(item.sellingUnit || "", item.unit || "kg"),
         totalInvested:     Number(item.totalInvested    || 0),
         totalQtyBought:    Number(item.totalQtyBought   || 0),
         lastPurchaseDate:  item.lastPurchaseDate  || "",
-        firstPurchaseDate: item.firstPurchaseDate || ""
+        firstPurchaseDate: item.firstPurchaseDate || "",
+        imageUrl:          item.imageUrl || ""
       };
     });
+    ensureInventoryImages();
     renderStockCards();
     renderAlerts();
   });
+}
+
+async function ensureInventoryImages() {
+  const items = Object.values(inventoryMap)
+    .filter(item => !item.imageUrl || shouldReplaceAutoImage(item.imageUrl))
+    .slice(0, 8);
+  for (const item of items) {
+    try {
+      const imageUrl = await findProductImage(item.product);
+      if (!imageUrl) continue;
+      await updateDoc(userDoc("inventory", item.id), { imageUrl });
+    } catch (error) {
+      console.warn("Product image lookup failed:", item.product, error);
+    }
+  }
 }
 
 /* ---------- LOAD HISTORY ---------- */
@@ -167,6 +193,8 @@ window.addStock = async () => {
   const alertThreshold = Number(document.getElementById("stockAlert").value) || 0;
   const note           = document.getElementById("stockNote").value.trim();
   const purchaseCost   = Number(document.getElementById("stockPurchaseCost").value) || 0;
+  const sellingPrice   = Number(document.getElementById("stockSellingPrice").value) || 0;
+  const sellingUnit    = document.getElementById("stockSellingUnit").value;
 
   if (!product || !qty || !date) {
     showMsg("Please fill product, quantity and date.", "error");
@@ -192,11 +220,13 @@ window.addStock = async () => {
       weightedAvgCost: newWeightedAvg,
       totalInvested:   newTotalCost,
       totalQtyBought:  newTotalQty,
+      ...(sellingPrice > 0 && { sellingPrice }),
+      sellingUnit:     normalizeSellingUnit(sellingUnit, unit),
       ...(isNewer && { lastPurchaseDate: date })
     });
 
-    if (costPerUnit > 0 && isNewer) {
-      await updateProductCost(product, costPerUnit, unit);
+    if ((costPerUnit > 0 && isNewer) || sellingPrice > 0) {
+      await updateProductCost(product, costPerUnit > 0 && isNewer ? costPerUnit : null, unit, sellingPrice, sellingUnit);
     }
 
   } else {
@@ -205,12 +235,14 @@ window.addStock = async () => {
       weightedAvgCost:   costPerUnit,
       totalInvested:     purchaseCost,
       totalQtyBought:    qty,
+      sellingPrice,
+      sellingUnit:       normalizeSellingUnit(sellingUnit, unit),
       firstPurchaseDate: date,
       lastPurchaseDate:  date
     });
 
-    if (costPerUnit > 0) {
-      await updateProductCost(product, costPerUnit, unit);
+    if (costPerUnit > 0 || sellingPrice > 0) {
+      await updateProductCost(product, costPerUnit > 0 ? costPerUnit : null, unit, sellingPrice, sellingUnit);
     }
   }
 
@@ -225,6 +257,17 @@ window.addStock = async () => {
   const vendorName       = document.getElementById("vendorName").value.trim();
 const vendorPhone      = document.getElementById("vendorPhone").value.trim();
 const vendorAmountPaid = Number(document.getElementById("vendorAmountPaid").value) || 0;
+
+const cashPurchaseAmount = vendorName ? 0 : purchaseCost;
+if (cashPurchaseAmount > 0) {
+  await addDoc(userCol("cashAdjustments"), {
+    type: "inventory_purchase",
+    amount: cashPurchaseAmount,
+    date,
+    product,
+    note: `Inventory purchase: ${product} ${qty} ${unit}`
+  });
+}
 
 if (vendorName && purchaseCost > 0) {
   await addDoc(userCol("vendorPayments"), {
@@ -244,6 +287,8 @@ if (vendorName && purchaseCost > 0) {
   document.getElementById("stockAlert").value        = "";
   document.getElementById("stockNote").value         = "";
   document.getElementById("stockPurchaseCost").value = "";
+  document.getElementById("stockSellingPrice").value = "";
+  document.getElementById("stockSellingUnit").value  = "kg";
   document.getElementById("vendorName").value       = "";
 document.getElementById("vendorPhone").value      = "";
 document.getElementById("vendorAmountPaid").value = "";
@@ -252,7 +297,7 @@ document.getElementById("vendorAmountPaid").value = "";
 };
 
 /* ---------- UPDATE PRODUCT COST IN MAIN PAGE ---------- */
-async function updateProductCost(productName, costPerUnit, unit) {
+async function updateProductCost(productName, costPerUnit, unit, sellingPrice = 0, sellingUnit = "") {
   const snap = await getDocs(userCol("products"));
   let found  = null;
 
@@ -263,15 +308,18 @@ async function updateProductCost(productName, costPerUnit, unit) {
   });
 
   if (found) {
-    await updateDoc(userDoc("products", found.id), {
-      cost: Math.round(costPerUnit * 100) / 100,
-      unit
-    });
+    const update = { unit };
+    if (costPerUnit !== null && costPerUnit > 0) update.cost = Math.round(costPerUnit * 100) / 100;
+    if (sellingPrice > 0) update.sellingPrice = Math.round(sellingPrice * 100) / 100;
+    update.sellingUnit = normalizeSellingUnit(sellingUnit, unit);
+    await updateDoc(userDoc("products", found.id), update);
   } else {
     await addDoc(userCol("products"), {
       name: productName,
-      cost: Math.round(costPerUnit * 100) / 100,
-      unit
+      cost: costPerUnit !== null && costPerUnit > 0 ? Math.round(costPerUnit * 100) / 100 : 0,
+      sellingPrice: sellingPrice > 0 ? Math.round(sellingPrice * 100) / 100 : 0,
+      unit,
+      sellingUnit: normalizeSellingUnit(sellingUnit, unit)
     });
   }
 }
@@ -335,6 +383,9 @@ function renderStockCards() {
       const avgCostDisplay = item.weightedAvgCost > 0
         ? `₹${(Math.round(item.weightedAvgCost * 100) / 100).toLocaleString("en-IN")} / ${item.unit}`
         : "—";
+      const sellingPriceDisplay = item.sellingPrice > 0
+        ? `₹${(Math.round(item.sellingPrice * 100) / 100).toLocaleString("en-IN")} / ${sellingUnitLabel(item.sellingUnit, item.unit)}`
+        : "Not set";
 
       function profitHTML(label) {
         if (!pData) return `
@@ -372,6 +423,10 @@ function renderStockCards() {
             <div class="cost-label">Avg Cost / unit</div>
             <div class="cost-value">${avgCostDisplay}</div>
           </div>
+          <div class="cost-block">
+            <div class="cost-label">Selling Price / unit</div>
+            <div class="cost-value">${sellingPriceDisplay}</div>
+          </div>
           ${profitHTML("Total Profit")}
           <button class="hide-btn" onclick="hideProduct('${key}')">Archive</button>
         `;
@@ -401,6 +456,10 @@ function renderStockCards() {
             <div class="cost-label">Avg Cost / unit</div>
             <div class="cost-value">${avgCostDisplay}</div>
           </div>
+          <div class="cost-block">
+            <div class="cost-label">Selling Price / unit</div>
+            <div class="cost-value">${sellingPriceDisplay}</div>
+          </div>
           ${profitHTML("Profit so far")}
         `;
         grid.appendChild(card);
@@ -420,6 +479,8 @@ window.openEditModal = (key) => {
   document.getElementById("editProduct").value      = item.product;
   document.getElementById("editQty").value          = item.qty;
   document.getElementById("editPurchaseCost").value = item.totalInvested || "";
+  document.getElementById("editSellingPrice").value = item.sellingPrice || "";
+  document.getElementById("editSellingUnit").value  = item.sellingUnit || item.unit || "kg";
   document.getElementById("editDate").value         = item.lastPurchaseDate || "";
   document.getElementById("editModal").classList.remove("hidden");
 };
@@ -435,6 +496,8 @@ window.saveEdit = async () => {
   const newProduct      = document.getElementById("editProduct").value.trim();
   const newQty          = Number(document.getElementById("editQty").value);
   const newPurchaseCost = Number(document.getElementById("editPurchaseCost").value) || 0;
+  const newSellingPrice = Number(document.getElementById("editSellingPrice").value) || 0;
+  const newSellingUnit  = document.getElementById("editSellingUnit").value;
   const newDate         = document.getElementById("editDate").value;
 
   if (!newProduct || isNaN(newQty)) {
@@ -470,11 +533,13 @@ window.saveEdit = async () => {
     qty:             newQty,
     totalInvested:   newPurchaseCost || item.totalInvested,
     weightedAvgCost: newCostPerUnit,
+    sellingPrice:    newSellingPrice,
+    sellingUnit:     normalizeSellingUnit(newSellingUnit, item.unit),
     ...(isNewer && { lastPurchaseDate: newDate })
   });
 
-  if (newCostPerUnit > 0 && isNewer) {
-    await updateProductCost(newProduct, newCostPerUnit, item.unit);
+  if ((newCostPerUnit > 0 && isNewer) || newSellingPrice > 0) {
+    await updateProductCost(newProduct, newCostPerUnit > 0 && isNewer ? newCostPerUnit : null, item.unit, newSellingPrice, newSellingUnit);
   }
 
   await addDoc(userCol("inventoryHistory"), {
@@ -508,6 +573,8 @@ window.deleteStock = async (key) => {
     purchaseCost:      item.totalInvested,
     totalQtyBought:    item.totalQtyBought,
     alertThreshold:    item.alertThreshold,
+    sellingPrice:      item.sellingPrice,
+    sellingUnit:       item.sellingUnit,
     weightedAvgCost:   item.weightedAvgCost,
     totalInvested:     item.totalInvested,
     firstPurchaseDate: item.firstPurchaseDate,
@@ -536,6 +603,8 @@ window.restoreStock = async (historyId) => {
     await updateDoc(userDoc("inventory", existing.id), {
       qty:             existing.qty + entry.qty,
       weightedAvgCost: newAvg,
+      sellingPrice:    entry.sellingPrice || existing.sellingPrice || 0,
+      sellingUnit:     normalizeSellingUnit(entry.sellingUnit || existing.sellingUnit || "", existing.unit),
       totalInvested:   newTotalCost,
       totalQtyBought:  newTotalQty
     });
@@ -546,6 +615,8 @@ window.restoreStock = async (historyId) => {
       unit:              entry.unit,
       alertThreshold:    entry.alertThreshold    || 0,
       weightedAvgCost:   entry.weightedAvgCost   || 0,
+      sellingPrice:      entry.sellingPrice      || 0,
+      sellingUnit:       normalizeSellingUnit(entry.sellingUnit || "", entry.unit),
       totalInvested:     entry.totalInvested     || 0,
       totalQtyBought:    entry.totalQtyBought    || entry.qty,
       firstPurchaseDate: entry.firstPurchaseDate || entry.date,

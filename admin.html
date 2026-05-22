@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zuno Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f6f7f2;
+      --panel: #ffffff;
+      --ink: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --green: #0f9f6e;
+      --red: #dc2626;
+      --yellow: #ffda00;
+      --blue: #2563eb;
+    }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, system-ui, sans-serif;
+      padding: 18px;
+    }
+    .admin-shell { max-width: 1240px; margin: 0 auto; display: grid; gap: 18px; }
+    .admin-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 12px 34px rgba(17,24,39,.06);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand img { width: 46px; height: 46px; border-radius: 14px; }
+    .brand h1 { font-size: 22px; line-height: 1.1; }
+    .brand p { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .admin-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    button, .link-btn {
+      min-height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 13px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    button.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+    button.good { background: #ecfdf5; color: var(--green); border-color: #bbf7d0; }
+    button.bad { background: #fff1f2; color: var(--red); border-color: #fecdd3; }
+    button.blue { background: #eff6ff; color: var(--blue); border-color: #bfdbfe; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 15px;
+    }
+    .stat span { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+    .stat strong { display: block; margin-top: 6px; font-size: 27px; }
+    .tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+    .tab.active { background: var(--yellow); border-color: #e3bd00; }
+    .panel {
+      display: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 12px 34px rgba(17,24,39,.05);
+    }
+    .panel.active { display: block; }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 15px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-head h2 { font-size: 16px; }
+    .search {
+      width: min(100%, 320px);
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 12px;
+      font: inherit;
+    }
+    .list { display: grid; gap: 0; }
+    .row {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr auto;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+    .row:last-child { border-bottom: 0; }
+    .row-title { font-weight: 800; }
+    .row-sub { color: var(--muted); font-size: 12px; margin-top: 3px; overflow-wrap: anywhere; }
+    .badge {
+      display: inline-flex;
+      min-height: 24px;
+      align-items: center;
+      border-radius: 999px;
+      padding: 0 9px;
+      font-size: 11px;
+      font-weight: 900;
+      background: #f3f4f6;
+      color: #4b5563;
+      width: max-content;
+    }
+    .badge.pending { background: #fff7ed; color: #c2410c; }
+    .badge.approved, .badge.on { background: #ecfdf5; color: var(--green); }
+    .badge.rejected, .badge.off { background: #fff1f2; color: var(--red); }
+    .row-actions { display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+    .feature-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      grid-column: 1 / -1;
+    }
+    .feature-actions button {
+      min-height: 30px;
+      padding: 0 9px;
+      font-size: 11px;
+      border-radius: 999px;
+    }
+    .assign-box {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .assign-box input {
+      width: 145px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 0 9px;
+      font: inherit;
+      font-size: 13px;
+    }
+    .image-tool {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+    .admin-form {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .admin-form-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+      gap: 10px;
+      align-items: end;
+    }
+    .admin-form label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .admin-form input {
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 12px;
+      font: inherit;
+    }
+    .image-tool-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+    .image-tool-row label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .image-tool-row input {
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 12px;
+      font: inherit;
+    }
+    .empty { padding: 32px 16px; color: var(--muted); text-align: center; }
+    .skeleton-row {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr auto;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+    .skeleton-line,
+    .skeleton-pill {
+      position: relative;
+      overflow: hidden;
+      background: rgba(17,24,39,.08);
+    }
+    .skeleton-line::after,
+    .skeleton-pill::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent);
+      animation: skeleton-shimmer 1.35s infinite;
+    }
+    .skeleton-line { height: 14px; border-radius: 999px; }
+    .skeleton-line.wide { width: 78%; }
+    .skeleton-line.medium { width: 58%; }
+    .skeleton-pill { width: 94px; height: 26px; border-radius: 999px; }
+    @keyframes skeleton-shimmer {
+      100% { transform: translateX(100%); }
+    }
+    #adminGate {
+      min-height: calc(100vh - 36px);
+      display: grid;
+      place-items: center;
+    }
+    .gate-card {
+      width: min(100%, 430px);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 18px 50px rgba(17,24,39,.08);
+    }
+    .gate-card img { width: 64px; height: 64px; border-radius: 18px; margin-bottom: 14px; }
+    .gate-card h1 { font-size: 23px; margin-bottom: 7px; }
+    .gate-card p { color: var(--muted); line-height: 1.5; margin-bottom: 16px; }
+    @media (max-width: 800px) {
+      body { padding: 10px; }
+      .admin-top { align-items: flex-start; flex-direction: column; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .row, .skeleton-row { grid-template-columns: 1fr; }
+      .image-tool-row { grid-template-columns: 1fr; }
+      .admin-form-row { grid-template-columns: 1fr; }
+      .row-actions, .assign-box { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div id="adminGate">
+    <div class="gate-card">
+      <img src="zuno-logo.png" alt="">
+      <h1>Zuno Admin</h1>
+      <p>Personal dashboard for approving vendors, reviewing shops, and watching customer orders.</p>
+      <button class="primary" id="adminLoginBtn">Login as Admin</button>
+      <p id="gateMsg" style="min-height:18px;margin-top:12px;margin-bottom:0;font-size:13px;"></p>
+    </div>
+  </div>
+
+  <main class="admin-shell" id="adminApp" style="display:none;">
+    <header class="admin-top">
+      <div class="brand">
+        <img src="zuno-logo.png" alt="">
+        <div>
+          <h1>Zuno Admin</h1>
+          <p id="adminSub">Loading...</p>
+        </div>
+      </div>
+      <div class="admin-actions">
+        <a class="link-btn" href="shops.html">Public shops</a>
+        <button id="refreshBtn">Refresh</button>
+        <button class="bad" id="logoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <section class="stats">
+      <div class="stat"><span>Total shops</span><strong id="statShops">0</strong></div>
+      <div class="stat"><span>Pending vendors</span><strong id="statPending">0</strong></div>
+      <div class="stat"><span>Live orders</span><strong id="statOrders">0</strong></div>
+      <div class="stat"><span>Customers</span><strong id="statCustomers">0</strong></div>
+    </section>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="vendors">Vendor Approvals</button>
+      <button class="tab" data-tab="shops">Shops</button>
+      <button class="tab" data-tab="orders">Orders</button>
+      <button class="tab" data-tab="customers">Customers</button>
+      <button class="tab" data-tab="queries">Queries</button>
+      <button class="tab" data-tab="payments">Payments</button>
+      <button class="tab" data-tab="settlements">Settlements</button>
+      <button class="tab" data-tab="images">Images</button>
+    </nav>
+
+    <section class="panel active" id="panel-vendors">
+      <div class="panel-head">
+        <h2>Vendor Approvals</h2>
+        <input class="search" id="vendorSearch" placeholder="Search vendors">
+      </div>
+      <div class="list" id="vendorsList">
+        <div class="skeleton-row"><div class="skeleton-line wide"></div><div class="skeleton-pill"></div><div class="skeleton-line medium"></div><div class="skeleton-pill"></div></div>
+        <div class="skeleton-row"><div class="skeleton-line wide"></div><div class="skeleton-pill"></div><div class="skeleton-line medium"></div><div class="skeleton-pill"></div></div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-shops">
+      <div class="panel-head">
+        <h2>All Shops</h2>
+        <input class="search" id="shopSearchAdmin" placeholder="Search shops">
+      </div>
+      <div class="list" id="adminShopsList">
+        <div class="skeleton-row"><div class="skeleton-line wide"></div><div class="skeleton-pill"></div><div class="skeleton-line medium"></div><div class="skeleton-pill"></div></div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-orders">
+      <div class="panel-head">
+        <h2>Customer Orders</h2>
+        <input class="search" id="orderSearch" placeholder="Search orders">
+      </div>
+      <div class="list" id="ordersAdminList">
+        <div class="skeleton-row"><div class="skeleton-line wide"></div><div class="skeleton-pill"></div><div class="skeleton-line medium"></div><div class="skeleton-pill"></div></div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-customers">
+      <div class="panel-head">
+        <h2>Customers</h2>
+        <input class="search" id="customerSearch" placeholder="Search customers">
+      </div>
+      <div class="list" id="customersAdminList">
+        <div class="skeleton-row"><div class="skeleton-line wide"></div><div class="skeleton-pill"></div><div class="skeleton-line medium"></div><div class="skeleton-pill"></div></div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-queries">
+      <div class="panel-head">
+        <h2>Queries</h2>
+        <input class="search" id="querySearch" placeholder="Search queries">
+      </div>
+      <div class="list" id="queriesAdminList">
+        <div class="empty">No queries yet.</div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-payments">
+      <div class="panel-head">
+        <h2>Payment Verification</h2>
+        <input class="search" id="paymentSearch" placeholder="Search payments">
+      </div>
+      <div class="admin-form">
+        <div class="admin-form-row">
+          <label>Central UPI / PhonePe
+            <input id="adminPaymentUpi" placeholder="number@ybl or PhonePe number">
+          </label>
+          <label>Display name
+            <input id="adminPaymentName" placeholder="Zuno">
+          </label>
+          <label>Payment note
+            <input id="adminPaymentNote" placeholder="Shown in admin only">
+          </label>
+          <button class="good" id="savePaymentSettingsBtn">Save</button>
+        </div>
+        <div class="row-sub" id="paymentSettingsMsg">Customers pay online to this central account.</div>
+      </div>
+      <div class="list" id="paymentsAdminList">
+        <div class="empty">No online payment submissions yet.</div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-settlements">
+      <div class="panel-head">
+        <h2>Vendor Settlements</h2>
+        <button class="blue" id="refreshSettlementsBtn">Refresh settlements</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><span>Verified online</span><strong id="settleGross">Rs 0</strong></div>
+        <div class="stat"><span>Settled</span><strong id="settlePaid">Rs 0</strong></div>
+        <div class="stat"><span>To settle</span><strong id="settleDue">Rs 0</strong></div>
+        <div class="stat"><span>Vendors due</span><strong id="settleVendors">0</strong></div>
+      </div>
+      <div class="list" id="settlementsAdminList">
+        <div class="empty">No settlement due.</div>
+      </div>
+      <div class="panel-head">
+        <h2>Settlement History</h2>
+      </div>
+      <div class="list" id="settlementHistoryList">
+        <div class="empty">No settlement history yet.</div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-images">
+      <div class="panel-head">
+        <h2>Product Images</h2>
+        <button class="blue" id="scanImagesBtn">Scan missing images</button>
+      </div>
+      <div class="image-tool">
+        <div class="image-tool-row">
+          <label>Product name
+            <input id="adminImageProduct" placeholder="e.g. Potato">
+          </label>
+          <label>Image file
+            <input type="file" id="adminImageFile" accept="image/*">
+          </label>
+          <button class="good" id="adminImageSaveBtn">Update everywhere</button>
+        </div>
+        <div class="row-sub" id="adminImageMsg">Upload one clean product image. It will update matching inventory and product records across shops.</div>
+      </div>
+      <div class="list" id="adminImagesList">
+        <div class="empty">Scan to find products with missing/default images.</div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

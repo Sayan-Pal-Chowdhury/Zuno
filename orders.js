@@ -38,21 +38,54 @@ async function init() {
 
 function renderOrder(order) {
   const items = Array.isArray(order.items) ? order.items : [];
+  const itemRows = items.length
+    ? items.map(item => `
+        <span class="order-item">
+          <span>${item.product || "Item"}</span>
+          <b>x ${item.qty || 0}</b>
+        </span>
+      `).join("")
+    : `<span class="order-item"><span>No items</span></span>`;
+
   document.getElementById("ordersList").innerHTML = `
     <article class="order-card">
       <span class="status-pill">${order.status || "new"}</span>
       <h3 style="margin-top:12px">${order.shopName || "Shop"} order</h3>
-      <p class="muted">${items.map(item => `${item.product} x ${item.qty}`).join(", ")}</p>
+      <div class="order-items muted">${itemRows}</div>
+      ${renderFees(order)}
       <p><strong>${formatMoney(order.totalAmount)}</strong></p>
-      <p class="muted">${statusText(order.status)}</p>
+      ${order.fulfillmentType === "pickup" ? `<p class="pickup-note">Pickup order: when it is packed, go to the shop and receive it manually.</p>` : ""}
+      <p class="muted">${paymentStatusText(order)}</p>
+      <p class="muted">${statusText(order)}</p>
     </article>
   `;
 }
 
-function statusText(status) {
+function renderFees(order) {
+  if (!order.handlingFee && !order.deliveryFee) return "";
+  return `
+    <div class="fee-lines">
+      <div><span>Items</span><span>${formatMoney(order.subtotal || 0)}</span></div>
+      <div><span>Handling charge</span><span>${formatMoney(order.handlingFee || 0)}</span></div>
+      <div><span>Delivery fee</span><span>${Number(order.deliveryFee || 0) === 0 ? "Free" : formatMoney(order.deliveryFee || 0)}</span></div>
+    </div>
+  `;
+}
+
+function paymentStatusText(order) {
+  if (order.paymentMode !== "online") return "Payment: cash on delivery or pickup.";
+  if (order.paymentStatus === "online_verified") return "Payment verified by Zuno.";
+  if (order.paymentStatus === "online_rejected") return "Payment was not verified. The shop or Zuno may contact you.";
+  return "Payment submitted. Zuno will verify it.";
+}
+
+function statusText(order) {
+  const status = order?.status;
+  const isPickup = order?.fulfillmentType === "pickup";
   if (status === "accepted") return "The shop accepted your order.";
-  if (status === "ready") return "Your order is ready.";
-  if (status === "delivered") return "Your order was delivered.";
+  if (status === "packing") return "The shop is packing your order.";
+  if (status === "ready" || status === "packed") return "Your order is packed. Please go to the shop and receive it.";
+  if (status === "delivered") return isPickup ? "Order completed. You received it from the shop." : "Your order was delivered.";
   if (status === "rejected") return "The shop could not accept this order.";
   return "Waiting for the shop to confirm.";
 }

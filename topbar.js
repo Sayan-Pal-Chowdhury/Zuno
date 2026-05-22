@@ -23,6 +23,20 @@ style.textContent = `
 
   .zuno-topbar-left {
     display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .zuno-topbar-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    box-shadow: 0 8px 18px rgba(8,22,42,0.14);
+    flex: 0 0 auto;
+  }
+
+  .zuno-topbar-copy {
+    display: flex;
     flex-direction: column;
     gap: 1px;
   }
@@ -74,6 +88,13 @@ style.textContent = `
     font-family: 'DM Sans', sans-serif;
   }
 
+  .zuno-topbar-date {
+    font-size: 11px;
+    color: #8a8a8a;
+    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap;
+  }
+
   .zuno-topbar-settings {
     width: 34px;
     height: 34px;
@@ -103,20 +124,26 @@ const topbar = document.createElement("div");
 topbar.className = "zuno-topbar";
 topbar.innerHTML = `
   <div class="zuno-topbar-left">
-    <span class="zuno-topbar-brand">Zuno</span>
-    <span class="zuno-topbar-app">AI Business Assistant</span>
+    <img class="zuno-topbar-mark" src="/zuno-logo.png" alt="">
+    <div class="zuno-topbar-copy">
+      <span class="zuno-topbar-brand">Zuno</span>
+      <span class="zuno-topbar-app">AI Business Assistant</span>
+    </div>
   </div>
   <div class="zuno-topbar-right">
     <div class="zuno-topbar-shop">
       <span class="zuno-topbar-shop-name" id="topbarShopName">Your Shop</span>
       <span class="zuno-topbar-shop-sub" id="topbarShopSub">Loading...</span>
     </div>
+    <span class="zuno-topbar-date" id="topbarDate"></span>
     <a href="/settings.html" class="zuno-topbar-settings" title="Settings">⚙️</a>
   </div>
 `;
 
 /* insert as first child of body */
 document.body.insertBefore(topbar, document.body.firstChild);
+document.getElementById("topbarDate").textContent =
+  new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 
 /* ---------- LOAD SHOP PROFILE ---------- */
 onAuthStateChanged(auth, async (user) => {

@@ -1,0 +1,96 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.email in [
+        "sayan123401@gmail.com"
+      ];
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function hasPublicApprovedProfile(userId) {
+      let profile = get(/databases/$(database)/documents/users/$(userId)/settings/profile).data;
+      return profile.isLive != false
+        && (!profile.keys().hasAny(["publicShopEnabled"]) || profile.publicShopEnabled == true)
+        && (!profile.keys().hasAny(["approvalStatus"]) || profile.approvalStatus == "approved");
+    }
+
+    function acceptsPublicOrders(userId) {
+      let profile = get(/databases/$(database)/documents/users/$(userId)/settings/profile).data;
+      return hasPublicApprovedProfile(userId)
+        && (!profile.keys().hasAny(["publicOrdersEnabled"]) || profile.publicOrdersEnabled == true);
+    }
+
+    match /storeIndex/{storeId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() || (signedIn() && request.resource.data.uid == request.auth.uid);
+    }
+
+    match /customers/{customerId} {
+      allow read, write: if isAdmin() || (signedIn() && request.auth.uid == customerId);
+    }
+
+    match /platformSettings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /vendorSettlements/{settlementId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /adminQueries/{queryId} {
+      allow create: if signedIn();
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read, write: if isAdmin() || isOwner(userId);
+
+      match /settings/profile {
+        allow read: if isAdmin() || isOwner(userId) || (
+          resource.data.isLive != false
+          && (!resource.data.keys().hasAny(["publicShopEnabled"]) || resource.data.publicShopEnabled == true)
+          && (!resource.data.keys().hasAny(["approvalStatus"]) || resource.data.approvalStatus == "approved")
+        );
+        allow write: if isAdmin() || isOwner(userId);
+      }
+
+      match /settings/{settingId} {
+        allow read, write: if isAdmin() || isOwner(userId);
+      }
+
+      match /inventory/{itemId} {
+        allow read: if isAdmin() || isOwner(userId) || hasPublicApprovedProfile(userId);
+        allow write: if isAdmin() || isOwner(userId);
+      }
+
+      match /customerOrders/{orderId} {
+        allow get: if true;
+        allow list: if isAdmin() || isOwner(userId);
+        allow create: if acceptsPublicOrders(userId);
+        allow update, delete: if isAdmin() || isOwner(userId);
+      }
+
+      match /customers/{customerId} {
+        allow read, write: if isAdmin() || isOwner(userId);
+      }
+
+      match /{document=**} {
+        allow read, write: if isAdmin() || isOwner(userId);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

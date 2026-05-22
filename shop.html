@@ -6,7 +6,12 @@
   <title>Shop</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="shop.css?v=4">
+  <link rel="stylesheet" href="shop.css?v=8">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ffda00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zuno">
+  <link rel="apple-touch-icon" href="zuno-icon-192.png">
 </head>
 <body>
   <div id="shop-topbar"></div>
@@ -17,6 +22,7 @@
         <small>Today's picks</small>
         <h1 id="heroTitle">Fresh from the market</h1>
         <p id="heroSub">Loading shop...</p>
+        <div class="shop-status-row" id="shopStatusRow"></div>
       </div>
       <div class="hero-market-stack" aria-hidden="true">
         <span>Fresh</span>
@@ -25,48 +31,68 @@
     </section>
 
     <div class="toolbar">
-      <input class="search-input" id="searchInput" type="search" placeholder="Search products..." oninput="filterProducts()">
+      <input class="search-input" id="searchInput" type="search" list="shopProductSuggestions" placeholder="Search products..." oninput="filterProducts()">
+      <datalist id="shopProductSuggestions"></datalist>
       <button class="filter-button" type="button" aria-label="Filter">Filter</button>
     </div>
 
     <div class="quick-strip">
-      <div class="quick-card"><strong>Express</strong><span>Fast pickup</span></div>
+      <div class="quick-card"><strong id="fulfillmentTitle">Express</strong><span id="fulfillmentSub">Fast pickup</span></div>
       <div class="quick-card"><strong>Live stock</strong><span>Updated now</span></div>
       <div class="quick-card"><strong>COD</strong><span>Pay later</span></div>
     </div>
 
     <div class="section-head category-head">
       <h2>Shop by type</h2>
-      <span>See all</span>
+      <button class="section-link" type="button" onclick="setTypeFilter('all', this)">All</button>
     </div>
 
-    <div class="category-row">
-      <button class="category-chip" onclick="setSearchTerm('potato')"><span>PT</span>Veggies</button>
-      <button class="category-chip" onclick="setSearchTerm('rice')"><span>RC</span>Grains</button>
-      <button class="category-chip" onclick="setSearchTerm('milk')"><span>MK</span>Dairy</button>
-      <button class="category-chip" onclick="setSearchTerm('ginger')"><span>GG</span>Fresh</button>
-      <button class="category-chip" onclick="setSearchTerm('oil')"><span>OL</span>Essentials</button>
-    </div>
-
-    <div class="chip-row" id="filterChips">
-      <button class="chip active" onclick="setFilter('all', this)">All items</button>
-      <button class="chip" onclick="setFilter('kg', this)">By kg</button>
-      <button class="chip" onclick="setFilter('piece', this)">By piece</button>
-      <button class="chip" onclick="setFilter('g', this)">By gram</button>
+    <div class="category-row" id="typeRow">
+      <button class="category-chip active" onclick="setTypeFilter('all', this)">
+        <span class="category-image category-all">All</span>
+        All
+      </button>
     </div>
 
     <div class="section-head">
-      <h2>Everything fresh</h2>
+      <h2>Shop by items</h2>
       <a href="shops.html">All shops</a>
     </div>
 
     <section class="products-grid" id="productsGrid">
-      <div class="empty-state">Loading products...</div>
+      <article class="product-card skeleton-card">
+        <div class="product-art skeleton-block"></div>
+        <div class="product-body">
+          <div class="skeleton-line wide"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-button"></div>
+        </div>
+      </article>
+      <article class="product-card skeleton-card">
+        <div class="product-art skeleton-block"></div>
+        <div class="product-body">
+          <div class="skeleton-line wide"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-button"></div>
+        </div>
+      </article>
+      <article class="product-card skeleton-card">
+        <div class="product-art skeleton-block"></div>
+        <div class="product-body">
+          <div class="skeleton-line wide"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-button"></div>
+        </div>
+      </article>
     </section>
   </main>
 
   <div id="shop-navbar"></div>
 
   <script type="module" src="shop.js"></script>
+  <script src="pwa.js" defer></script>
 </body>
 </html>

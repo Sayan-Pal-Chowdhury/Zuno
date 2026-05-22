@@ -60,11 +60,11 @@
     }
     .brand-logo {
       width: 40px; height: 40px;
-      background: linear-gradient(135deg, #FF6B35, #FF9D6C);
+      background: #ffda00 url("zuno-logo.png") center / cover no-repeat;
       border-radius: 14px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px; font-weight: 900; color: white;
-      box-shadow: 0 6px 20px rgba(255,107,53,0.35);
+      font-size: 0; font-weight: 900; color: transparent;
+      box-shadow: 0 10px 24px rgba(8,22,42,0.18);
     }
     .brand-name {
       font-size: 20px; font-weight: 800; color: var(--ink);
@@ -132,6 +132,11 @@
       color: var(--ink);
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    select.field-input {
+      appearance: none;
+      cursor: pointer;
     }
     .field-input::placeholder { color: var(--ink3); font-weight: 400; }
     .field-input:focus {
@@ -293,6 +298,17 @@
       <span class="field-hint" id="locHint">Tap 🎯 to auto-detect your location</span>
     </div>
 
+    <!-- SHOP TYPE -->
+    <div class="field">
+      <label class="field-label">Shop Type</label>
+      <div class="field-input-wrap">
+        <span class="field-icon">#</span>
+        <select class="field-input" id="shopType" onchange="checkReady()">
+          <option value="">Choose business type</option>
+        </select>
+      </div>
+    </div>
+
     <!-- LIVE PREVIEW -->
     <div class="field">
       <label class="field-label">Preview — how customers see you</label>
@@ -325,14 +341,23 @@ import {
   doc, getDoc, setDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { BUSINESS_TYPES, getBusinessType } from "./marketplace-categories.js";
 
 let currentUser = null;
+
+document.getElementById("shopType").innerHTML += BUSINESS_TYPES
+  .map(type => `<option value="${type.id}">${type.label}</option>`)
+  .join("");
 
 onAuthStateChanged(auth, async user => {
   if (!user) { window.location.href = "login.html"; return; }
   currentUser = user;
 
   const profileSnap = await getDoc(doc(db, "users", user.uid, "settings", "profile"));
+  if (profileSnap.exists() && profileSnap.data().accountMode === "inventory") {
+    window.location.href = "home.html";
+    return;
+  }
   if (profileSnap.exists() && profileSnap.data().storeId) {
     window.location.href = "home.html";
   }
@@ -361,8 +386,10 @@ window.onLocationInput = function() {
 function checkReady() {
   const name = document.getElementById("shopName").value.trim();
   const loc  = document.getElementById("shopLocation").value.trim();
-  document.getElementById("submitBtn").disabled = !(name && loc);
+  const type = document.getElementById("shopType").value;
+  document.getElementById("submitBtn").disabled = !(name && loc && type);
 }
+window.checkReady = checkReady;
 
 /* ── GPS ── */
 window.getGPS = function() {
@@ -435,9 +462,12 @@ window.submitSetup = async function() {
 
   const name     = document.getElementById("shopName").value.trim();
   const location = document.getElementById("shopLocation").value.trim();
+  const businessType = document.getElementById("shopType").value;
+  const typeInfo = getBusinessType(businessType);
+  const customerCategory = typeInfo.category;
   const tagline  = location ? `Fresh daily in ${location}` : "Fresh products, fair prices";
 
-  if (!name || !location) return;
+  if (!name || !location || !businessType) return;
 
   const btn   = document.getElementById("submitBtn");
   const label = document.getElementById("submitLabel");
@@ -459,8 +489,15 @@ window.submitSetup = async function() {
         name,
         location,
         tagline,
+        accountMode: "public_shop",
+        shopType: customerCategory,
+        businessType,
+        customerCategory,
+        serviceMode: typeInfo.mode,
+        deliveryEnabled: true,
         storeId,
-        isLive:    true,
+        isLive:    false,
+        approvalStatus: "pending",
         createdAt: profileData.createdAt || serverTimestamp(),
         updatedAt: serverTimestamp(),
       },
@@ -475,7 +512,14 @@ window.submitSetup = async function() {
         name,
         location,
         tagline,
-        isLive:   true,
+        shopType: customerCategory,
+        businessType,
+        businessTypeLabel: typeInfo.label,
+        customerCategory,
+        serviceMode: typeInfo.mode,
+        deliveryEnabled: true,
+        isLive:   false,
+        approvalStatus: "pending",
         createdAt: serverTimestamp(),
       }
     );

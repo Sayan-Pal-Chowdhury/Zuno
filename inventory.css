@@ -141,6 +141,48 @@
 
 .stock-card:hover { box-shadow: var(--shadow-md); }
 
+.skeleton-stock-card {
+  pointer-events: none;
+}
+
+.skeleton-line,
+.skeleton-qty {
+  position: relative;
+  overflow: hidden;
+  background: rgba(22, 28, 45, 0.08);
+}
+
+.skeleton-line::after,
+.skeleton-qty::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.72), transparent);
+  animation: skeleton-shimmer 1.35s infinite;
+}
+
+.skeleton-line {
+  height: 14px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.skeleton-line.wide { width: 74%; }
+.skeleton-line.medium { width: 58%; }
+.skeleton-line.short { width: 42%; }
+
+.skeleton-qty {
+  width: 92px;
+  height: 36px;
+  border-radius: 12px;
+  margin: 14px 0 18px;
+}
+
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
 .stock-card.low {
   border-color: #f4c07a;
   background: #fff8f0;

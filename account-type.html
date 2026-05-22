@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Choose Zuno Mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      font-family: Manrope, system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(255,218,0,.25), transparent 32%),
+        radial-gradient(circle at 92% 100%, rgba(52,201,138,.18), transparent 34%),
+        #f7f7f4;
+      color: #111827;
+    }
+    .shell { width: min(100%, 860px); display: grid; gap: 20px; }
+    .head { text-align: center; }
+    .head img { width: 64px; height: 64px; border-radius: 18px; margin-bottom: 14px; }
+    .head h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1; letter-spacing: -0.05em; }
+    .head p { color: #6b7280; margin-top: 10px; line-height: 1.6; }
+    .choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .choice {
+      background: white;
+      border: 1.5px solid rgba(17,24,39,.08);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 18px 50px rgba(17,24,39,.07);
+      display: grid;
+      gap: 14px;
+      text-align: left;
+    }
+    .choice b { font-size: 12px; color: #0f9f6e; text-transform: uppercase; letter-spacing: .08em; }
+    .choice h2 { font-size: 24px; letter-spacing: -0.04em; }
+    .choice p { color: #6b7280; line-height: 1.55; font-size: 14px; }
+    .choice ul { display: grid; gap: 8px; color: #374151; font-size: 13px; padding-left: 18px; }
+    .choice button {
+      height: 46px;
+      border: 0;
+      border-radius: 14px;
+      background: #111827;
+      color: white;
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .choice.public button { background: #0f9f6e; }
+    #msg { min-height: 20px; text-align: center; color: #dc2626; font-size: 13px; }
+    @media (max-width: 720px) {
+      .choices { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="head">
+      <img src="zuno-logo.png" alt="">
+      <h1>How will you use Zuno?</h1>
+      <p>Choose the setup that fits your business. You can enable a public shop later from Settings.</p>
+    </section>
+
+    <section class="choices">
+      <article class="choice">
+        <b>Private tools</b>
+        <h2>Inventory Tracker</h2>
+        <p>Use Zuno only for stock, inventory, sales records, credit and reports.</p>
+        <ul>
+          <li>No public shop card</li>
+          <li>No approval needed</li>
+          <li>Start using the app immediately</li>
+        </ul>
+        <button id="inventoryBtn">Use as Inventory Tracker</button>
+      </article>
+
+      <article class="choice public">
+        <b>Public selling</b>
+        <h2>Shop Owner</h2>
+        <p>Create a public shop that customers can browse and order from.</p>
+        <ul>
+          <li>Shop details required</li>
+          <li>Admin approval required</li>
+          <li>Appears in Zuno Local after approval</li>
+        </ul>
+        <button id="shopBtn">Use as Shop Owner</button>
+      </article>
+    </section>
+
+    <p id="msg"></p>
+  </main>
+
+  <script type="module" src="account-type.js"></script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Settings — Zuno</title>
   <link rel="stylesheet" href="style.css">
   <style>
@@ -59,6 +60,31 @@
       width: 220px;
       height: 36px;
       font-size: 13px;
+    }
+
+    .cover-upload {
+      width: 220px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .cover-preview {
+      width: 100%;
+      aspect-ratio: 2.4 / 1;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background:
+        radial-gradient(circle at 80% 20%, rgba(255,218,0,.35), transparent 30%),
+        linear-gradient(135deg, #fff, #fff8d9);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .cover-upload input {
+      width: 100%;
+      height: auto;
+      font-size: 12px;
+      padding: 8px;
     }
 
     /* Toggle switch */
@@ -168,10 +194,45 @@ onAuthStateChanged(auth, (user) => {
 
   <div class="settings-row">
     <div class="settings-row-left">
-      <div class="settings-row-label">Business Type</div>
-      <div class="settings-row-sub">e.g. Wholesale, Retail, Distributor</div>
+      <div class="settings-row-label">Shop Cover Photo</div>
+      <div class="settings-row-sub">Shown on public shop cards and shop page hero</div>
     </div>
-    <input type="text" id="shopType" placeholder="e.g. Wholesale">
+    <div class="cover-upload">
+      <div class="cover-preview" id="coverPreview"></div>
+      <input type="file" id="coverPhoto" accept="image/*">
+    </div>
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Shop Type</div>
+      <div class="settings-row-sub">Customers can filter shops by this category</div>
+    </div>
+    <select id="shopType">
+      <option value="">Choose business type</option>
+    </select>
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Shop Open</div>
+      <div class="settings-row-sub">Customers can place orders when this is on</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="publicOrdersEnabled" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Delivery Open</div>
+      <div class="settings-row-sub">Turn off when customers must pick up packed orders from your shop</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="deliveryEnabled" checked>
+      <span class="toggle-slider"></span>
+    </label>
   </div>
 
   <div class="settings-row">
@@ -186,6 +247,22 @@ onAuthStateChanged(auth, (user) => {
       <div class="settings-row-label">Phone</div>
     </div>
     <input type="tel" id="shopPhone" placeholder="e.g. 9876543210">
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Settlement UPI / PhonePe</div>
+      <div class="settings-row-sub">Admin will use this for vendor payout settlement</div>
+    </div>
+    <input type="text" id="settlementUpi" placeholder="number@ybl or PhonePe number">
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Settlement Name</div>
+      <div class="settings-row-sub">Account holder or receiver name</div>
+    </div>
+    <input type="text" id="settlementName" placeholder="e.g. Sayan Traders">
   </div>
 
   <div class="settings-row">

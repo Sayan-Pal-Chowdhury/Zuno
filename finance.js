@@ -13,6 +13,7 @@ let allCredit      = [];
 let allInventory   = [];
 let allExpenses    = [];
 let allVendors     = [];
+let allCashAdjustments = [];
 let openingBalance = 0;
 let revenueChart   = null;
 let paymentChart   = null;
@@ -29,6 +30,7 @@ onAuthStateChanged(auth, (user) => {
   if (!user) { window.location.href = "login.html"; return; }
   currentUserId = user.uid;
   document.getElementById("expDate").value       = today();
+  document.getElementById("cashAdjustmentDate").value = today();
   document.getElementById("vendorPayDate").value = today();
   loadSettings();
   loadSales();
@@ -36,6 +38,7 @@ onAuthStateChanged(auth, (user) => {
   loadInventory();
   loadExpenses();
   loadVendors();
+  loadCashAdjustments();
 });
 
 /* ---------- LOAD SETTINGS ---------- */
@@ -118,6 +121,19 @@ function loadVendors() {
   });
 }
 
+/* ---------- LOAD CASH ADJUSTMENTS ---------- */
+function loadCashAdjustments() {
+  onSnapshot(
+    query(userCol("cashAdjustments"), orderBy("date", "desc")),
+    snap => {
+      allCashAdjustments = [];
+      snap.forEach(d => allCashAdjustments.push({ id: d.id, ...d.data() }));
+      renderCashAdjustments();
+      updateOverview();
+    }
+  );
+}
+
 /* ---------- UPDATE OVERVIEW ---------- */
 function updateOverview() {
   let cashIn = openingBalance;
@@ -135,6 +151,14 @@ function updateOverview() {
   allCredit.forEach(c => { cashIn += Number(c.totalPaid || 0); });
   allVendors.forEach(v => { cashOut += Number(v.amountPaid || 0); });
   allExpenses.forEach(e => { cashOut += Number(e.amount || 0); });
+  allCashAdjustments.forEach(entry => {
+    const amount = Number(entry.amount || 0);
+    if (entry.type === "add") cashIn += amount;
+    else if (entry.type === "subtract" || entry.type === "inventory_purchase") cashOut += amount;
+    else if (entry.type === "set") {
+      cashIn += amount;
+    }
+  });
 
   const cashAtHand = cashIn - cashOut;
 
@@ -339,6 +363,93 @@ window.addExpense = async () => {
   document.getElementById("expNote").value   = "";
   showExpMsg("✓ Expense added");
 };
+
+/* ---------- CASH ADJUSTMENTS ---------- */
+window.saveCashAdjustment = async () => {
+  const type = document.getElementById("cashAdjustmentType").value;
+  const amount = Number(document.getElementById("cashAdjustmentAmount").value);
+  const date = document.getElementById("cashAdjustmentDate").value || today();
+  const note = document.getElementById("cashAdjustmentNote").value.trim();
+  const msg = document.getElementById("cashAdjustmentMsg");
+
+  if (!amount && type !== "set") {
+    msg.textContent = "Enter a valid amount.";
+    msg.style.color = "var(--danger)";
+    return;
+  }
+  if (amount < 0) {
+    msg.textContent = "Amount cannot be negative.";
+    msg.style.color = "var(--danger)";
+    return;
+  }
+
+  if (type === "set") {
+    const currentCash = calculateCashAtHand();
+    const diff = amount - currentCash;
+    await addDoc(userCol("cashAdjustments"), {
+      type: diff >= 0 ? "add" : "subtract",
+      amount: Math.abs(diff),
+      date,
+      note: note || `Cash set to ${fmt(amount)}`,
+      targetCash: amount
+    });
+  } else {
+    await addDoc(userCol("cashAdjustments"), {
+      type,
+      amount,
+      date,
+      note: note || (type === "add" ? "Cash added" : "Cash subtracted")
+    });
+  }
+
+  document.getElementById("cashAdjustmentAmount").value = "";
+  document.getElementById("cashAdjustmentNote").value = "";
+  msg.textContent = "✓ Cash updated";
+  msg.style.color = "var(--accent)";
+  setTimeout(() => msg.textContent = "", 2500);
+};
+
+function calculateCashAtHand() {
+  let cashIn = openingBalance;
+  let cashOut = 0;
+
+  allSales.forEach(s => {
+    if (s.deliveryStatus !== "delivered") return;
+    if (s.paymentMode === "cash" || s.paymentMode === "upi") cashIn += Number(s.totalAmount || 0);
+    else if (s.paymentMode === "credit") cashIn += Number(s.amountPaid || 0);
+  });
+  allCredit.forEach(c => { cashIn += Number(c.totalPaid || 0); });
+  allVendors.forEach(v => { cashOut += Number(v.amountPaid || 0); });
+  allExpenses.forEach(e => { cashOut += Number(e.amount || 0); });
+  allCashAdjustments.forEach(entry => {
+    const amount = Number(entry.amount || 0);
+    if (entry.type === "add") cashIn += amount;
+    else if (entry.type === "subtract" || entry.type === "inventory_purchase") cashOut += amount;
+  });
+  return cashIn - cashOut;
+}
+
+function renderCashAdjustments() {
+  const tbody = document.getElementById("cashAdjustmentTable");
+  if (!tbody) return;
+  const rows = allCashAdjustments.slice(0, 10);
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px;">No cash adjustments yet</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(entry => {
+    const outgoing = entry.type === "subtract" || entry.type === "inventory_purchase";
+    const label = entry.type === "inventory_purchase" ? "Inventory purchase" : entry.type;
+    return `
+      <tr>
+        <td>${entry.date || ""}</td>
+        <td style="text-transform:capitalize">${label}</td>
+        <td style="color:var(--text-secondary)">${entry.note || "—"}</td>
+        <td style="font-family:var(--font-mono);color:${outgoing ? "var(--danger)" : "var(--accent)"};">${outgoing ? "-" : "+"}${fmt(entry.amount || 0)}</td>
+      </tr>
+    `;
+  }).join("");
+}
 
 /* ---------- RENDER EXPENSES ---------- */
 function renderExpenses() {

@@ -3,10 +3,12 @@ import { db, auth } from "./firebase.js";
 import {
   collection, addDoc, onSnapshot,
   deleteDoc, doc, updateDoc, query,
-  orderBy, where, getDocs, getDoc, serverTimestamp
+  orderBy, where, getDocs, getDoc, setDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js";
+import { attachSuggestionDropdown, COMMON_ITEM_NAMES, mergeSuggestions, renderOptions } from "./item-suggestions.js";
+import { calculateSellingLineTotal, normalizeSellingUnit, sellingUnitLabel } from "./unit-pricing.js";
 
 /* ---------- STATE ---------- */
 let currentUserId = null;
@@ -18,6 +20,8 @@ let productEditId = null;
 let allSales      = [];
 let chart         = null;
 let editingCreditSaleId = null;
+let shopProfile   = null;
+let productSuggestions = COMMON_ITEM_NAMES;
 
 /* ---------- USER COLLECTION HELPER ---------- */
 function userCol(colName) {
@@ -87,12 +91,93 @@ if (dateEl) {
 }
   initEditSaleModal(currentUserId, productCosts, () => {});
 
+  await loadShopProfile();
   refreshOrderDisplay();
   loadProducts();
   loadSales();
   loadCustomerOrders();
   initCreditUI();
 });
+
+async function loadShopProfile() {
+  if (!currentUserId) return;
+  const snap = await getDoc(doc(db, "users", currentUserId, "settings", "profile"));
+  shopProfile = snap.exists() ? snap.data() : {};
+  renderDeliveryControl();
+  renderFeatureControls();
+}
+
+function renderDeliveryControl() {
+  const btn = document.getElementById("deliveryToggleBtn");
+  const text = document.getElementById("deliveryModeText");
+  if (!btn || !text) return;
+
+  const deliveryEnabled = shopProfile?.deliveryEnabled !== false;
+  const ordersEnabled = shopProfile?.publicOrdersEnabled !== false;
+  const shopBtn = document.getElementById("shopOpenToggleBtn");
+  if (shopBtn) {
+    shopBtn.classList.toggle("off", !ordersEnabled);
+    shopBtn.querySelector("b").textContent = ordersEnabled ? "Shop" : "Closed";
+  }
+  btn.classList.toggle("off", !deliveryEnabled);
+  btn.querySelector("b").textContent = deliveryEnabled ? "Delivery" : "Pickup";
+  text.textContent = !ordersEnabled
+    ? "Shop is closed for customer orders."
+    : deliveryEnabled
+    ? "Customers can place delivery orders."
+    : "Customers can order, but they must collect packed orders from your shop.";
+}
+
+window.toggleShopOpen = async () => {
+  if (!currentUserId) return;
+  const next = shopProfile?.publicOrdersEnabled === false;
+  const profileRef = doc(db, "users", currentUserId, "settings", "profile");
+  await setDoc(profileRef, { publicOrdersEnabled: next, updatedAt: serverTimestamp() }, { merge: true });
+
+  const profileSnap = await getDoc(profileRef);
+  shopProfile = profileSnap.exists() ? profileSnap.data() : { publicOrdersEnabled: next };
+  if (shopProfile.storeId) {
+    await setDoc(doc(db, "storeIndex", shopProfile.storeId), {
+      publicOrdersEnabled: next,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }
+  localStorage.setItem("zunoShopProfile_" + currentUserId, JSON.stringify(shopProfile));
+  renderDeliveryControl();
+};
+
+function renderFeatureControls() {
+  const creditEnabled = shopProfile?.creditEnabled !== false;
+  const creditOption = document.querySelector("#paymentMode option[value='credit']");
+  if (creditOption) creditOption.hidden = !creditEnabled;
+  if (!creditEnabled && document.getElementById("paymentMode").value === "credit") {
+    document.getElementById("paymentMode").value = "cash";
+    document.getElementById("creditBox").style.display = "none";
+  }
+
+  const liveOrdersSection = document.getElementById("liveOrdersSection");
+  if (liveOrdersSection && shopProfile?.publicOrdersEnabled === false) {
+    liveOrdersSection.innerHTML = `<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text-muted);font-size:13px;">Customer orders are disabled for this shop.</div>`;
+  }
+}
+
+window.toggleDeliveryMode = async () => {
+  if (!currentUserId) return;
+  const next = !(shopProfile?.deliveryEnabled !== false);
+  const profileRef = doc(db, "users", currentUserId, "settings", "profile");
+  await setDoc(profileRef, { deliveryEnabled: next, updatedAt: serverTimestamp() }, { merge: true });
+
+  const profileSnap = await getDoc(profileRef);
+  shopProfile = profileSnap.exists() ? profileSnap.data() : { deliveryEnabled: next };
+  if (shopProfile.storeId) {
+    await setDoc(doc(db, "storeIndex", shopProfile.storeId), {
+      deliveryEnabled: next,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }
+  localStorage.setItem("zunoShopProfile_" + currentUserId, JSON.stringify(shopProfile));
+  renderDeliveryControl();
+};
 
 /* ---------- CREDIT UI — show/hide partial payment ---------- */
 function initCreditUI() {
@@ -171,20 +256,28 @@ function createItemRow(isFirst = false, data = {}) {
   `;
 
   const qtyInput   = row.querySelector(".qty");
+  const productInput = row.querySelector(".product");
   const sellInput  = row.querySelector(".sellingPrice");
+  const unitInput = row.querySelector(".unit");
   const totalInput = row.querySelector(".price");
   const priceInput = row.querySelector(".price");
+  attachSuggestionDropdown(productInput, () => productSuggestions);
 
   if (priceInput) priceInput.addEventListener("input", calculateLiveTotal);
 
   function updateFromSelling() {
     const qty  = Number(qtyInput.value)  || 0;
     const sp   = Number(sellInput.value) || 0;
-    const unit = row.querySelector(".unit").value;
+    const unit = unitInput.value;
 
     if (qty && sp) {
-      let total = qty * sp;
-      if (unit === "g") total = (qty / 1000) * sp;
+      const productData = productCosts[productInput.value.trim().toLowerCase()];
+      let total = calculateSellingLineTotal({
+        qty,
+        price: sp,
+        unit,
+        sellingUnit: productData?.sellingUnit || unit
+      });
       totalInput.value = Math.round(total * 100) / 100;
       calculateLiveTotal();
     }
@@ -192,6 +285,15 @@ function createItemRow(isFirst = false, data = {}) {
 
   qtyInput.addEventListener("input", updateFromSelling);
   sellInput.addEventListener("input", updateFromSelling);
+  unitInput.addEventListener("change", updateFromSelling);
+  productInput.addEventListener("change", () => {
+    const productData = productCosts[productInput.value.trim().toLowerCase()];
+    if (productData?.sellingPrice && !sellInput.value) {
+      sellInput.value = productData.sellingPrice;
+      row.querySelector(".unit").value = productData.unit || "kg";
+      updateFromSelling();
+    }
+  });
 
   if (!isFirst) {
     row.querySelector(".removeBtn").onclick = () => {
@@ -250,7 +352,7 @@ document.getElementById("mainBtn").onclick = async () => {
 
       const hasCost = !!productData;
       const profit  = hasCost ? price - (cost * finalQty) : null;
-      items.push({ product, qty, unit, price, sellingPrice, profit, hasCost });
+      items.push({ product, qty, unit, price, sellingPrice, sellingUnit: normalizeSellingUnit(productData?.sellingUnit || "", unit), profit, hasCost });
       totalAmount += price;
       if (hasCost) totalProfit += profit;
     }
@@ -432,7 +534,12 @@ function loadProducts() {
 
     snap.forEach(d => {
       const p = d.data();
-      productCosts[p.name.toLowerCase()] = { cost: Number(p.cost), unit: p.unit || "kg" };
+      productCosts[p.name.toLowerCase()] = {
+        cost: Number(p.cost),
+        sellingPrice: Number(p.sellingPrice || 0),
+        unit: p.unit || "kg",
+        sellingUnit: normalizeSellingUnit(p.sellingUnit || "", p.unit || "kg")
+      };
       productList.push(p.name);
       updateProductCosts(productCosts);
 
@@ -440,8 +547,9 @@ function loadProducts() {
         <tr>
           <td>${p.name}</td>
           <td>${p.cost} / ${p.unit || "kg"}</td>
+          <td>${p.sellingPrice ? `${p.sellingPrice} / ${sellingUnitLabel(p.sellingUnit, p.unit || "kg")}` : "Not set"}</td>
           <td>
-            <button onclick="editProduct('${d.id}', '${p.name}', '${p.cost}', '${p.unit}')">Edit</button>
+            <button onclick='editProduct(${JSON.stringify(d.id)}, ${JSON.stringify(p.name)}, ${JSON.stringify(p.cost)}, ${JSON.stringify(p.unit || "kg")}, ${JSON.stringify(p.sellingPrice || "")}, ${JSON.stringify(p.sellingUnit || "")})'>Edit</button>
             <button onclick="deleteProduct('${d.id}')">Delete</button>
           </td>
         </tr>
@@ -451,8 +559,10 @@ function loadProducts() {
     document.getElementById("productsList")?.remove();
     const dl = document.createElement("datalist");
     dl.id = "productsList";
-    dl.innerHTML = productList.map(p => `<option value="${p}">`).join("");
-    document.body.appendChild(dl);
+    productSuggestions = mergeSuggestions(productList, COMMON_ITEM_NAMES);
+    dl.innerHTML = renderOptions(productSuggestions);
+    attachSuggestionDropdown(document.getElementById("prodName"), () => productSuggestions);
+  document.body.appendChild(dl);
   });
 }
 
@@ -462,31 +572,50 @@ window.addOrUpdateProduct = async () => {
 
   const name = document.getElementById("prodName").value;
   const cost = document.getElementById("prodCost").value;
+  const sellingPrice = Number(document.getElementById("prodSellingPrice").value) || 0;
   const unit = document.getElementById("prodUnit").value;
+  const sellingUnit = document.getElementById("prodSellingUnit").value;
 
-  if (!name || !cost) return;
+  if (!name) return;
 
   if (productEditId) {
-    await updateDoc(userDoc("products", productEditId), { name, cost: Number(cost), unit });
+    await updateDoc(userDoc("products", productEditId), { name, cost: Number(cost) || 0, sellingPrice, unit, sellingUnit: normalizeSellingUnit(sellingUnit, unit) });
+    await updateInventorySellingPrice(name, sellingPrice, unit, sellingUnit);
     productEditId = null;
     document.getElementById("prodBtn").innerText = "Add";
   } else {
-    await addDoc(userCol("products"), { name, cost: Number(cost), unit });
+    await addDoc(userCol("products"), { name, cost: Number(cost) || 0, sellingPrice, unit, sellingUnit: normalizeSellingUnit(sellingUnit, unit) });
+    await updateInventorySellingPrice(name, sellingPrice, unit, sellingUnit);
   }
 
   document.getElementById("prodName").value = "";
   document.getElementById("prodCost").value = "";
+  document.getElementById("prodSellingPrice").value = "";
   document.getElementById("prodUnit").value = "kg";
+  document.getElementById("prodSellingUnit").value = "kg";
 };
 
 /* ---------- EDIT PRODUCT ---------- */
-window.editProduct = (id, name, cost, unit) => {
+window.editProduct = (id, name, cost, unit, sellingPrice = "", sellingUnit = "") => {
   document.getElementById("prodName").value = name;
   document.getElementById("prodCost").value = cost;
+  document.getElementById("prodSellingPrice").value = sellingPrice;
   document.getElementById("prodUnit").value = unit || "kg";
+  document.getElementById("prodSellingUnit").value = normalizeSellingUnit(sellingUnit, unit || "kg");
   productEditId = id;
   document.getElementById("prodBtn").innerText = "Update";
 };
+
+async function updateInventorySellingPrice(name, sellingPrice, unit, sellingUnit = "") {
+  if (!sellingPrice) return;
+  const snap = await getDocs(userCol("inventory"));
+  for (const item of snap.docs) {
+    const data = item.data();
+    if ((data.product || "").toLowerCase() === name.toLowerCase()) {
+      await updateDoc(userDoc("inventory", item.id), { sellingPrice, sellingUnit: normalizeSellingUnit(sellingUnit, unit) });
+    }
+  }
+}
 
 /* ---------- DELETE PRODUCT ---------- */
 window.deleteProduct = async (id) => {
@@ -588,6 +717,10 @@ function loadSales() {
 function loadCustomerOrders() {
   const list = document.getElementById("liveOrdersList");
   if (!list) return;
+  if (shopProfile?.publicOrdersEnabled === false) {
+    list.innerHTML = `<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text-muted);font-size:13px;">Customer orders are disabled for this shop.</div>`;
+    return;
+  }
 
   onSnapshot(
     query(userCol("customerOrders"), orderBy("createdAt", "desc")),
@@ -617,30 +750,61 @@ function renderCustomerOrders(orders) {
     const items = Array.isArray(order.items) ? order.items : [];
     const itemsText = items.map(item => `${item.product} (${item.qty} ${item.unit || ""})`).join(", ");
     const status = order.status || "new";
-    const statusColor = status === "new" ? "var(--danger)" : status === "accepted" ? "var(--accent)" : "#a05c00";
+    const statusColor = status === "new" ? "var(--danger)" : status === "packing" ? "#a05c00" : "var(--accent)";
+    const fulfillment = order.fulfillmentType === "pickup" ? "Pickup" : "Delivery";
+    const paymentText = order.paymentMode === "online"
+      ? `Online - ${paymentStatusLabel(order.paymentStatus)}`
+      : "COD";
+    const feeText = order.handlingFee || order.deliveryFee
+      ? `Items ₹${Math.round(order.subtotal || 0).toLocaleString("en-IN")} · Handling ₹${Math.round(order.handlingFee || 0)} · Delivery ₹${Math.round(order.deliveryFee || 0)}`
+      : "";
 
     return `
       <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:10px;">
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
           <div>
-            <div style="font-size:12px;font-weight:700;color:${statusColor};text-transform:uppercase;">${status}</div>
+            <div style="font-size:12px;font-weight:700;color:${statusColor};text-transform:uppercase;">${statusLabel(status)}</div>
             <div style="font-size:16px;font-weight:700;">${order.customerName || "Customer"}</div>
-            <div style="font-size:12px;color:var(--text-muted);">${order.customerPhone || ""}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${order.customerPhone || ""} · ${fulfillment} · ${paymentText}</div>
           </div>
           <div style="font-size:18px;font-weight:700;color:var(--accent);white-space:nowrap;">₹${Math.round(order.totalAmount || 0).toLocaleString("en-IN")}</div>
         </div>
         <div style="font-size:13px;color:var(--text-secondary);line-height:1.4;">${itemsText || "No items"}</div>
+        ${feeText ? `<div style="font-size:12px;color:var(--text-muted);">${feeText}</div>` : ""}
         ${order.customerAddress ? `<div style="font-size:12px;color:var(--text-muted);">Address: ${order.customerAddress}</div>` : ""}
         ${order.note ? `<div style="font-size:12px;color:var(--text-muted);">Note: ${order.note}</div>` : ""}
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          ${status === "new" ? `<button onclick="updateCustomerOrderStatus('${order.id}', 'accepted')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:white;font-weight:600;cursor:pointer;">Accept</button>` : ""}
-          ${status !== "ready" ? `<button onclick="updateCustomerOrderStatus('${order.id}', 'ready')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;">Ready</button>` : ""}
-          <button onclick="completeCustomerOrder('${order.id}')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent-light);color:var(--accent);font-weight:600;cursor:pointer;">Delivered</button>
+          ${status === "new" ? `<button onclick="updateCustomerOrderStatus('${order.id}', 'packing')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:white;font-weight:600;cursor:pointer;">Start packing</button>` : ""}
+          ${status !== "new" && status !== "packed" ? `<button onclick="updateCustomerOrderStatus('${order.id}', 'packed')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;">Mark packed</button>` : ""}
+          <button onclick="completeCustomerOrder('${order.id}')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent-light);color:var(--accent);font-weight:600;cursor:pointer;">${order.fulfillmentType === "pickup" ? "Received" : "Delivered"}</button>
           <button onclick="updateCustomerOrderStatus('${order.id}', 'rejected')" style="padding:7px 12px;border-radius:8px;border:1px solid rgba(249,112,102,.35);background:#fff1f1;color:var(--danger);cursor:pointer;">Reject</button>
         </div>
       </div>
     `;
   }).join("");
+}
+
+function paymentStatusLabel(status = "") {
+  const labels = {
+    online_submitted: "payment submitted",
+    online_verified: "payment verified",
+    online_rejected: "payment rejected",
+    cod: "cash"
+  };
+  return labels[status] || status || "cash";
+}
+
+function statusLabel(status) {
+  const labels = {
+    new: "New order",
+    accepted: "Accepted",
+    packing: "Packing",
+    ready: "Packed",
+    packed: "Packed",
+    delivered: "Completed",
+    rejected: "Rejected"
+  };
+  return labels[status] || status;
 }
 
 window.updateCustomerOrderStatus = async (orderId, status) => {
@@ -667,8 +831,11 @@ window.completeCustomerOrder = async (orderId) => {
   const items = normalizeCustomerOrderItems(order.items || []);
   const orderNumber = await getNextOrderNumber();
   const date = new Date().toISOString().split("T")[0];
-  const totalAmount = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
-  const totalProfit = items.reduce((sum, item) => sum + (item.profit === null ? 0 : Number(item.profit || 0)), 0);
+  const itemSubtotal = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const serviceFees = Number(order.handlingFee || 0) + Number(order.deliveryFee || 0);
+  const paymentMode = order.paymentMode === "online" && order.paymentStatus === "online_verified" ? "upi" : "cash";
+  const totalAmount = Number(order.totalAmount || 0) || itemSubtotal + serviceFees;
+  const totalProfit = items.reduce((sum, item) => sum + (item.profit === null ? 0 : Number(item.profit || 0)), 0) + serviceFees;
 
   const saleRef = await addDoc(userCol("sales"), {
     orderNumber,
@@ -678,7 +845,11 @@ window.completeCustomerOrder = async (orderId) => {
     items,
     totalProfit,
     totalAmount,
-    paymentMode: "cash",
+    subtotal: Number(order.subtotal || itemSubtotal),
+    handlingFee: Number(order.handlingFee || 0),
+    deliveryFee: Number(order.deliveryFee || 0),
+    paymentMode,
+    paymentStatus: order.paymentStatus || "cod",
     deliveryStatus: "delivered",
     source: "customer-shop",
     customerOrderId: orderId
@@ -687,6 +858,7 @@ window.completeCustomerOrder = async (orderId) => {
   await deductInventory(items);
   await updateDoc(orderRef, {
     status: "delivered",
+    paymentStatus: paymentMode === "cash" ? "cod_collected" : order.paymentStatus,
     saleId: saleRef.id,
     orderNumber,
     updatedAt: serverTimestamp()
@@ -702,6 +874,7 @@ function normalizeCustomerOrderItems(orderItems) {
     const unit = item.unit || "kg";
     const price = Number(item.price || 0);
     const sellingPrice = Number(item.sellingPrice || (qty ? price / qty : 0));
+    const sellingUnit = normalizeSellingUnit(item.sellingUnit || "", unit);
     const productData = productCosts[product];
     let finalQty = qty;
 
@@ -716,6 +889,7 @@ function normalizeCustomerOrderItems(orderItems) {
       unit,
       price,
       sellingPrice,
+      sellingUnit,
       profit: productData ? price - (Number(productData.cost || 0) * finalQty) : null,
       hasCost: !!productData
     };
@@ -739,9 +913,10 @@ window.updateStatus = async (id, newStatus) => {
 
   await updateDoc(saleRef, { deliveryStatus: newStatus });
 
-  if (!wasDelivered && isNowDelivered) {
-    await deductInventory(saleData.items);
-    if (saleData.paymentMode === "credit" && (saleData.creditAmount || 0) > 0) {
+    if (!wasDelivered && isNowDelivered) {
+      await deductInventory(saleData.items);
+      if (saleData.customerOrderId) await markCustomerOrderDelivered(saleData.customerOrderId, saleData);
+      if (saleData.paymentMode === "credit" && (saleData.creditAmount || 0) > 0) {
       await handleCreditFromSale({
         userId: currentUserId,
         customer: saleData.customer,
@@ -761,6 +936,15 @@ window.updateStatus = async (id, newStatus) => {
     }
   }
 };
+
+async function markCustomerOrderDelivered(orderId, saleData) {
+  const update = {
+    status: "delivered",
+    updatedAt: serverTimestamp()
+  };
+  if (saleData.paymentMode === "cash") update.paymentStatus = "cod_collected";
+  await updateDoc(userDoc("customerOrders", orderId), update);
+}
 
 /* ---------- RECALCULATE PROFIT FOR ONE SALE ---------- */
 window.recalcSale = async (id) => {

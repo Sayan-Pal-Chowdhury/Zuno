@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Credit — Zuno</title>
   <link rel="stylesheet" href="style.css">
   <style>
@@ -533,11 +534,13 @@ onAuthStateChanged(auth, (user) => {
     <div class="modal-title">Add Credit Manually</div>
     <div class="modal-form-group">
       <label>Customer Name</label>
-      <input type="text" id="addCreditName" placeholder="e.g. Ramesh Kumar">
+      <input type="text" id="addCreditName" list="creditCustomerNames" placeholder="e.g. Ramesh Kumar">
+      <datalist id="creditCustomerNames"></datalist>
     </div>
     <div class="modal-form-group">
       <label>Phone (optional)</label>
-      <input type="text" id="addCreditPhone" placeholder="e.g. 9876543210">
+      <input type="text" id="addCreditPhone" list="creditCustomerPhones" placeholder="e.g. 9876543210">
+      <datalist id="creditCustomerPhones"></datalist>
     </div>
     <div class="modal-form-group">
       <label>Credit Amount (₹)</label>

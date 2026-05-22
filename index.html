@@ -1,7 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sales Tracker</title>
+  <script>
+    if (window.location.pathname === "/") {
+      window.location.replace("/shops.html");
+    }
+  </script>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="manifest" href="manifest.json">
@@ -22,25 +28,20 @@ onAuthStateChanged(auth, (user) => {
 });
 </script>
 
-<div style="max-width:860px; margin:0 auto 20px; display:flex; align-items:center; justify-content:space-between; padding-bottom:16px; border-bottom:1.5px solid var(--border);">
-  <div>
-    <p style="font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">AI Business Assistant</p>
-    <h1 style="margin:0; border:none; padding:0; font-size:24px;">Sales Tracker</h1>
-  </div>
-  <div style="text-align:right;">
-    <p style="font-size:11px; color:var(--text-muted);" id="headerDate"></p>
-    <p style="font-size:12px; font-weight:500; color:var(--accent); margin-top:2px;" id="headerOrder"></p>
-  </div>
-</div>
-
-<script>
-  const d = new Date();
-  document.getElementById("headerDate").textContent = d.toLocaleDateString("en-IN", {weekday:"short", day:"numeric", month:"short"});
-</script>
-
 <div style="background:white; padding:10px; border-radius:8px; margin-bottom:10px; display:flex; align-items:center; gap:10px;">
   <span style="font-size:16px; color:#555;">New Order:</span>
   <span id="orderDisplay" style="font-size:20px; font-weight:bold; color:#4CAF50;">ORD-001</span>
+</div>
+
+<div class="delivery-control" id="deliveryControl">
+  <div>
+    <div class="delivery-control-title">Customer order mode</div>
+    <div class="delivery-control-sub" id="deliveryModeText">Loading shop status...</div>
+  </div>
+  <div class="status-toggle-group">
+    <button type="button" class="slide-toggle" id="shopOpenToggleBtn" onclick="toggleShopOpen()"><span></span><b>Shop</b></button>
+    <button type="button" class="slide-toggle" id="deliveryToggleBtn" onclick="toggleDeliveryMode()"><span></span><b>Delivery</b></button>
+  </div>
 </div>
 
 <div class="entryRow">
@@ -94,10 +95,19 @@ onAuthStateChanged(auth, (user) => {
 <div id="productSection">
   <input id="prodName" placeholder="Product">
   <input id="prodCost" type="number" placeholder="Cost">
+  <input id="prodSellingPrice" type="number" placeholder="Selling price">
   <select id="prodUnit">
     <option value="kg">kg</option>
     <option value="g">gram</option>
     <option value="piece">piece</option>
+  </select>
+  <select id="prodSellingUnit">
+    <option value="kg">sell / kg</option>
+    <option value="500g">sell / 500g</option>
+    <option value="250g">sell / 250g</option>
+    <option value="100g">sell / 100g</option>
+    <option value="g">sell / gram</option>
+    <option value="piece">sell / piece</option>
   </select>
   <button onclick="addOrUpdateProduct()" id="prodBtn">Add</button>
   <table border="1">
@@ -105,6 +115,7 @@ onAuthStateChanged(auth, (user) => {
       <tr>
         <th>Name</th>
         <th>Cost</th>
+        <th>Selling Price</th>
         <th>Action</th>
       </tr>
     </thead>

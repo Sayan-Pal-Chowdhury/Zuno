@@ -100,7 +100,7 @@
 
     /* CHAT */
     .chat-box { background: var(--surface-solid); border: 1px solid var(--border); border-radius: 18px; padding: 16px; margin-bottom: 28px; opacity: 0; animation: fadeUp 0.7s ease forwards 0.9s; box-shadow: 0 8px 24px rgba(0,0,0,0.04); }
-    .chat-thread { min-height: 110px; display: flex; align-items: flex-end; color: var(--text3); font-size: 13px; line-height: 1.5; padding-bottom: 12px; }
+    .chat-thread { min-height: 82px; display: flex; align-items: flex-end; color: var(--text3); font-size: 13px; line-height: 1.5; padding-bottom: 12px; }
     .chat-input-row { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
     .chat-input { flex: 1; border: none; outline: none; background: var(--bg); border-radius: 14px; padding: 11px 14px; font-family: var(--font-body); font-size: 13px; color: var(--text); }
     .chat-send { width: 38px; height: 38px; border-radius: 14px; border: none; background: var(--orb-color); color: white; cursor: pointer; font-size: 16px; transition: transform 0.15s, background 1.2s; }
@@ -219,8 +219,8 @@
   <div class="chat-box">
     <div class="chat-thread">Chat will appear here.</div>
     <div class="chat-input-row">
-      <input class="chat-input" placeholder="Ask your assistant..." disabled>
-      <button class="chat-send" type="button" disabled>&gt;</button>
+      <input class="chat-input" id="queryInput" placeholder="Send a query to admin...">
+      <button class="chat-send" type="button" id="querySendBtn">&gt;</button>
     </div>
   </div>
 </div>
@@ -230,7 +230,7 @@
 <!-- FIREBASE -->
 <script type="module">
   import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, collection, getDocs, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
@@ -243,6 +243,7 @@
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const auth = getAuth(app);
+  let activeUser = null;
 
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -250,9 +251,30 @@
       return;
     }
 
+    activeUser = user;
     localStorage.setItem("currentUserId", user.uid);
-    const displayName = user.displayName || user.email.split("@")[0];
-document.getElementById("userName").textContent = displayName;
+    const profileRef = doc(db, "users", user.uid, "settings", "profile");
+    let profile = {};
+    try {
+      const profileSnap = await getDoc(profileRef);
+      profile = profileSnap.exists() ? profileSnap.data() : {};
+    } catch (error) {
+      console.log("Profile load error:", error);
+    }
+    const displayName = profile.ownerName || profile.name || profile.shopName || user.displayName || user.email?.split("@")[0] || "there";
+    document.getElementById("userName").textContent = displayName;
+
+    const savedAssistantName =
+      profile.assistantName ||
+      localStorage.getItem("assistantName_" + user.uid) ||
+      localStorage.getItem("assistantName") ||
+      "";
+
+    if (savedAssistantName) {
+      localStorage.setItem("assistantName_" + user.uid, savedAssistantName);
+      document.getElementById("onboarding").classList.add("hidden");
+      applyAssistantName(savedAssistantName);
+    }
 
     const today = new Date().toISOString().split("T")[0];
 
@@ -277,7 +299,7 @@ const snap = await getDocs(
       document.getElementById("todayOrders").textContent = todayOrders;
       document.getElementById("todayPending").textContent = todayPending;
 
-      const aName = localStorage.getItem("assistantName") || "Assistant";
+      const aName = savedAssistantName || "Assistant";
       const msgEl = document.getElementById("assistantMsg");
       const nameEl = document.getElementById("assistantMsgName");
       nameEl.textContent = aName + " says:";
@@ -301,6 +323,43 @@ const snap = await getDocs(
     console.log("Logout error:", e);
   }
 };
+
+  document.getElementById("querySendBtn").onclick = async () => {
+    const input = document.getElementById("queryInput");
+    const text = input.value.trim();
+    const user = activeUser || auth.currentUser;
+    if (!text || !user) return;
+    const profileSnap = await getDoc(doc(db, "users", user.uid, "settings", "profile")).catch(() => null);
+    const profile = profileSnap?.exists() ? profileSnap.data() : {};
+    await setDoc(doc(collection(db, "adminQueries")), {
+      uid: user.uid,
+      shopName: profile.name || profile.shopName || "",
+      ownerName: profile.ownerName || user.displayName || "",
+      email: user.email || "",
+      text,
+      status: "new",
+      createdAt: serverTimestamp()
+    });
+    input.value = "";
+    document.querySelector(".chat-thread").textContent = "Query sent to admin.";
+  };
+
+  window.saveName = async function(defaultName) {
+    const input = document.getElementById("nameInput");
+    const name = defaultName || input.value.trim() || "Assistant";
+    const user = activeUser || auth.currentUser;
+
+    if (user) {
+      await setDoc(doc(db, "users", user.uid, "settings", "profile"), {
+        assistantName: name,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      localStorage.setItem("assistantName_" + user.uid, name);
+    }
+
+    document.getElementById("onboarding").classList.add("hidden");
+    applyAssistantName(name);
+  };
 </script>
 
 <script>

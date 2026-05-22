@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Finance — Zuno</title>
   <link rel="stylesheet" href="style.css">
   <style>
@@ -98,6 +99,24 @@
     }
 
     .opening-balance-box input { width: 160px; height: 38px; }
+
+    .cash-adjustment-box {
+      max-width: 1000px;
+      margin: 12px auto 0;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 20px;
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .cash-adjustment-box .fg { display: flex; flex-direction: column; gap: 4px; }
+    .cash-adjustment-box label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+    .cash-adjustment-box input, .cash-adjustment-box select { height: 38px; }
 
     .charts-row {
       max-width: 1000px;
@@ -329,6 +348,32 @@ onAuthStateChanged(auth, (user) => {
   <span id="openingBalanceMsg" style="font-size:13px;color:var(--accent);min-height:18px;"></span>
 </div>
 
+<!-- CASH ADJUSTMENT -->
+<div class="cash-adjustment-box">
+  <div class="fg">
+    <label>Cash action</label>
+    <select id="cashAdjustmentType">
+      <option value="add">Add cash</option>
+      <option value="subtract">Subtract cash</option>
+      <option value="set">Set cash amount</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label>Amount (₹)</label>
+    <input type="number" id="cashAdjustmentAmount" placeholder="e.g. 250">
+  </div>
+  <div class="fg">
+    <label>Date</label>
+    <input type="date" id="cashAdjustmentDate">
+  </div>
+  <div class="fg">
+    <label>Note</label>
+    <input type="text" id="cashAdjustmentNote" placeholder="Reason">
+  </div>
+  <button onclick="saveCashAdjustment()" style="height:38px;padding:0 20px;background:var(--accent);color:white;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font);">Save Cash</button>
+  <span id="cashAdjustmentMsg" style="font-size:13px;color:var(--accent);min-height:18px;"></span>
+</div>
+
 <!-- OVERVIEW -->
 <div class="section-title">Overview</div>
 <div class="overview-grid">
@@ -489,6 +534,16 @@ onAuthStateChanged(auth, (user) => {
       <tbody id="expenseTable"></tbody>
     </table>
   </div>
+</div>
+
+<div class="section-title">Cash Adjustments</div>
+<div class="finance-table-wrap">
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Type</th><th>Note</th><th>Amount</th></tr>
+    </thead>
+    <tbody id="cashAdjustmentTable"></tbody>
+  </table>
 </div>
 
 <!-- VENDOR PAYABLES -->

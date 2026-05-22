@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sales — Zuno</title>
   <link rel="stylesheet" href="style.css">
   <style>
@@ -78,9 +79,11 @@
       background: var(--surface);
       border: 1.5px solid var(--border);
       border-radius: var(--radius-lg);
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
       box-shadow: var(--shadow-sm);
       margin-bottom: 100px;
+      -webkit-overflow-scrolling: touch;
     }
 
     #salesTableWrapper table {
@@ -88,6 +91,16 @@
       border: none;
       border-radius: 0;
       box-shadow: none;
+      min-width: 860px;
+    }
+
+    #salesTableWrapper td {
+      overflow-wrap: anywhere;
+    }
+
+    #salesTableWrapper th:last-child,
+    #salesTableWrapper td:last-child {
+      white-space: nowrap;
     }
 
     .empty-sales {
@@ -102,6 +115,13 @@
       .filter-bar input[type="text"],
       .filter-bar input[type="date"],
       .filter-bar select { width: 100%; }
+      #salesTableWrapper {
+        margin-left: -12px;
+        margin-right: -12px;
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+      }
     }
   </style>
   <link rel="manifest" href="manifest.json">

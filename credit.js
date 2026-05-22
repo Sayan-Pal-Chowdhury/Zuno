@@ -5,10 +5,12 @@ import {
   query, orderBy, getDocs, where
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { attachSuggestionDropdown } from "./item-suggestions.js";
 
 /* ---------- STATE ---------- */
 let currentUserId  = null;
 let creditMap      = {};   // creditId → credit doc
+let knownCustomers = [];
 let currentFilter  = "all";
 let currentView    = "card";
 let payingCreditId = null;
@@ -33,6 +35,16 @@ function normalizeName(name = "") {
 
 function normalizePhone(phone = "") {
   return phone.trim();
+}
+
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  }[char]));
 }
 
 function sameCustomer(record, customer, phone) {
@@ -178,6 +190,7 @@ function loadCredit() {
         creditMap[d.id] = { id: d.id, ...d.data() };
       });
       renderCredit();
+      renderCreditSuggestions();
       updateSummary();
     },
     error => {
@@ -192,8 +205,39 @@ onAuthStateChanged(auth, (user) => {
   currentUserId = user.uid;
   const payDateEl = document.getElementById("payDate");
 if (payDateEl) payDateEl.value = today();
+  bindCreditAutofill();
   loadCredit();
+  loadKnownCustomers();
 });
+
+async function loadKnownCustomers() {
+  try {
+    const [salesSnap, nestedCustomersSnap, publicCustomersSnap] = await Promise.all([
+      getDocs(userCol("sales")),
+      getDocs(userCol("customers")),
+      getDocs(collection(db, "customers"))
+    ]);
+    const map = new Map();
+    const addCustomer = (data = {}) => {
+      const name = data.customer || data.customerName || data.name || "";
+      const phone = data.phone || data.customerPhone || "";
+      const address = data.address || data.customerAddress || "";
+      const key = normalizePhone(phone) || normalizeName(name);
+      if (!key || map.has(key)) return;
+      map.set(key, { name, phone, address });
+    };
+    salesSnap.forEach(d => {
+      const sale = d.data();
+      addCustomer(sale);
+    });
+    nestedCustomersSnap.forEach(d => addCustomer(d.data()));
+    publicCustomersSnap.forEach(d => addCustomer(d.data()));
+    knownCustomers = [...map.values()];
+    renderCreditSuggestions();
+  } catch (error) {
+    console.warn("Customer suggestions failed:", error);
+  }
+}
 
 
 
@@ -372,7 +416,59 @@ window.openAddCreditModal = () => {
   document.getElementById("addCreditNote").value   = "";
   document.getElementById("addCreditMsg").textContent = "";
   document.getElementById("addCreditModal").classList.remove("hidden");
+  renderCreditSuggestions();
 };
+
+function renderCreditSuggestions() {
+  const nameList = document.getElementById("creditCustomerNames");
+  const phoneList = document.getElementById("creditCustomerPhones");
+  if (!nameList || !phoneList) return;
+  const entries = [...Object.values(creditMap), ...knownCustomers];
+  nameList.innerHTML = entries
+    .map(c => c.name || c.customer || "")
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b))
+    .map(name => `<option value="${escapeHtml(name)}"></option>`)
+    .join("");
+  phoneList.innerHTML = entries
+    .map(c => c.phone || "")
+    .filter(Boolean)
+    .sort()
+    .map(phone => `<option value="${escapeHtml(phone)}"></option>`)
+    .join("");
+  attachSuggestionDropdown(document.getElementById("addCreditName"), () => entries.map(c => c.name || c.customer || "").filter(Boolean), applyCreditMatch);
+  attachSuggestionDropdown(document.getElementById("addCreditPhone"), () => entries.map(c => c.phone || "").filter(Boolean), applyCreditMatch);
+}
+
+function applyCreditMatch() {
+  const nameInput = document.getElementById("addCreditName");
+  const phoneInput = document.getElementById("addCreditPhone");
+  const name = nameInput.value.trim();
+  const phone = phoneInput.value.trim();
+  const match = [...Object.values(creditMap), ...knownCustomers].find(c =>
+    (phone && normalizePhone(c.phone) === normalizePhone(phone)) ||
+    (name && normalizeName(c.name || c.customer) === normalizeName(name))
+  );
+  if (!match) return;
+  nameInput.value = match.name || match.customer || nameInput.value;
+  phoneInput.value = match.phone || phoneInput.value;
+}
+
+function bindCreditAutofill() {
+  const nameInput = document.getElementById("addCreditName");
+  const phoneInput = document.getElementById("addCreditPhone");
+  if (!nameInput || !phoneInput || nameInput.dataset.autofillBound) return;
+  nameInput.dataset.autofillBound = "1";
+
+  const applyMatch = () => {
+    applyCreditMatch();
+  };
+
+  nameInput.addEventListener("change", applyMatch);
+  nameInput.addEventListener("blur", applyMatch);
+  phoneInput.addEventListener("change", applyMatch);
+  phoneInput.addEventListener("blur", applyMatch);
+}
 
 window.closeAddCreditModal = () => {
   document.getElementById("addCreditModal").classList.add("hidden");
@@ -395,7 +491,7 @@ window.saveManualCredit = async () => {
   snap.forEach(d => {
     const c = d.data();
     if (phone && c.phone === phone) existing = { id: d.id, ...c };
-    else if (!phone && c.name?.toLowerCase() === name.toLowerCase()) existing = { id: d.id, ...c };
+    else if (c.name?.toLowerCase() === name.toLowerCase()) existing = { id: d.id, ...c };
   });
 
   if (existing) {
@@ -403,7 +499,9 @@ window.saveManualCredit = async () => {
     const newBalance = (existing.balance     || 0) + amount;
     await updateDoc(userDoc("credit", existing.id), {
       totalCredit: newTotal, balance: newBalance,
-      lastActivityDate: date, status: "active"
+      lastActivityDate: date, status: "active",
+      name: existing.name || name,
+      phone: existing.phone || phone || ""
     });
     await addDoc(userCol("creditHistory"), {
       creditId: existing.id, customerName: existing.name,

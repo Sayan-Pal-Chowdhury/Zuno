@@ -6,7 +6,12 @@
   <title>Order Status</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="shop.css?v=4">
+  <link rel="stylesheet" href="shop.css?v=8">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ffda00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zuno">
+  <link rel="apple-touch-icon" href="zuno-icon-192.png">
 </head>
 <body>
   <div id="shop-topbar"></div>
@@ -18,12 +23,18 @@
     </div>
 
     <section class="orders-list" id="ordersList">
-      <div class="empty-state">No order selected yet.</div>
+      <article class="order-card skeleton-card">
+        <div class="skeleton-pill"></div>
+        <div class="skeleton-line wide"></div>
+        <div class="skeleton-line medium"></div>
+        <div class="skeleton-line short"></div>
+      </article>
     </section>
   </main>
 
   <div id="shop-navbar"></div>
 
   <script type="module" src="orders.js"></script>
+  <script src="pwa.js" defer></script>
 </body>
 </html>

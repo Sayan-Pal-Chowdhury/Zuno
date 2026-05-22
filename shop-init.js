@@ -1,7 +1,8 @@
 /* shop-init.js
    Called after every successful Zuno login.
-   Checks if the shop profile exists; if not, redirects to shop-setup.html.
-   If yes, proceeds normally to home.html.
+   Routes new users through account mode first.
+   Inventory users go straight to the private app.
+   Public shop users go through shop setup and admin approval.
 */
 
 import { db, auth } from "./firebase.js";
@@ -16,13 +17,29 @@ export async function checkShopSetup() {
   try {
     const profileSnap = await getDoc(doc(db, "users", user.uid, "settings", "profile"));
 
-    if (!profileSnap.exists() || !profileSnap.data().storeId) {
-      // First time: go to setup.
-      window.location.href = "shop-setup.html";
-    } else {
-      // Already set up: go to dashboard.
-      window.location.href = "home.html";
+    if (!profileSnap.exists()) {
+      window.location.href = "account-type.html";
+      return;
     }
+
+    const profile = profileSnap.data();
+
+    if (profile.accountMode === "inventory") {
+      window.location.href = "home.html";
+      return;
+    }
+
+    if (profile.storeId) {
+      window.location.href = "home.html";
+      return;
+    }
+
+    if (profile.accountMode === "public_shop") {
+      window.location.href = "shop-setup.html";
+      return;
+    }
+
+    window.location.href = "account-type.html";
   } catch (e) {
     console.error("Shop init check failed:", e);
     window.location.href = "home.html";

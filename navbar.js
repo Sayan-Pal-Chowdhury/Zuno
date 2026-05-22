@@ -1,5 +1,8 @@
-import { auth } from "./firebase.js";
-import { signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const ADMIN_EMAILS = ["sayan123401@gmail.com"];
 
 /* ---------- DETECT ACTIVE PAGE ---------- */
 const path = window.location.pathname.toLowerCase();
@@ -430,6 +433,15 @@ nav.innerHTML = `
         <span class="zuno-drawer-item-arrow">›</span>
       </a>
 
+      <a href="/admin.html" class="zuno-drawer-item" id="zunoAdminDrawerItem" hidden>
+        <div class="zuno-drawer-item-icon" style="background:#fff7cc;">A</div>
+        <div class="zuno-drawer-item-text">
+          <span class="zuno-drawer-item-title">Admin</span>
+          <span class="zuno-drawer-item-sub">Personal approvals & operations</span>
+        </div>
+        <span class="zuno-drawer-item-arrow">›</span>
+      </a>
+
       <div class="zuno-drawer-divider"></div>
 
       <button class="zuno-drawer-item logout" onclick="showLogoutConfirm()">
@@ -451,7 +463,7 @@ nav.innerHTML = `
       <span class="zuno-nav-label">Home</span>
     </a>
 
-    <a href="/inventory.htm" class="zuno-nav-item ${isActive("inventory") ? "active" : ""}">
+    <a href="/inventory.htm" class="zuno-nav-item ${isActive("inventory") ? "active" : ""}" data-feature-link="inventoryEnabled">
       <span class="zuno-nav-icon">📦</span>
       <span class="zuno-nav-label">Inventory</span>
     </a>
@@ -463,7 +475,7 @@ nav.innerHTML = `
       <span class="zuno-nav-add-label">Order</span>
     </a>
 
-    <a href="/credit.html" class="zuno-nav-item ${isActive("credit") ? "active" : ""}">
+    <a href="/credit.html" class="zuno-nav-item ${isActive("credit") ? "active" : ""}" data-feature-link="creditEnabled">
       <span class="zuno-nav-icon">💳</span>
       <span class="zuno-nav-label">Credit</span>
     </a>
@@ -485,6 +497,7 @@ nav.innerHTML = `
   </nav>
 `;
 document.body.appendChild(nav);
+watchFeatureAccess();
 
 /* ---------- DRAWER LOGIC ---------- */
 function toggleDrawer() {
@@ -517,7 +530,7 @@ function showLogoutConfirm() {
 document.getElementById("zunoConfirmLogoutBtn").addEventListener("click", async () => {
   try {
     await signOut(auth);
-    window.location.href = "/login.html";
+    window.location.href = "/shops.html";
   } catch (e) {
     console.error("Logout error:", e);
   }
@@ -540,3 +553,36 @@ drawer.addEventListener("touchmove", e => {
 window.toggleDrawer    = toggleDrawer;
 window.closeDrawer     = closeDrawer;
 window.showLogoutConfirm = showLogoutConfirm;
+
+function watchFeatureAccess() {
+  onAuthStateChanged(auth, async user => {
+    document.getElementById("zunoAdminDrawerItem")?.toggleAttribute("hidden", !ADMIN_EMAILS.includes(user?.email || ""));
+    if (!user) return;
+
+    try {
+      const snap = await getDoc(doc(db, "users", user.uid, "settings", "profile"));
+      const profile = snap.exists() ? snap.data() : {};
+      applyFeatureVisibility(profile);
+    } catch (error) {
+      console.warn("Feature visibility failed:", error);
+    }
+  });
+}
+
+function applyFeatureVisibility(profile) {
+  document.querySelectorAll("[data-feature-link]").forEach(link => {
+    const key = link.dataset.featureLink;
+    link.hidden = profile[key] === false;
+  });
+
+  const disabledPages = {
+    inventoryEnabled: path.includes("inventory"),
+    creditEnabled: path.includes("credit")
+  };
+
+  Object.entries(disabledPages).forEach(([key, isCurrentPage]) => {
+    if (isCurrentPage && profile[key] === false) {
+      window.location.href = "/home.html";
+    }
+  });
+}

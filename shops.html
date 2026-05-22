@@ -6,7 +6,12 @@
   <title>Zuno Shops</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="shop.css?v=4">
+  <link rel="stylesheet" href="shop.css?v=8">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ffda00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zuno">
+  <link rel="apple-touch-icon" href="zuno-icon-192.png">
 </head>
 <body>
   <div id="shop-topbar"></div>
@@ -16,16 +21,41 @@
         <small>Available near you</small>
         <h1>Shop from local stores</h1>
         <p>Fresh stock, live availability, simple ordering.</p>
+        <div class="public-login-actions">
+          <a class="public-login-btn primary" href="login.html">Vendor Login</a>
+          <a class="public-login-btn" href="customer-login.html">Customer Login</a>
+        </div>
       </div>
-      <div class="hero-market-stack" aria-hidden="true">
+      <div class="hero-market-stack public-hero-stack" aria-hidden="true">
         <span>Zuno</span>
-        <b>Shops</b>
+        <b>Local</b>
       </div>
     </section>
+
+    <section class="customer-strip" id="customerStrip" hidden></section>
 
     <div class="toolbar">
       <input class="search-input" id="shopSearch" type="search" placeholder="Search shops..." oninput="filterShops()">
     </div>
+
+    <div class="section-head category-head">
+      <h2>Explore local</h2>
+      <button class="section-link" type="button" onclick="setMarketplaceCategory('all', this)">All</button>
+    </div>
+
+    <div class="category-row marketplace-category-row" id="marketplaceCategoryRow"></div>
+
+    <div class="section-head category-head">
+      <h2>Shop types nearby</h2>
+      <span id="typeCount">All</span>
+    </div>
+
+    <div class="shop-type-scroll" id="businessTypeRow"></div>
+
+    <section class="featured-carousel" id="featuredCarousel" hidden>
+      <div class="featured-track" id="featuredTrack"></div>
+      <div class="featured-dots" id="featuredDots"></div>
+    </section>
 
     <div class="section-head">
       <h2>Open Shops</h2>
@@ -33,10 +63,32 @@
     </div>
 
     <section class="shops-grid" id="shopsGrid">
-      <div class="empty-state">Loading shops...</div>
+      <article class="shop-card skeleton-shop-card">
+        <div class="skeleton-row">
+          <div class="skeleton-pill"></div>
+          <div class="skeleton-pill small"></div>
+        </div>
+        <div>
+          <div class="skeleton-line wide"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+      </article>
+      <article class="shop-card skeleton-shop-card">
+        <div class="skeleton-row">
+          <div class="skeleton-pill"></div>
+          <div class="skeleton-pill small"></div>
+        </div>
+        <div>
+          <div class="skeleton-line wide"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+      </article>
     </section>
   </main>
 
   <script type="module" src="shops.js"></script>
+  <script src="pwa.js" defer></script>
 </body>
 </html>

@@ -110,6 +110,78 @@ body > div:first-of-type {
 }
 
 /* ===== ENTRY CARD ===== */
+.delivery-control {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 14px;
+}
+
+.delivery-control-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.delivery-control-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.status-toggle-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.slide-toggle {
+  width: 112px;
+  height: 38px;
+  padding: 3px 9px 3px 3px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1.5px solid #a8d5bc;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.slide-toggle span {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--shadow-sm);
+  transition: transform .18s ease, background .18s ease;
+}
+
+.slide-toggle b {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.slide-toggle.off {
+  flex-direction: row-reverse;
+  border-color: #f4c07a;
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.slide-toggle.off span {
+  background: var(--warning);
+}
+
 .entryRow {
   background: var(--surface);
   border: 1.5px solid var(--border);
@@ -295,7 +367,9 @@ body > button:hover { background: var(--bg); }
 
 #prodName { width: 150px; }
 #prodCost { width: 100px; }
+#prodSellingPrice { width: 120px; }
 #prodUnit { width: 90px; }
+#prodSellingUnit { width: 130px; }
 
 /* ===== TABLES ===== */
 table {
@@ -346,8 +420,38 @@ tbody tr:hover { background: #fafaf8; }
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: var(--shadow-sm);
+  -webkit-overflow-scrolling: touch;
+}
+
+.zuno-suggestion-box {
+  position: fixed;
+  z-index: 3000;
+  width: min(280px, calc(100vw - 32px));
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--border-dark);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.zuno-suggestion-box[hidden] { display: none; }
+
+.zuno-suggestion-box button {
+  height: auto;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-primary);
+  text-align: left;
+  font-size: 13px;
+  box-shadow: none;
 }
 
 #salesSection table {
@@ -355,6 +459,16 @@ tbody tr:hover { background: #fafaf8; }
   border: none;
   border-radius: 0;
   box-shadow: none;
+  min-width: 860px;
+}
+
+#salesSection td {
+  overflow-wrap: anywhere;
+}
+
+#salesSection th:last-child,
+#salesSection td:last-child {
+  white-space: nowrap;
 }
 
 /* ===== STATUS BADGES ===== */
@@ -559,10 +673,18 @@ td:nth-child(8) {
   .itemRow .sellingPrice,
   .itemRow .price { width: calc(50% - 8px); }
 
-  #prodName, #prodCost { width: 100%; }
+  #prodName, #prodCost, #prodSellingPrice, #prodSellingUnit { width: 100%; }
 
   table { font-size: 13px; }
   th, td { padding: 8px 10px; }
+
+  #salesSection {
+    margin-left: -12px;
+    margin-right: -12px;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
 
   #dashboard p span { font-size: 18px; }
 }

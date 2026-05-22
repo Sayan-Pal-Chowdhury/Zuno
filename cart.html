@@ -6,7 +6,12 @@
   <title>Your Cart</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="shop.css?v=4">
+  <link rel="stylesheet" href="shop.css?v=8">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ffda00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zuno">
+  <link rel="apple-touch-icon" href="zuno-icon-192.png">
 </head>
 <body>
   <div id="shop-topbar"></div>
@@ -17,12 +22,35 @@
       <a id="continueShop" href="shop.html">Add more</a>
     </div>
 
-    <section class="cart-list" id="cartList"></section>
+    <section class="cart-list" id="cartList">
+      <article class="cart-card skeleton-card">
+        <div>
+          <div class="skeleton-line wide"></div>
+          <div class="skeleton-line medium"></div>
+        </div>
+        <div class="skeleton-button"></div>
+      </article>
+    </section>
 
     <section class="checkout-panel" id="checkoutPanel">
       <div class="checkout-total">
         <span>Total</span>
         <span id="cartTotal">Rs 0</span>
+      </div>
+      <div class="fee-lines">
+        <div><span>Items</span><span id="cartSubtotal">Rs 0</span></div>
+        <div><span>Handling charge</span><span id="handlingFee">Rs 10</span></div>
+        <div><span>Delivery fee</span><span id="deliveryFee">Rs 10</span></div>
+      </div>
+      <div class="fulfillment-note" id="fulfillmentNote"></div>
+      <div class="payment-box">
+        <label><input type="radio" name="paymentChoice" value="cod" checked> Cash on delivery / pickup</label>
+        <label><input type="radio" name="paymentChoice" value="online"> Pay online to Zuno</label>
+        <div class="online-pay-box" id="onlinePayBox" hidden>
+          <div class="muted" id="onlinePayInfo">Online payment details loading...</div>
+          <button class="secondary-btn" type="button" id="payOnlineBtn">Open PhonePe / UPI</button>
+          <label class="paid-check"><input type="checkbox" id="paidConfirm"> I paid</label>
+        </div>
       </div>
       <input id="customerName" placeholder="Your name">
       <input id="customerPhone" inputmode="tel" placeholder="Phone number">
@@ -36,5 +64,6 @@
   <div id="shop-navbar"></div>
 
   <script type="module" src="cart.js"></script>
+  <script src="pwa.js" defer></script>
 </body>
 </html>

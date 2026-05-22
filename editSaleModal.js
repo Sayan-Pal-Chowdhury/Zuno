@@ -4,6 +4,7 @@ import {
   deleteDoc, getDocs, getDoc, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale } from "./credit.js";
+import { calculateSellingLineTotal, normalizeSellingUnit } from "./unit-pricing.js";
 
 /* ---------- STATE ---------- */
 let _userId       = null;
@@ -233,16 +234,18 @@ function esdCreateItemRow(data = {}) {
   `;
 
   const qtyInput   = row.querySelector(".qty");
+  const productInput = row.querySelector(".product");
   const sellInput  = row.querySelector(".sellingPrice");
+  const unitInput = row.querySelector(".unit");
   const totalInput = row.querySelector(".price");
 
   function updateFromSelling() {
     const qty  = Number(qtyInput.value)  || 0;
     const sp   = Number(sellInput.value) || 0;
-    const unit = row.querySelector(".unit").value;
+    const unit = unitInput.value;
     if (qty && sp) {
-      let total = qty * sp;
-      if (unit === "g") total = (qty / 1000) * sp;
+      const productData = _productCosts[productInput.value.trim().toLowerCase()];
+      const total = calculateSellingLineTotal({ qty, price: sp, unit, sellingUnit: productData?.sellingUnit || unit });
       totalInput.value = Math.round(total * 100) / 100;
       esdUpdateTotal();
     }
@@ -250,7 +253,15 @@ function esdCreateItemRow(data = {}) {
 
   qtyInput.addEventListener("input", updateFromSelling);
   sellInput.addEventListener("input", updateFromSelling);
+  unitInput.addEventListener("change", updateFromSelling);
   totalInput.addEventListener("input", esdUpdateTotal);
+  productInput.addEventListener("change", () => {
+    const productData = _productCosts[productInput.value.trim().toLowerCase()];
+    if (!productData) return;
+    if (productData.sellingPrice && !sellInput.value) sellInput.value = productData.sellingPrice;
+    row.querySelector(".unit").value = productData.unit || "kg";
+    updateFromSelling();
+  });
 
   container.appendChild(row);
 }
@@ -306,7 +317,7 @@ window.saveEditSale = async () => {
 
       const hasCost = !!productData;
       const profit  = hasCost ? price - (cost * finalQty) : null;
-      items.push({ product, qty, unit, price, sellingPrice, profit, hasCost });
+      items.push({ product, qty, unit, price, sellingPrice, sellingUnit: normalizeSellingUnit(productData?.sellingUnit || "", unit), profit, hasCost });
       totalAmount += price;
       if (hasCost) totalProfit += profit;
     }
