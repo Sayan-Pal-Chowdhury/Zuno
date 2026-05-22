@@ -824,8 +824,15 @@ window.completeCustomerOrder = async (orderId) => {
 
   const order = orderSnap.data();
   if (order.saleId) {
-    await updateDoc(orderRef, { status: "delivered", updatedAt: serverTimestamp() });
-    return;
+    const linkedSale = await getDoc(userDoc("sales", order.saleId));
+    if (linkedSale.exists() && linkedSale.data().deliveryStatus !== "delivered") {
+      await updateStatus(order.saleId, "delivered");
+      return;
+    }
+    if (linkedSale.exists()) {
+      await updateDoc(orderRef, { status: "delivered", updatedAt: serverTimestamp() });
+      return;
+    }
   }
 
   const items = normalizeCustomerOrderItems(order.items || []);
@@ -928,6 +935,7 @@ window.updateStatus = async (id, newStatus) => {
     }
   } else if (wasDelivered && !isNowDelivered) {
     await revertInventory(saleData.items);
+    if (saleData.customerOrderId) await markCustomerOrderReopened(saleData.customerOrderId, saleData);
     if (saleData.paymentMode === "credit") {
       await reverseCreditForSale({
         userId: currentUserId,
@@ -943,6 +951,15 @@ async function markCustomerOrderDelivered(orderId, saleData) {
     updatedAt: serverTimestamp()
   };
   if (saleData.paymentMode === "cash") update.paymentStatus = "cod_collected";
+  await updateDoc(userDoc("customerOrders", orderId), update);
+}
+
+async function markCustomerOrderReopened(orderId, saleData) {
+  const update = {
+    status: "packed",
+    updatedAt: serverTimestamp()
+  };
+  if (saleData.paymentMode === "cash") update.paymentStatus = "cod";
   await updateDoc(userDoc("customerOrders", orderId), update);
 }
 
@@ -1057,6 +1074,16 @@ window.deleteSale = async (id) => {
         userId: currentUserId,
         sale: saleData
       });
+    }
+
+    if (saleData.customerOrderId) {
+      const customerOrderUpdate = {
+        status: "packed",
+        saleId: null,
+        updatedAt: serverTimestamp()
+      };
+      if (saleData.paymentMode === "cash") customerOrderUpdate.paymentStatus = "cod";
+      await updateDoc(userDoc("customerOrders", saleData.customerOrderId), customerOrderUpdate);
     }
   }
 

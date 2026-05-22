@@ -1,7 +1,7 @@
 import { db } from "./firebase.js";
 import {
   collection, addDoc, doc, updateDoc,
-  deleteDoc, getDocs, getDoc, query, orderBy
+  deleteDoc, getDocs, getDoc, query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale } from "./credit.js";
 import { calculateSellingLineTotal, normalizeSellingUnit } from "./unit-pricing.js";
@@ -368,8 +368,10 @@ window.saveEditSale = async () => {
 
     if (!wasDelivered && isNowDelivered) {
       await deductInventory(items);
+      if (_editOriginal?.customerOrderId) await markCustomerOrderDelivered(_editOriginal.customerOrderId, data);
     } else if (wasDelivered && !isNowDelivered) {
       await revertInventory(_editOriginal.items);
+      if (_editOriginal?.customerOrderId) await markCustomerOrderReopened(_editOriginal.customerOrderId, _editOriginal);
     } else if (wasDelivered && isNowDelivered) {
       await revertInventory(_editOriginal.items);
       await deductInventory(items);
@@ -427,9 +429,36 @@ export async function deleteSaleById(id) {
         sale: s
       });
     }
+    if (s.customerOrderId) {
+      const customerOrderUpdate = {
+        status: "packed",
+        saleId: null,
+        updatedAt: serverTimestamp()
+      };
+      if (s.paymentMode === "cash") customerOrderUpdate.paymentStatus = "cod";
+      await updateDoc(userDoc("customerOrders", s.customerOrderId), customerOrderUpdate);
+    }
   }
 
   await deleteDoc(saleRef);
+}
+
+async function markCustomerOrderDelivered(orderId, saleData) {
+  const update = {
+    status: "delivered",
+    updatedAt: serverTimestamp()
+  };
+  if (saleData.paymentMode === "cash") update.paymentStatus = "cod_collected";
+  await updateDoc(userDoc("customerOrders", orderId), update);
+}
+
+async function markCustomerOrderReopened(orderId, saleData) {
+  const update = {
+    status: "packed",
+    updatedAt: serverTimestamp()
+  };
+  if (saleData.paymentMode === "cash") update.paymentStatus = "cod";
+  await updateDoc(userDoc("customerOrders", orderId), update);
 }
 
 /* ---------- DEDUCT INVENTORY ---------- */

@@ -15,7 +15,7 @@ export function getCart(storeId) {
 }
 
 export function getCartCount(storeId) {
-  return getCart(storeId).reduce((sum, item) => sum + Number(item.qty || 0), 0);
+  return getCart(storeId).length;
 }
 
 export function getCartTotal(storeId) {

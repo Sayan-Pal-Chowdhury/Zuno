@@ -192,6 +192,9 @@ function injectInstallStyles() {
 
 function showZunoBootSplash() {
   if (document.getElementById("zunoBootSplash")) return;
+  if (sessionStorage.getItem("zunoBootSplashSeen")) return;
+  sessionStorage.setItem("zunoBootSplashSeen", "shown");
+
   const style = document.createElement("style");
   style.id = "zunoBootSplashStyles";
   style.textContent = `
@@ -202,7 +205,8 @@ function showZunoBootSplash() {
       display: grid;
       place-items: center;
       background: #ffda00;
-      transition: opacity .28s ease, visibility .28s ease;
+      overflow: hidden;
+      transition: opacity .42s ease, visibility .42s ease;
     }
     #zunoBootSplash.hide {
       opacity: 0;
@@ -212,26 +216,46 @@ function showZunoBootSplash() {
     .zuno-boot-mark {
       display: grid;
       place-items: center;
-      gap: 14px;
+      gap: 16px;
       color: #191713;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-weight: 900;
+      text-align: center;
+      animation: zunoBootMarkIn .62s ease both;
     }
     .zuno-boot-logo {
-      width: 86px;
-      height: 86px;
-      border-radius: 24px;
+      width: 104px;
+      height: 104px;
+      border-radius: 30px;
       background: #fff;
       display: grid;
       place-items: center;
       box-shadow: 0 22px 60px rgba(25,23,19,.18);
-      animation: zunoBootPulse 1s ease-in-out infinite alternate;
+      animation: zunoBootPulse 1.1s ease-in-out infinite alternate;
     }
-    .zuno-boot-logo img { width: 70px; height: 70px; object-fit: contain; }
-    .zuno-boot-text { font-size: 18px; letter-spacing: .04em; }
+    .zuno-boot-logo img { width: 84px; height: 84px; object-fit: contain; }
+    .zuno-boot-name { font-size: 30px; line-height: 1; letter-spacing: 0; }
+    .zuno-boot-copy {
+      max-width: min(310px, calc(100vw - 42px));
+      color: rgba(25,23,19,.78);
+      font-size: 15px;
+      line-height: 1.35;
+      font-weight: 800;
+      letter-spacing: 0;
+      opacity: 0;
+      transform: translateY(12px);
+      animation: zunoBootCopyIn .58s .58s ease forwards;
+    }
+    @keyframes zunoBootMarkIn {
+      from { opacity: 0; transform: translateY(18px) scale(.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
     @keyframes zunoBootPulse {
       from { transform: scale(.96); }
       to { transform: scale(1.04); }
+    }
+    @keyframes zunoBootCopyIn {
+      to { opacity: 1; transform: translateY(0); }
     }
   `;
   document.head.appendChild(style);
@@ -241,15 +265,16 @@ function showZunoBootSplash() {
   splash.innerHTML = `
     <div class="zuno-boot-mark">
       <div class="zuno-boot-logo"><img src="/zuno-logo.png" alt=""></div>
-      <div class="zuno-boot-text">ZUNO</div>
+      <div class="zuno-boot-name">ZUNO</div>
+      <div class="zuno-boot-copy">Order from your favourite shops.</div>
     </div>
   `;
   document.documentElement.appendChild(splash);
 
   const hide = () => {
     splash.classList.add("hide");
-    setTimeout(() => splash.remove(), 360);
+    setTimeout(() => splash.remove(), 520);
   };
-  window.addEventListener("load", () => setTimeout(hide, 350), { once: true });
-  setTimeout(hide, 2200);
+  window.addEventListener("load", () => setTimeout(hide, 1450), { once: true });
+  setTimeout(hide, 3200);
 }

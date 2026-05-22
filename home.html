@@ -94,6 +94,23 @@
     .msg-avatar { width: 34px; height: 34px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; background: var(--bg); border: 1px solid var(--border); }
     .msg-text { font-size: 13px; color: var(--text2); line-height: 1.65; }
     .msg-text strong { color: var(--text); font-weight: 500; }
+    .pending-orders-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 16px;
+      padding: 0 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface-solid);
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+    }
+    .pending-orders-link span:last-child { color: var(--c-orders); font-size: 18px; }
 
     /* SECTION LABEL */
     .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin-bottom: 14px; }
@@ -214,6 +231,11 @@
       <strong id="assistantMsgName">Assistant says:</strong> Loading your business data…
     </div>
   </div>
+
+  <a class="pending-orders-link" href="index.html#liveOrdersSection">
+    <span>Pending customer orders</span>
+    <span>&gt;</span>
+  </a>
 
   <!-- CHAT PLACEHOLDER -->
   <div class="chat-box">

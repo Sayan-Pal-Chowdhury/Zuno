@@ -160,7 +160,7 @@ function renderTypeRow() {
 
 function renderProduct(product) {
   const qtyInCart = getItemQty(store.storeId, product.id);
-  const out = product.qty <= 0;
+  const out = product.qty <= 0 && store.forceInStock !== true;
   const low = product.alertThreshold > 0 && product.qty <= product.alertThreshold && product.qty > 0;
   const icon = getProductIcon(product.name);
   const hasImage = Boolean(product.imageUrl);
@@ -174,7 +174,7 @@ function renderProduct(product) {
       <div class="product-body">
         <p class="product-name">${product.name}</p>
         <div class="product-price">${formatMoney(product.price)} / ${sellingUnitLabel(product.sellingUnit, product.unit)}</div>
-        <div class="product-stock ${low ? "low" : ""}">${out ? "Currently unavailable" : `${roundQty(product.qty)} ${product.unit} available`}</div>
+        <div class="product-stock ${low ? "low" : ""}">${out ? "Currently unavailable" : product.qty <= 0 ? "Available to order" : `${roundQty(product.qty)} ${product.unit} available`}</div>
         <div id="action-${product.id}">
           ${renderAction(product, qtyInCart)}
         </div>
@@ -184,7 +184,7 @@ function renderProduct(product) {
 }
 
 function renderAction(product, qtyInCart) {
-  if (product.qty <= 0) return `<button class="add-btn" disabled>Out of stock</button>`;
+  if (product.qty <= 0 && store.forceInStock !== true) return `<button class="add-btn" disabled>Out of stock</button>`;
   if (qtyInCart > 0) {
     return `
       <div class="qty-control">
@@ -218,7 +218,7 @@ window.changeQty = function(productId, delta) {
   if (!product) return;
   const step = getQtyStepForSellingUnit(product);
   const next = getItemQty(store.storeId, productId) + (delta * step);
-  if (next > product.qty) return;
+  if (store.forceInStock !== true && next > product.qty) return;
   updateQty(store.storeId, productId, next);
   renderProducts();
   updateCartBadge(store.storeId);

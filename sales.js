@@ -2,7 +2,7 @@ import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, upda
 import { db, auth } from "./firebase.js";
 import {
   collection, onSnapshot, query,
-  orderBy, getDocs, getDoc, updateDoc, doc, addDoc, where
+  orderBy, getDocs, getDoc, updateDoc, doc, addDoc, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -290,6 +290,7 @@ window.updateStatus = async (id, newStatus) => {
   // status change inventory handled by editSaleModal pattern
 if (!wasDelivered && isNowDelivered) {
     await deductInventory(saleData.items);
+    if (saleData.customerOrderId) await markCustomerOrderDelivered(saleData.customerOrderId, saleData);
     if (saleData.paymentMode === "credit" && (saleData.creditAmount || 0) > 0) {
       await handleCreditFromSale({
         userId: currentUserId,
@@ -302,6 +303,7 @@ if (!wasDelivered && isNowDelivered) {
     }
   } else if (wasDelivered && !isNowDelivered) {
     await revertInventory(saleData.items);
+    if (saleData.customerOrderId) await markCustomerOrderReopened(saleData.customerOrderId, saleData);
     if (saleData.paymentMode === "credit") {
       await reverseCreditForSale({
         userId: currentUserId,
@@ -310,6 +312,24 @@ if (!wasDelivered && isNowDelivered) {
     }
   }
 };
+
+async function markCustomerOrderDelivered(orderId, saleData) {
+  const update = {
+    status: "delivered",
+    updatedAt: serverTimestamp()
+  };
+  if (saleData.paymentMode === "cash") update.paymentStatus = "cod_collected";
+  await updateDoc(userDoc("customerOrders", orderId), update);
+}
+
+async function markCustomerOrderReopened(orderId, saleData) {
+  const update = {
+    status: "packed",
+    updatedAt: serverTimestamp()
+  };
+  if (saleData.paymentMode === "cash") update.paymentStatus = "cod";
+  await updateDoc(userDoc("customerOrders", orderId), update);
+}
 
 /* ---------- CREDIT HISTORY / EDIT FROM SALES ---------- */
 window.openSaleCreditHistory = async (saleId) => {

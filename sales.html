@@ -148,7 +148,10 @@ onAuthStateChanged(auth, (user) => {
     <p style="font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">Zuno</p>
     <h1 style="margin:0;border:none;padding:0;font-size:24px;">Sales</h1>
   </div>
-  <button onclick="openNewSaleModal()" style="background:var(--accent);color:white;border:none;padding:8px 18px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font);">+ New Sale</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a href="index.html#liveOrdersSection" style="display:inline-flex;align-items:center;text-decoration:none;background:var(--bg);color:var(--text-primary);border:1.5px solid var(--border-dark);padding:8px 14px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;font-family:var(--font);">Pending customer orders</a>
+    <button onclick="openNewSaleModal()" style="background:var(--accent);color:white;border:none;padding:8px 18px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font);">+ New Sale</button>
+  </div>
 </div>
 
 <!-- SUMMARY STRIP -->

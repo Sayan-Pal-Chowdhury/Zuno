@@ -53,6 +53,7 @@ export async function getShopProfile(storeId = getStoreId()) {
     deliveryEnabled: profile.deliveryEnabled !== false && indexData.deliveryEnabled !== false,
     publicOrdersEnabled: profile.publicOrdersEnabled !== false && indexData.publicOrdersEnabled !== false,
     publicShopEnabled: profile.publicShopEnabled !== false && indexData.publicShopEnabled !== false,
+    forceInStock: profile.forceInStock === true || indexData.forceInStock === true,
     settlementUpi: profile.settlementUpi || "",
     settlementName: profile.settlementName || profile.ownerName || profile.name || "",
     approvalStatus: visibility.approvalStatus,

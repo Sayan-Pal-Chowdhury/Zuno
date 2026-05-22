@@ -223,6 +223,7 @@ function renderShops() {
         <button class="${shop.creditEnabled === false ? "bad" : "good"}" onclick="toggleShopFeature('${shop.storeId}', 'creditEnabled')">Credit ${shop.creditEnabled === false ? "off" : "on"}</button>
         <button class="${shop.publicOrdersEnabled === false ? "bad" : "good"}" onclick="toggleShopFeature('${shop.storeId}', 'publicOrdersEnabled')">Orders ${shop.publicOrdersEnabled === false ? "off" : "on"}</button>
         <button class="${shop.publicShopEnabled === false ? "bad" : "good"}" onclick="toggleShopFeature('${shop.storeId}', 'publicShopEnabled')">Shop ${shop.publicShopEnabled === false ? "off" : "on"}</button>
+        <button class="${shop.forceInStock === true ? "good" : ""}" onclick="toggleShopFeature('${shop.storeId}', 'forceInStock')">Force stock ${shop.forceInStock === true ? "on" : "off"}</button>
       </div>
     </div>
   `);
@@ -427,7 +428,7 @@ window.toggleShopDelivery = async storeId => {
 window.toggleShopFeature = async (storeId, field) => {
   const shop = shops.find(item => item.storeId === storeId);
   if (!shop) return;
-  const next = shop[field] === false;
+  const next = field === "forceInStock" ? shop[field] !== true : shop[field] === false;
   const fields = { [field]: next, updatedAt: serverTimestamp() };
   if (field === "publicShopEnabled") fields.isLive = next && getApproval(shop) === "approved";
   await updateShopFields(shop, fields);
