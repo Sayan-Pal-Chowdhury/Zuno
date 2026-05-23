@@ -159,7 +159,7 @@ export async function listPublicShops() {
       publicOrdersEnabled: profile.publicOrdersEnabled !== false && data.publicOrdersEnabled !== false,
       foodMenuEnabled,
       featuredItems,
-      recentAt: newestTime(profile.updatedAt, data.updatedAt, profile.createdAt, data.createdAt, ...featuredItems.map(item => item.recentAt))
+      recentAt: newestTime(profile.promotedAt, data.promotedAt, profile.updatedAt, data.updatedAt, profile.createdAt, data.createdAt, ...featuredItems.map(item => item.recentAt))
     });
   }
   return shops.sort((a, b) => b.recentAt - a.recentAt || a.name.localeCompare(b.name));
@@ -208,12 +208,11 @@ async function loadPublicFeaturedItems(uid, foodMenuEnabled) {
         const item = itemDoc.data();
         const name = item.name || item.product || "";
         const visible = foodMenuEnabled ? item.active !== false : Number(item.qty || 0) > 0;
-        if (!name || !visible) return null;
+        const imageUrl = item.imageUrl && !shouldReplaceAutoImage(item.imageUrl) ? item.imageUrl : "";
+        if (!name || !visible || !imageUrl) return null;
         return {
           name,
-          imageUrl: item.imageUrl && !shouldReplaceAutoImage(item.imageUrl)
-            ? item.imageUrl
-            : getProductVisual(name, foodMenuEnabled ? "plate" : "bag"),
+          imageUrl,
           recentAt: newestTime(item.updatedAt, item.createdAt)
         };
       })

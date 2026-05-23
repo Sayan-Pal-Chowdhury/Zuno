@@ -4,7 +4,7 @@ import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { BUSINESS_TYPES, CUSTOMER_CATEGORIES, getBusinessType, getCustomerCategory } from "./marketplace-categories.js";
-import { getCategoryVisual } from "./marketplace-visuals.js";
+import { shouldReplaceAutoImage } from "./marketplace-visuals.js";
 
 let allShops = [];
 let currentCategoryFilter = "all";
@@ -44,37 +44,41 @@ function renderShops(shops, emptyMessage = "No shops are live yet.") {
     return;
   }
 
-  grid.innerHTML = shops.map(shop => {
-    const initials = (shop.name || "Shop").trim().split(/\s+/).map(w => w[0]).join("").toUpperCase().slice(0, 2);
-    const category = getCustomerCategory(shop.customerCategory || shop.shopType || "daily_needs");
-    const colors = category.colors || ["#ffda00", "#fff2a8"];
-    const cardImages = getShopCardImages(shop);
+  const usedCardImages = new Set();
+  const cardEntries = shops.map(shop => ({
+    shop,
+    cardImages: takeUniqueImages(getShopCardImages(shop), usedCardImages)
+  }));
+  grid.innerHTML = cardEntries.map(({ shop, cardImages }) => {
     return `
-      <a class="shop-card ${cardImages.length ? "has-card-media" : ""}" data-store-id="${escapeHtml(shop.storeId)}" href="shop.html?store=${shop.storeId}" ${coverStyle(cardImages[0] || shop.coverPhotoUrl, colors, category.id)}>
+      <a class="shop-card ${cardImages.length ? "has-card-media" : ""}" data-store-id="${escapeHtml(shop.storeId)}" href="shop.html?store=${shop.storeId}">
         ${cardImages.length ? `
-          <span class="shop-card-media" aria-hidden="true">
-            ${cardImages.map(imageUrl => `<span style="--shop-card-photo:url('${escapeAttr(imageUrl)}')"></span>`).join("")}
+          <span class="shop-card-photo-area" aria-hidden="true">
+            <span class="shop-card-media">
+              ${cardImages.map(imageUrl => `<span style="--shop-card-photo:url('${escapeAttr(imageUrl)}')"></span>`).join("")}
+            </span>
+            ${cardImages.length > 1 ? `
+              <span class="shop-card-slide-dots">
+                ${cardImages.map((_, index) => `<i class="${index === 0 ? "active" : ""}"></i>`).join("")}
+              </span>
+            ` : ""}
           </span>
         ` : ""}
-        <span class="shop-logo" style="margin-bottom:12px">${initials || "S"}</span>
-        <div class="shop-card-badges">
-          <span class="shop-type-badge">${escapeHtml(shop.businessTypeLabel || formatShopType(shop.shopType))}</span>
-          <span class="delivery-badge ${shop.deliveryEnabled ? "on" : "off"}">
-            ${shop.deliveryEnabled ? "Delivery on" : "Pickup only"}
-          </span>
+        <div class="shop-card-content">
+          <div class="shop-card-title-row">
+            <h3>${escapeHtml(shop.name)}</h3>
+            <span class="delivery-badge ${shop.deliveryEnabled ? "on" : "off"}">
+              ${shop.deliveryEnabled ? "Delivery" : "Pickup"}
+            </span>
+          </div>
+          <p class="shop-card-service">${escapeHtml(shop.businessTypeLabel || formatShopType(shop.shopType))}</p>
+          <p class="muted">${escapeHtml(shop.shopDescription || shop.tagline || "Fresh products, fair prices")}</p>
+          <p class="shop-card-location">${escapeHtml(shop.location || "Open now")}</p>
         </div>
-        <h3>${shop.name}</h3>
-        <p class="muted">${shop.location || "Open now"}</p>
-        <p class="muted">${escapeHtml(shop.shopDescription || shop.tagline || "Fresh products, fair prices")}</p>
-        ${cardImages.length > 1 ? `
-          <span class="shop-card-slide-dots" aria-hidden="true">
-            ${cardImages.map((_, index) => `<i class="${index === 0 ? "active" : ""}"></i>`).join("")}
-          </span>
-        ` : ""}
       </a>
     `;
   }).join("");
-  startShopCardCarousel(shops);
+  startShopCardCarousel(cardEntries);
 }
 
 window.filterShops = function() {
@@ -116,14 +120,14 @@ function renderMarketplaceCategories() {
   const row = document.getElementById("marketplaceCategoryRow");
   if (!row) return;
 
+  const usedImages = new Set();
   row.innerHTML = getPriorityCategories().map(category => {
-    const shop = pickShopForCategory(category.id);
-    const imageUrl = getShopPreviewImage(shop) || getCategoryVisual(category.id);
+    const imageUrl = category.id === "all" ? "" : getCategoryImage(category.id, usedImages);
     const colors = category.colors || ["#ffda00", "#fff2a8"];
     return `
       <button class="category-chip ${currentCategoryFilter === category.id ? "active" : ""}" data-category="${category.id}" onclick="setMarketplaceCategory('${category.id}', this)">
-        <span class="category-image has-image" style="--cat-a:${colors[0]};--cat-b:${colors[1]}">
-          <img src="${escapeHtml(imageUrl)}" alt="">
+        <span class="category-image ${imageUrl ? "has-image" : "has-default"}" style="--cat-a:${colors[0]};--cat-b:${colors[1]}">
+          ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="">` : `<b>${escapeHtml(category.shortLabel)}</b>`}
         </span>
         ${escapeHtml(category.shortLabel)}
       </button>
@@ -157,20 +161,21 @@ function renderMarketplaceHero() {
 
   const filtered = getFilteredShops();
   const foodShop = filtered.find(shop => isFoodBusiness(shop));
-  const leadCover = getShopPreviewImage(filtered[0]) || "";
+  const slideImages = new Set();
   const slides = [
     {
       kind: "welcome",
-      imageUrl: leadCover,
+      imageUrl: "",
       eyebrow: "Available near you",
       title: "Shop from local stores",
       copy: "Fresh stock, live availability, simple ordering."
     }
   ];
   if (foodShop) {
+    const foodImage = takeUniqueImage(getShopCardImages(foodShop), slideImages);
     slides.push({
       kind: "link",
-      imageUrl: getShopPreviewImage(foodShop) || getCategoryVisual("food"),
+      imageUrl: foodImage,
       eyebrow: "Home food",
       title: "Order your favourite home food",
       copy: "Freshly prepared meals from kitchens near you.",
@@ -179,19 +184,24 @@ function renderMarketplaceHero() {
     });
   }
   filtered.forEach(shop => {
-    if (shop.coverPhotoUrl) slides.push({
-      kind: "link",
-      imageUrl: shop.coverPhotoUrl,
-      eyebrow: shop.businessTypeLabel || formatShopType(shop.shopType),
-      title: shop.name,
-      copy: shop.shopDescription || shop.location || "Open near you",
-      action: "Visit shop",
-      href: `shop.html?store=${shop.storeId}`
-    });
-    (shop.featuredItems || []).forEach(item => {
+    const cover = takeUniqueImage([shop.coverPhotoUrl], slideImages);
+    if (cover) {
       slides.push({
         kind: "link",
-        imageUrl: item.imageUrl,
+        imageUrl: cover,
+        eyebrow: shop.businessTypeLabel || formatShopType(shop.shopType),
+        title: shop.name,
+        copy: shop.shopDescription || shop.location || "Open near you",
+        action: "Visit shop",
+        href: `shop.html?store=${shop.storeId}`
+      });
+    }
+    (shop.featuredItems || []).forEach(item => {
+      const imageUrl = takeUniqueImage([item.imageUrl], slideImages);
+      if (!imageUrl) return;
+      slides.push({
+        kind: "link",
+        imageUrl,
         eyebrow: shop.name,
         title: item.name,
         copy: `${shop.businessTypeLabel || formatShopType(shop.shopType)} - available now`,
@@ -258,7 +268,7 @@ function startCarousel(count) {
   if (count <= 1) return;
   carouselTimer = setInterval(() => {
     window.setFeaturedSlide((activeSlide + 1) % count);
-  }, 3500);
+  }, 8000);
 }
 
 function stopCarousel() {
@@ -267,25 +277,24 @@ function stopCarousel() {
   carouselTimer = null;
 }
 
-function startShopCardCarousel(shops) {
+function startShopCardCarousel(cardEntries) {
   if (shopCardTimer) clearInterval(shopCardTimer);
   shopCardTimer = null;
   shopCardSlide = 0;
-  if (!shops.some(shop => getShopCardImages(shop).length > 1)) return;
+  if (!cardEntries.some(entry => entry.cardImages.length > 1)) return;
   shopCardTimer = setInterval(() => {
     shopCardSlide += 1;
-    shops.forEach(shop => {
-      const images = getShopCardImages(shop);
-      if (images.length <= 1) return;
+    cardEntries.forEach(({ shop, cardImages }) => {
+      if (cardImages.length <= 1) return;
       const card = document.querySelector(`.shop-card[data-store-id="${shop.storeId}"]`);
       if (!card) return;
-      const nextIndex = shopCardSlide % images.length;
+      const nextIndex = shopCardSlide % cardImages.length;
       card.querySelector(".shop-card-media").style.transform = `translateX(${-100 * nextIndex}%)`;
       card.querySelectorAll(".shop-card-slide-dots i").forEach((dot, index) => {
         dot.classList.toggle("active", index === nextIndex);
       });
     });
-  }, 3600);
+  }, 8500);
 }
 
 function getFilteredShops() {
@@ -296,35 +305,51 @@ function getFilteredShops() {
   });
 }
 
-function pickShopForCategory(categoryId) {
-  if (categoryId === "all") return allShops.find(shop => getShopPreviewImage(shop));
-  return allShops.find(shop => (shop.customerCategory || shop.shopType) === categoryId && getShopPreviewImage(shop));
-}
-
 function getPriorityCategories() {
   const fixedAll = CUSTOMER_CATEGORIES.find(category => category.id === "all");
   const categories = CUSTOMER_CATEGORIES.filter(category => category.id !== "all");
   const newestByCategory = new Map();
   allShops.forEach(shop => {
     const category = shop.customerCategory || shop.shopType || "daily_needs";
-    newestByCategory.set(category, Math.max(newestByCategory.get(category) || 0, shop.recentAt || 0));
+    if (getShopCardImages(shop).length > 0) {
+      newestByCategory.set(category, Math.max(newestByCategory.get(category) || 0, shop.recentAt || 0));
+    }
   });
-  categories.sort((a, b) =>
-    (newestByCategory.has(b.id) ? 1 : 0) - (newestByCategory.has(a.id) ? 1 : 0)
-    || (newestByCategory.get(b.id) || 0) - (newestByCategory.get(a.id) || 0)
-  );
-  return [fixedAll, ...categories];
+  const shownCategories = categories
+    .filter(category => newestByCategory.has(category.id))
+    .sort((a, b) => (newestByCategory.get(b.id) || 0) - (newestByCategory.get(a.id) || 0));
+  return [fixedAll, ...shownCategories];
 }
 
-function getShopPreviewImage(shop) {
-  return shop?.featuredItems?.[0]?.imageUrl || shop?.coverPhotoUrl || "";
+function getCategoryImage(categoryId, usedImages) {
+  const shop = allShops.find(item =>
+    (item.customerCategory || item.shopType) === categoryId
+      && getShopCardImages(item).some(image => !usedImages.has(image))
+  );
+  const imageUrl = getShopCardImages(shop).find(image => !usedImages.has(image)) || "";
+  if (imageUrl) usedImages.add(imageUrl);
+  return imageUrl;
 }
 
 function getShopCardImages(shop) {
   return [...new Set([
-    shop?.coverPhotoUrl || "",
+    shop?.coverPhotoUrl && !shouldReplaceAutoImage(shop.coverPhotoUrl) ? shop.coverPhotoUrl : "",
     ...(shop?.featuredItems || []).map(item => item.imageUrl || "")
   ].filter(Boolean))].slice(0, 4);
+}
+
+function takeUniqueImage(images, usedImages) {
+  const imageUrl = images.find(image => image && !usedImages.has(image)) || "";
+  if (imageUrl) usedImages.add(imageUrl);
+  return imageUrl;
+}
+
+function takeUniqueImages(images, usedImages) {
+  return images.filter(image => {
+    if (!image || usedImages.has(image)) return false;
+    usedImages.add(image);
+    return true;
+  });
 }
 
 function formatShopType(type = "other") {
@@ -343,11 +368,6 @@ function formatShopType(type = "other") {
     other: "Other"
   };
   return labels[type] || labels.other;
-}
-
-function coverStyle(url = "", colors = ["#ffda00", "#fff2a8"], categoryId = "daily_needs") {
-  const cover = url || getCategoryVisual(categoryId);
-  return `style="--shop-cover:url('${cover}');--shop-card-a:${colors[0]};--shop-card-b:${colors[1]}"`;
 }
 
 function escapeAttr(value = "") {

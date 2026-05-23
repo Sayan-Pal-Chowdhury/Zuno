@@ -45,7 +45,7 @@ export function getProductVisual(productName = "", fallbackKind = "bag") {
 }
 
 export function shouldReplaceAutoImage(url = "") {
-  return /wikimedia|wikipedia|commons\.|thumbnail/i.test(String(url));
+  return String(url).startsWith("data:image/svg+xml") || /wikimedia|wikipedia|commons\.|thumbnail/i.test(String(url));
 }
 
 function makeVisual({ title, a, b, kind }) {

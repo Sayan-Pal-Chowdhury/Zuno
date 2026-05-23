@@ -212,10 +212,12 @@ function renderShops() {
       <div>
         <span class="badge ${getApproval(shop)}">${getApproval(shop)}</span>
         <span class="badge ${shop.deliveryEnabled === false ? "off" : "on"}">${shop.deliveryEnabled === false ? "Pickup only" : "Delivery on"}</span>
+        ${shop.promotedAt ? `<span class="badge on">Promoted</span>` : ""}
       </div>
       <div class="row-sub">${escapeHtml(formatShopType(shop.shopType))}<br>${shop.isLive === false ? "Hidden from public" : "Visible publicly"}</div>
       <div class="row-actions">
         <button class="good" onclick="approveVendor('${shop.storeId}')">Approve</button>
+        <button class="good" onclick="pushShop('${shop.storeId}')">Push top</button>
         <button class="blue" onclick="toggleShopLive('${shop.storeId}')">${shop.isLive === false ? "Show" : "Hide"}</button>
         <button onclick="toggleShopDelivery('${shop.storeId}')">${shop.deliveryEnabled === false ? "Delivery on" : "Pickup only"}</button>
       </div>
@@ -424,6 +426,12 @@ window.toggleShopDelivery = async storeId => {
   const shop = shops.find(item => item.storeId === storeId);
   if (!shop) return;
   await updateShopFields(shop, { deliveryEnabled: shop.deliveryEnabled === false, updatedAt: serverTimestamp() });
+};
+
+window.pushShop = async storeId => {
+  const shop = shops.find(item => item.storeId === storeId);
+  if (!shop) return;
+  await updateShopFields(shop, { promotedAt: serverTimestamp(), updatedAt: serverTimestamp() });
 };
 
 window.toggleShopFeature = async (storeId, field) => {
