@@ -12,7 +12,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getBusinessType } from "./marketplace-categories.js";
-import { getProductVisual, shouldReplaceAutoImage } from "./marketplace-visuals.js?v=25";
+import { getProductVisual, shouldReplaceAutoImage } from "./marketplace-visuals.js?v=28";
 import { calculateSellingLineTotal, normalizeSellingUnit } from "./unit-pricing.js";
 
 export function getStoreId() {

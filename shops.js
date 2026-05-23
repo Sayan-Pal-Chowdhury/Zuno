@@ -1,10 +1,10 @@
 import { initShopTopbar } from "./shop-topbar.js";
-import { listPublicShops } from "./shop-store.js?v=25";
+import { listPublicShops } from "./shop-store.js?v=28";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { BUSINESS_TYPES, CUSTOMER_CATEGORIES, getBusinessType, getCustomerCategory } from "./marketplace-categories.js";
-import { shouldReplaceAutoImage } from "./marketplace-visuals.js?v=25";
+import { shouldReplaceAutoImage } from "./marketplace-visuals.js?v=28";
 
 let allShops = [];
 let currentCategoryFilter = "all";
@@ -44,10 +44,9 @@ function renderShops(shops, emptyMessage = "No shops are live yet.") {
     return;
   }
 
-  const usedCardImages = new Set();
   const cardEntries = shops.map(shop => ({
     shop,
-    cardImages: takeUniqueImages(getShopCardImages(shop), usedCardImages)
+    cardImages: getShopCardImages(shop)
   }));
   grid.innerHTML = cardEntries.map(({ shop, cardImages }) => {
     return `
@@ -342,14 +341,6 @@ function takeUniqueImage(images, usedImages) {
   const imageUrl = images.find(image => image && !usedImages.has(image)) || "";
   if (imageUrl) usedImages.add(imageUrl);
   return imageUrl;
-}
-
-function takeUniqueImages(images, usedImages) {
-  return images.filter(image => {
-    if (!image || usedImages.has(image)) return false;
-    usedImages.add(image);
-    return true;
-  });
 }
 
 function formatShopType(type = "other") {
