@@ -25,7 +25,7 @@
     .head img { width: 64px; height: 64px; border-radius: 18px; margin-bottom: 14px; }
     .head h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1; letter-spacing: -0.05em; }
     .head p { color: #6b7280; margin-top: 10px; line-height: 1.6; }
-    .choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
     .choice {
       background: white;
       border: 1.5px solid rgba(17,24,39,.08);
@@ -51,6 +51,7 @@
       cursor: pointer;
     }
     .choice.public button { background: #0f9f6e; }
+    .choice.food button { background: #e25722; }
     #msg { min-height: 20px; text-align: center; color: #dc2626; font-size: 13px; }
     @media (max-width: 720px) {
       .choices { grid-template-columns: 1fr; }
@@ -88,6 +89,18 @@
           <li>Appears in Zuno Local after approval</li>
         </ul>
         <button id="shopBtn">Use as Shop Owner</button>
+      </article>
+
+      <article class="choice food">
+        <b>Food selling</b>
+        <h2>Food Business</h2>
+        <p>List meals, snacks or baked goods for nearby customers to order.</p>
+        <ul>
+          <li>Restaurant setup ready</li>
+          <li>Admin approval required</li>
+          <li>Appears in food discovery</li>
+        </ul>
+        <button id="foodBtn">Use as Food Business</button>
       </article>
     </section>
 

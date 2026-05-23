@@ -31,6 +31,20 @@ document.getElementById("shopBtn").onclick = async () => {
   window.location.href = "shop-setup.html";
 };
 
+document.getElementById("foodBtn").onclick = async () => {
+  if (!currentUser) return;
+  await saveMode({
+    accountMode: "public_shop",
+    setupPreset: "food",
+    businessType: "restaurant",
+    shopType: "food",
+    customerCategory: "food",
+    inventoryEnabled: false,
+    foodMenuEnabled: true
+  });
+  window.location.href = "shop-setup.html?preset=food";
+};
+
 async function saveMode(data) {
   try {
     msg.textContent = "Saving...";

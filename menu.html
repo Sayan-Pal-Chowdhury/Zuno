@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menu - Zuno</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="menu.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2d6a4f">
+  <link rel="apple-touch-icon" href="zuno-icon-192.png">
+</head>
+<body>
+  <header class="menu-heading">
+    <div>
+      <h1>Menu</h1>
+      <p class="menu-subtitle">Manage what customers can order today.</p>
+    </div>
+    <div class="service-now">
+      <small>Now serving</small>
+      <strong id="activeServiceLabel">Loading...</strong>
+    </div>
+  </header>
+
+  <section class="mode-picker">
+    <div>
+      <strong>Menu setup</strong>
+      <p id="menuModeNote">Simple Menu shows every available item to customers.</p>
+    </div>
+    <div class="mode-buttons" role="group" aria-label="Menu setup mode">
+      <button class="active" id="simpleModeBtn" type="button" onclick="setMenuMode('simple')">Simple Menu</button>
+      <button id="scheduledModeBtn" type="button" onclick="setMenuMode('scheduled')">Scheduled Menu</button>
+    </div>
+  </section>
+
+  <nav class="menu-tabs" aria-label="Menu sections">
+    <button class="active" type="button" data-tab="items" onclick="setMenuTab('items', this)">Items</button>
+    <button class="scheduled-tab" type="button" data-tab="fixed" onclick="setMenuTab('fixed', this)">Fixed</button>
+    <button class="scheduled-tab" type="button" data-tab="weekly" onclick="setMenuTab('weekly', this)">Weekly</button>
+    <button class="scheduled-tab" type="button" data-tab="specials" onclick="setMenuTab('specials', this)">Specials</button>
+    <button class="scheduled-tab" type="button" data-tab="times" onclick="setMenuTab('times', this)">Times</button>
+  </nav>
+
+  <main class="menu-workspace">
+    <section class="menu-panel active" id="panel-items">
+      <form class="item-form" id="foodItemForm">
+        <div class="field item-name">
+          <label for="foodItemName">Item name</label>
+          <input id="foodItemName" required placeholder="e.g. Home style thali">
+        </div>
+        <div class="field">
+          <label for="foodItemCategory">Category</label>
+          <select id="foodItemCategory">
+            <option>Meal</option>
+            <option>Rice</option>
+            <option>Bread</option>
+            <option>Curry</option>
+            <option>Snack</option>
+            <option>Sweet</option>
+            <option>Drink</option>
+          </select>
+        </div>
+        <div class="field image-field">
+          <label for="foodItemImage">Photo</label>
+          <input id="foodItemImage" type="file" accept="image/*">
+        </div>
+        <div class="field description-field">
+          <label for="foodItemDescription">Description</label>
+          <textarea id="foodItemDescription" rows="2" placeholder="e.g. Served with salad and chutney"></textarea>
+        </div>
+        <div class="variants-editor">
+          <div class="variants-head">
+            <label>Portion and price</label>
+            <button class="quiet-btn small-btn" type="button" onclick="addVariantRow()">+ Add size</button>
+          </div>
+          <div id="variantRows"></div>
+        </div>
+        <label class="switch-label">
+          <input id="foodItemActive" type="checkbox" checked>
+          <span>Available</span>
+        </label>
+        <button class="primary-btn" type="submit" id="saveFoodItemBtn">Add item</button>
+        <button class="quiet-btn" type="button" id="cancelFoodItemEdit" hidden onclick="cancelFoodItemEdit()">Cancel</button>
+      </form>
+      <p class="panel-message" id="foodItemMessage"></p>
+      <div class="item-list" id="foodItemList"></div>
+    </section>
+
+    <section class="menu-panel" id="panel-fixed">
+      <div class="panel-intro">
+        <h2>Fixed Menu</h2>
+        <p>Dishes available every day, in addition to the rotating menu. Use Scheduled Menu only.</p>
+      </div>
+      <form class="assignment-form" id="fixedForm">
+        <select id="fixedItemSelect" required></select>
+        <select id="fixedPeriod">
+          <option value="both">Lunch and dinner</option>
+          <option value="lunch">Lunch only</option>
+          <option value="dinner">Dinner only</option>
+        </select>
+        <button class="primary-btn" type="submit">Add</button>
+      </form>
+      <div class="assignment-list" id="fixedList"></div>
+    </section>
+
+    <section class="menu-panel" id="panel-weekly">
+      <div class="panel-intro">
+        <h2>Weekly Menu</h2>
+        <p>Set different lunch and dinner dishes for each day.</p>
+      </div>
+      <div class="day-tabs" id="dayTabs"></div>
+      <div class="meal-columns">
+        <section class="meal-column">
+          <h3>Lunch</h3>
+          <form class="assignment-form" id="lunchForm">
+            <select id="lunchItemSelect" required></select>
+            <button class="primary-btn" type="submit">Add</button>
+          </form>
+          <div class="assignment-list" id="lunchList"></div>
+        </section>
+        <section class="meal-column">
+          <h3>Dinner</h3>
+          <form class="assignment-form" id="dinnerForm">
+            <select id="dinnerItemSelect" required></select>
+            <button class="primary-btn" type="submit">Add</button>
+          </form>
+          <div class="assignment-list" id="dinnerList"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="menu-panel" id="panel-specials">
+      <div class="panel-intro">
+        <h2>Specials</h2>
+        <p>Temporarily highlight a dish for selected days and meals.</p>
+      </div>
+      <form class="assignment-form specials-form" id="specialForm">
+        <select id="specialItemSelect" required></select>
+        <select id="specialDay"></select>
+        <select id="specialPeriod">
+          <option value="both">Lunch and dinner</option>
+          <option value="lunch">Lunch only</option>
+          <option value="dinner">Dinner only</option>
+        </select>
+        <button class="primary-btn" type="submit">Add special</button>
+      </form>
+      <div class="assignment-list" id="specialList"></div>
+    </section>
+
+    <section class="menu-panel" id="panel-times">
+      <div class="panel-intro">
+        <h2>Meal Times</h2>
+        <p>The customer menu automatically switches between lunch and dinner at these times.</p>
+      </div>
+      <form class="time-form" id="timeForm">
+        <div class="field">
+          <label for="lunchStart">Lunch menu starts</label>
+          <input type="time" id="lunchStart" required>
+        </div>
+        <div class="field">
+          <label for="dinnerStart">Dinner menu starts</label>
+          <input type="time" id="dinnerStart" required>
+        </div>
+        <button class="primary-btn" type="submit">Save times</button>
+      </form>
+      <p class="panel-message" id="timeMessage"></p>
+    </section>
+  </main>
+
+  <script type="module" src="menu.js"></script>
+  <script type="module" src="navbar.js"></script>
+  <script src="pwa.js" defer></script>
+</body>
+</html>

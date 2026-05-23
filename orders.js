@@ -41,7 +41,7 @@ function renderOrder(order) {
   const itemRows = items.length
     ? items.map(item => `
         <span class="order-item">
-          <span>${item.product || "Item"}</span>
+          <span>${item.product || "Item"}${item.variantLabel ? ` - ${item.variantLabel}` : ""}</span>
           <b>x ${item.qty || 0}</b>
         </span>
       `).join("")

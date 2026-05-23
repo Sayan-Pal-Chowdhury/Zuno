@@ -981,6 +981,25 @@ button { -webkit-tap-highlight-color: transparent; }
   box-shadow: none;
 }
 
+.food-add-controls {
+  display: grid;
+  gap: 8px;
+}
+
+.food-variant-select {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 9px;
+  border: 1.5px solid var(--shop-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--shop-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .qty-control {
   display: grid;
   grid-template-columns: 46px 1fr 46px;

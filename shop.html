@@ -38,11 +38,11 @@
 
     <div class="quick-strip">
       <div class="quick-card"><strong id="fulfillmentTitle">Express</strong><span id="fulfillmentSub">Fast pickup</span></div>
-      <div class="quick-card"><strong>Live stock</strong><span>Updated now</span></div>
+      <div class="quick-card" id="stockQuickCard"><strong>Live stock</strong><span>Updated now</span></div>
       <div class="quick-card"><strong>COD</strong><span>Pay later</span></div>
     </div>
 
-    <div class="section-head category-head">
+    <div class="section-head category-head" id="typeSectionHeading">
       <h2>Shop by type</h2>
       <button class="section-link" type="button" onclick="setTypeFilter('all', this)">All</button>
     </div>
@@ -55,9 +55,16 @@
     </div>
 
     <div class="section-head">
-      <h2>Shop by items</h2>
+      <h2 id="productsHeading">Shop by items</h2>
       <a href="shops.html">All shops</a>
     </div>
+
+    <section id="foodSpecialsSection" hidden>
+      <div class="section-head">
+        <h2>Today's specials</h2>
+      </div>
+      <div class="products-grid" id="foodSpecialsGrid"></div>
+    </section>
 
     <section class="products-grid" id="productsGrid">
       <article class="product-card skeleton-card">

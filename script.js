@@ -22,6 +22,7 @@ let chart         = null;
 let editingCreditSaleId = null;
 let shopProfile   = null;
 let productSuggestions = COMMON_ITEM_NAMES;
+let productEditOriginalName = "";
 
 /* ---------- USER COLLECTION HELPER ---------- */
 function userCol(colName) {
@@ -448,6 +449,7 @@ document.getElementById("mainBtn").onclick = async () => {
 /* ---------- DEDUCT INVENTORY ---------- */
 async function deductInventory(items) {
   for (const item of items) {
+    if (item.source === "food-menu") continue;
     const key  = item.product.toLowerCase();
     const snap = await getDocs(userCol("inventory"));
     let found  = null;
@@ -479,6 +481,7 @@ async function deductInventory(items) {
 /* ---------- REVERT INVENTORY ---------- */
 async function revertInventory(items) {
   for (const item of items) {
+    if (item.source === "food-menu") continue;
     const key  = item.product.toLowerCase();
     const snap = await getDocs(userCol("inventory"));
     let found  = null;
@@ -570,7 +573,7 @@ function loadProducts() {
 window.addOrUpdateProduct = async () => {
   if (!currentUserId) return;
 
-  const name = document.getElementById("prodName").value;
+  const name = document.getElementById("prodName").value.trim();
   const cost = document.getElementById("prodCost").value;
   const sellingPrice = Number(document.getElementById("prodSellingPrice").value) || 0;
   const unit = document.getElementById("prodUnit").value;
@@ -580,12 +583,13 @@ window.addOrUpdateProduct = async () => {
 
   if (productEditId) {
     await updateDoc(userDoc("products", productEditId), { name, cost: Number(cost) || 0, sellingPrice, unit, sellingUnit: normalizeSellingUnit(sellingUnit, unit) });
-    await updateInventorySellingPrice(name, sellingPrice, unit, sellingUnit);
+    await syncInventoryProduct(name, Number(cost) || 0, sellingPrice, unit, sellingUnit, productEditOriginalName);
     productEditId = null;
+    productEditOriginalName = "";
     document.getElementById("prodBtn").innerText = "Add";
   } else {
     await addDoc(userCol("products"), { name, cost: Number(cost) || 0, sellingPrice, unit, sellingUnit: normalizeSellingUnit(sellingUnit, unit) });
-    await updateInventorySellingPrice(name, sellingPrice, unit, sellingUnit);
+    await syncInventoryProduct(name, Number(cost) || 0, sellingPrice, unit, sellingUnit);
   }
 
   document.getElementById("prodName").value = "";
@@ -603,18 +607,39 @@ window.editProduct = (id, name, cost, unit, sellingPrice = "", sellingUnit = "")
   document.getElementById("prodUnit").value = unit || "kg";
   document.getElementById("prodSellingUnit").value = normalizeSellingUnit(sellingUnit, unit || "kg");
   productEditId = id;
+  productEditOriginalName = name;
   document.getElementById("prodBtn").innerText = "Update";
 };
 
-async function updateInventorySellingPrice(name, sellingPrice, unit, sellingUnit = "") {
-  if (!sellingPrice) return;
+async function syncInventoryProduct(name, cost, sellingPrice, unit, sellingUnit = "", previousName = "") {
   const snap = await getDocs(userCol("inventory"));
+  const matchNames = new Set([previousName, name].filter(Boolean).map(value => value.toLowerCase()));
   for (const item of snap.docs) {
     const data = item.data();
-    if ((data.product || "").toLowerCase() === name.toLowerCase()) {
-      await updateDoc(userDoc("inventory", item.id), { sellingPrice, sellingUnit: normalizeSellingUnit(sellingUnit, unit) });
+    if (matchNames.has((data.product || "").toLowerCase())) {
+      await updateDoc(userDoc("inventory", item.id), {
+        product: name,
+        unit,
+        sellingPrice,
+        sellingUnit: normalizeSellingUnit(sellingUnit, unit)
+      });
+      return;
     }
   }
+
+  await addDoc(userCol("inventory"), {
+    product: name,
+    qty: 0,
+    unit,
+    alertThreshold: 0,
+    weightedAvgCost: cost,
+    totalInvested: 0,
+    totalQtyBought: 0,
+    sellingPrice,
+    sellingUnit: normalizeSellingUnit(sellingUnit, unit),
+    firstPurchaseDate: "",
+    lastPurchaseDate: ""
+  });
 }
 
 /* ---------- DELETE PRODUCT ---------- */
@@ -748,7 +773,7 @@ function renderCustomerOrders(orders) {
 
   list.innerHTML = activeOrders.map(order => {
     const items = Array.isArray(order.items) ? order.items : [];
-    const itemsText = items.map(item => `${item.product} (${item.qty} ${item.unit || ""})`).join(", ");
+    const itemsText = items.map(item => `${item.product}${item.variantLabel ? ` - ${item.variantLabel}` : ""} (${item.qty} ${item.unit || ""})`).join(", ");
     const status = order.status || "new";
     const statusColor = status === "new" ? "var(--danger)" : status === "packing" ? "#a05c00" : "var(--accent)";
     const fulfillment = order.fulfillmentType === "pickup" ? "Pickup" : "Delivery";
@@ -892,6 +917,8 @@ function normalizeCustomerOrderItems(orderItems) {
 
     return {
       product,
+      source: item.source || "",
+      variantLabel: item.variantLabel || "",
       qty,
       unit,
       price,

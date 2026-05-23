@@ -11,6 +11,7 @@ function isActive(page) {
   if (page === "home"      && (path === "/" || path.includes("home")))       return true;
   if (page === "order"     && path.includes("index"))                        return true;
   if (page === "inventory" && path.includes("inventory"))                    return true;
+  if (page === "menu"      && path.includes("menu"))                         return true;
   if (page === "credit"    && path.includes("credit"))                       return true;
   if (page === "sales"     && path.includes("sales"))                        return true;
   return false;
@@ -463,7 +464,7 @@ nav.innerHTML = `
       <span class="zuno-nav-label">Home</span>
     </a>
 
-    <a href="/inventory.htm" class="zuno-nav-item ${isActive("inventory") ? "active" : ""}" data-feature-link="inventoryEnabled">
+    <a href="/inventory.htm" id="zunoStockNavLink" class="zuno-nav-item ${isActive("inventory") || isActive("menu") ? "active" : ""}" data-feature-link="inventoryEnabled">
       <span class="zuno-nav-icon">📦</span>
       <span class="zuno-nav-label">Inventory</span>
     </a>
@@ -570,13 +571,22 @@ function watchFeatureAccess() {
 }
 
 function applyFeatureVisibility(profile) {
+  const stockLink = document.getElementById("zunoStockNavLink");
+  const usesFoodMenu = profile.foodMenuEnabled === true;
+  if (stockLink) {
+    stockLink.href = usesFoodMenu ? "/menu.html" : "/inventory.htm";
+    stockLink.dataset.featureLink = usesFoodMenu ? "menuEnabled" : "inventoryEnabled";
+    stockLink.querySelector(".zuno-nav-label").textContent = usesFoodMenu ? "Menu" : "Inventory";
+    stockLink.classList.toggle("active", usesFoodMenu ? path.includes("menu") : path.includes("inventory"));
+  }
+
   document.querySelectorAll("[data-feature-link]").forEach(link => {
     const key = link.dataset.featureLink;
     link.hidden = profile[key] === false;
   });
 
   const disabledPages = {
-    inventoryEnabled: path.includes("inventory"),
+    inventoryEnabled: path.includes("inventory") && !usesFoodMenu,
     creditEnabled: path.includes("credit")
   };
 
@@ -585,4 +595,8 @@ function applyFeatureVisibility(profile) {
       window.location.href = "/home.html";
     }
   });
+
+  if (usesFoodMenu && path.includes("inventory")) {
+    window.location.href = "/menu.html";
+  }
 }

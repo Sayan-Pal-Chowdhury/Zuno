@@ -1,0 +1,505 @@
+body {
+  padding-bottom: 96px;
+  max-width: none;
+}
+
+.menu-heading {
+  max-width: 980px;
+  margin: 12px auto 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 18px;
+}
+
+.menu-heading h1 {
+  margin: 0 0 4px;
+  padding: 0;
+  border: 0;
+}
+
+.menu-subtitle {
+  color: var(--text-secondary);
+}
+
+.service-now {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 10px 14px;
+  min-width: 190px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.service-now small {
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.service-now strong {
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.menu-tabs {
+  max-width: 980px;
+  margin: 0 auto 18px;
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.mode-picker {
+  max-width: 980px;
+  margin: 0 auto 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.mode-picker p {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.mode-buttons {
+  display: flex;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.mode-buttons button {
+  border: 0;
+  min-height: 40px;
+  padding: 0 14px;
+  background: white;
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.mode-buttons button.active {
+  background: var(--accent);
+  color: white;
+}
+
+.menu-tabs button {
+  border: 0;
+  background: transparent;
+  padding: 10px 17px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.menu-tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.menu-workspace {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.menu-panel {
+  display: none;
+}
+
+.menu-panel.active {
+  display: block;
+}
+
+.item-form,
+.assignment-form,
+.time-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 122px;
+}
+
+.field label {
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.field input,
+.field select,
+.assignment-form select {
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  background: white;
+  font: inherit;
+}
+
+.item-name {
+  flex: 1 1 220px;
+}
+
+.item-name input {
+  width: 100%;
+}
+
+.image-field {
+  flex: 1 1 200px;
+}
+
+.image-field input {
+  padding: 7px;
+  width: 100%;
+}
+
+.description-field {
+  flex: 1 1 100%;
+}
+
+.description-field textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 58px;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  font: inherit;
+}
+
+.variants-editor {
+  flex: 1 1 100%;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.variants-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.variants-head label {
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.variant-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) 120px 120px 40px;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.variant-row input {
+  height: 40px;
+  min-width: 0;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  font: inherit;
+}
+
+.variant-row button {
+  height: 40px;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  background: white;
+  color: var(--danger);
+  cursor: pointer;
+}
+
+.small-btn {
+  height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.switch-label {
+  height: 40px;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.switch-label input {
+  accent-color: var(--accent);
+}
+
+.primary-btn,
+.quiet-btn {
+  height: 40px;
+  border-radius: var(--radius-sm);
+  padding: 0 16px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.primary-btn {
+  color: white;
+  background: var(--accent);
+}
+
+.quiet-btn {
+  border-color: var(--border-dark);
+  color: var(--text-secondary);
+  background: var(--surface);
+}
+
+.panel-message {
+  height: 26px;
+  padding: 5px 0;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.item-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.food-row {
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.food-row:last-child {
+  border-bottom: 0;
+}
+
+.food-photo {
+  width: 50px;
+  height: 50px;
+  background: var(--accent-light);
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.food-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.food-detail strong {
+  display: block;
+  line-height: 1.25;
+}
+
+.food-detail small {
+  color: var(--text-secondary);
+}
+
+.food-detail p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.row-actions button {
+  border: 1px solid var(--border-dark);
+  background: white;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.row-actions .danger {
+  color: var(--danger);
+}
+
+.panel-intro {
+  margin-bottom: 14px;
+}
+
+.panel-intro h2 {
+  display: block;
+  cursor: default;
+  margin: 0 0 4px;
+  font-size: 18px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.panel-intro p {
+  color: var(--text-secondary);
+}
+
+.assignment-form {
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.assignment-form select:first-child {
+  flex: 1;
+  min-width: 180px;
+}
+
+.assignment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.assignment-row {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.assignment-row strong {
+  flex: 1;
+}
+
+.assignment-row small {
+  color: var(--text-secondary);
+}
+
+.empty-line {
+  border: 1px dashed var(--border-dark);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.day-tabs {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.day-tabs button {
+  height: 38px;
+  min-width: 76px;
+  border: 1px solid var(--border-dark);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+  font: inherit;
+  cursor: pointer;
+}
+
+.day-tabs button.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.meal-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.meal-column h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.time-form .primary-btn {
+  margin-left: auto;
+}
+
+@media (max-width: 680px) {
+  body {
+    padding: 16px 12px 90px;
+  }
+
+  .menu-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .service-now {
+    width: 100%;
+  }
+
+  .mode-picker {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mode-buttons button {
+    flex: 1;
+  }
+
+  .variant-row {
+    grid-template-columns: 1fr 1fr 40px;
+  }
+
+  .variant-row .variant-label {
+    grid-column: 1 / -1;
+  }
+
+  .meal-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .food-row {
+    flex-wrap: wrap;
+  }
+
+  .row-actions {
+    margin-left: 64px;
+  }
+}

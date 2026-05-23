@@ -71,7 +71,8 @@ function renderCart() {
   list.innerHTML = cart.map(item => `
     <article class="cart-card">
       <div>
-        <h3>${item.name}</h3>
+        <h3>${escapeHtml(item.name)}</h3>
+        ${item.variantLabel ? `<p class="muted">${escapeHtml(item.variantLabel)}</p>` : ""}
         <p class="muted">${formatMoney(item.price)} / ${sellingUnitLabel(item.sellingUnit, item.unit)} · ${formatMoney(calculateLineTotal(item))}</p>
       </div>
       <div class="qty-control">
@@ -223,4 +224,14 @@ function usesSmallWeightStep(productName = "") {
 
 function priceUnitLabel(unit = "") {
   return unit === "g" ? "kg" : unit;
+}
+
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  }[char]));
 }

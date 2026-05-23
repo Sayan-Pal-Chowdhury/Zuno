@@ -73,6 +73,16 @@ service cloud.firestore {
         allow write: if isAdmin() || isOwner(userId);
       }
 
+      match /foodItems/{itemId} {
+        allow read: if isAdmin() || isOwner(userId) || hasPublicApprovedProfile(userId);
+        allow write: if isAdmin() || isOwner(userId);
+      }
+
+      match /foodMenu/{menuId} {
+        allow read: if isAdmin() || isOwner(userId) || hasPublicApprovedProfile(userId);
+        allow write: if isAdmin() || isOwner(userId);
+      }
+
       match /customerOrders/{orderId} {
         allow get: if true;
         allow list: if isAdmin() || isOwner(userId);

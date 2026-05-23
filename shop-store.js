@@ -54,6 +54,7 @@ export async function getShopProfile(storeId = getStoreId()) {
     publicOrdersEnabled: profile.publicOrdersEnabled !== false && indexData.publicOrdersEnabled !== false,
     publicShopEnabled: profile.publicShopEnabled !== false && indexData.publicShopEnabled !== false,
     forceInStock: profile.forceInStock === true || indexData.forceInStock === true,
+    foodMenuEnabled: profile.foodMenuEnabled === true || indexData.foodMenuEnabled === true,
     settlementUpi: profile.settlementUpi || "",
     settlementName: profile.settlementName || profile.ownerName || profile.name || "",
     approvalStatus: visibility.approvalStatus,
@@ -86,6 +87,35 @@ export function listenInventory(uid, callback, onError) {
     },
     onError
   );
+}
+
+export function listenFoodMenu(uid, callback, onError) {
+  let items = [];
+  let config = {};
+  const emit = () => callback({ items, config });
+
+  const stopItems = onSnapshot(
+    collection(db, "users", uid, "foodItems"),
+    snap => {
+      items = snap.docs.map(itemDoc => ({ id: itemDoc.id, ...itemDoc.data() }))
+        .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+      emit();
+    },
+    onError
+  );
+  const stopConfig = onSnapshot(
+    doc(db, "users", uid, "foodMenu", "config"),
+    snap => {
+      config = snap.exists() ? snap.data() : {};
+      emit();
+    },
+    onError
+  );
+
+  return () => {
+    stopItems();
+    stopConfig();
+  };
 }
 
 export async function listPublicShops() {
@@ -190,8 +220,10 @@ export async function createCustomerOrder({ store, cart, customer, payment = {} 
     deliveryFee,
     totalAmount,
     items: cart.map(item => ({
-      productId: item.id,
+      productId: item.productId || item.id,
+      source: item.source || "",
       product: item.name,
+      variantLabel: item.variantLabel || "",
       qty: Number(item.qty || 0),
       unit: item.unit || "kg",
       price: calculateLineTotal(item),

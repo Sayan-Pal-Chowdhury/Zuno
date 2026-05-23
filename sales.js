@@ -448,6 +448,7 @@ window.saveSaleCreditEdit = async () => {
 /* ---------- DEDUCT INVENTORY ---------- */
 async function deductInventory(items) {
   for (const item of items) {
+    if (item.source === "food-menu") continue;
     const key  = item.product.toLowerCase();
     const snap = await getDocs(userCol("inventory"));
     let found  = null;
@@ -469,6 +470,7 @@ async function deductInventory(items) {
 /* ---------- REVERT INVENTORY ---------- */
 async function revertInventory(items) {
   for (const item of items) {
+    if (item.source === "food-menu") continue;
     const key  = item.product.toLowerCase();
     const snap = await getDocs(userCol("inventory"));
     let found  = null;

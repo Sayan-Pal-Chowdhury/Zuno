@@ -1,7 +1,7 @@
 import { getCartCount, getItemQty, addToCart, updateQty, getQtyStep } from "./shop-cart.js";
 import { initShopNavbar } from "./shop-navbar.js";
 import { initShopTopbar, updateCartBadge } from "./shop-topbar.js";
-import { getShopProfile, getStoreId, listenInventory } from "./shop-store.js";
+import { getShopProfile, getStoreId, listenFoodMenu, listenInventory } from "./shop-store.js";
 import { findProductImage } from "./product-images.js";
 import { formatDisplayQtyForSellingUnit, getQtyStepForSellingUnit, sellingUnitLabel } from "./unit-pricing.js";
 import { attachSuggestionDropdown, COMMON_ITEM_NAMES, mergeSuggestions, renderOptions } from "./item-suggestions.js";
@@ -13,6 +13,7 @@ let imageLookupRunning = false;
 let heroImages = [];
 let heroSlide = 0;
 let heroTimer = null;
+let foodMenuConfig = {};
 
 const productIcons = {
   potato: "PT",
@@ -74,16 +75,38 @@ async function init() {
     ? "Delivered by shop"
     : "Order packed, collect from shop";
 
-  listenInventory(store.uid, items => {
-    allProducts = items;
+  if (store.foodMenuEnabled === true) {
+    initFoodShop();
+  } else {
+    listenInventory(store.uid, items => {
+      allProducts = items;
+      renderSearchSuggestions();
+      updateHeroImages();
+      renderTypeRow();
+      renderProducts();
+      ensureProductImages();
+    }, error => {
+      console.error("Inventory load failed:", error);
+      showEmpty("Could not load products.");
+    });
+  }
+}
+
+function initFoodShop() {
+  document.getElementById("searchInput").placeholder = "Search menu items...";
+  document.getElementById("stockQuickCard").innerHTML = "<strong>Freshly made</strong><span>Cooked today</span>";
+  document.getElementById("typeSectionHeading").hidden = true;
+  document.getElementById("typeRow").hidden = true;
+
+  listenFoodMenu(store.uid, data => {
+    foodMenuConfig = data.config || {};
+    allProducts = getActiveMenuProducts(data.items || [], foodMenuConfig);
     renderSearchSuggestions();
     updateHeroImages();
-    renderTypeRow();
     renderProducts();
-    ensureProductImages();
   }, error => {
-    console.error("Inventory load failed:", error);
-    showEmpty("Could not load products.");
+    console.error("Food menu load failed:", error);
+    showEmpty("Could not load today's menu.");
   });
 }
 
@@ -119,17 +142,27 @@ function renderProducts() {
   const grid = document.getElementById("productsGrid");
   const search = document.getElementById("searchInput").value.toLowerCase().trim();
   const products = allProducts.filter(product => {
-    if (currentTypeFilter !== "all" && getProductType(product.name) !== currentTypeFilter) return false;
+    if (store?.foodMenuEnabled !== true && currentTypeFilter !== "all" && getProductType(product.name) !== currentTypeFilter) return false;
     if (search && !product.name.toLowerCase().includes(search)) return false;
     return true;
   });
 
-  if (products.length === 0) {
-    grid.innerHTML = `<div class="empty-state">No products found.</div>`;
+  if (store?.foodMenuEnabled === true) {
+    const specials = products.filter(product => product.featured);
+    const menuItems = products.filter(product => !product.featured);
+    const specialSection = document.getElementById("foodSpecialsSection");
+    specialSection.hidden = specials.length === 0;
+    document.getElementById("foodSpecialsGrid").innerHTML = specials.map(product => renderProduct(product)).join("");
+    document.getElementById("productsHeading").textContent = getActiveMenuHeading();
+    grid.innerHTML = menuItems.length
+      ? menuItems.map(product => renderProduct(product)).join("")
+      : `<div class="empty-state">No dishes scheduled for this meal.</div>`;
     return;
   }
 
-  grid.innerHTML = products.map(product => renderProduct(product)).join("");
+  grid.innerHTML = products.length
+    ? products.map(product => renderProduct(product)).join("")
+    : `<div class="empty-state">No products found.</div>`;
 }
 
 function renderTypeRow() {
@@ -159,9 +192,10 @@ function renderTypeRow() {
 }
 
 function renderProduct(product) {
-  const qtyInCart = getItemQty(store.storeId, product.id);
-  const out = product.qty <= 0 && store.forceInStock !== true;
-  const low = product.alertThreshold > 0 && product.qty <= product.alertThreshold && product.qty > 0;
+  const foodItem = store.foodMenuEnabled === true;
+  const qtyInCart = foodItem ? 0 : getItemQty(store.storeId, product.id);
+  const out = !foodItem && product.qty <= 0 && store.forceInStock !== true;
+  const low = !foodItem && product.alertThreshold > 0 && product.qty <= product.alertThreshold && product.qty > 0;
   const icon = getProductIcon(product.name);
   const hasImage = Boolean(product.imageUrl);
 
@@ -169,12 +203,12 @@ function renderProduct(product) {
     <article class="product-card ${out ? "out" : ""} ${low ? "low" : ""} ${hasImage ? "has-image" : ""}">
       <div class="product-art">
         ${hasImage ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="">` : `<span class="product-symbol">${icon}</span>`}
-        ${out ? `<b class="pill out">Out</b>` : low ? `<b class="pill low">Low stock</b>` : `<b class="pill">Fresh</b>`}
+        ${out ? `<b class="pill out">Out</b>` : low ? `<b class="pill low">Low stock</b>` : product.featured ? `<b class="pill">Special</b>` : `<b class="pill">Fresh</b>`}
       </div>
       <div class="product-body">
-        <p class="product-name">${product.name}</p>
-        <div class="product-price">${formatMoney(product.price)} / ${sellingUnitLabel(product.sellingUnit, product.unit)}</div>
-        <div class="product-stock ${low ? "low" : ""}">${out ? "Currently unavailable" : product.qty <= 0 ? "Available to order" : `${roundQty(product.qty)} ${product.unit} available`}</div>
+        <p class="product-name">${escapeHtml(product.name)}</p>
+        <div class="product-price">${foodItem ? `From ${formatMoney(product.price)}` : `${formatMoney(product.price)} / ${sellingUnitLabel(product.sellingUnit, product.unit)}`}</div>
+        <div class="product-stock ${low ? "low" : ""}">${foodItem ? escapeHtml(product.description || product.category || "Prepared fresh") : out ? "Currently unavailable" : product.qty <= 0 ? "Available to order" : `${roundQty(product.qty)} ${product.unit} available`}</div>
         <div id="action-${product.id}">
           ${renderAction(product, qtyInCart)}
         </div>
@@ -184,7 +218,19 @@ function renderProduct(product) {
 }
 
 function renderAction(product, qtyInCart) {
-  if (product.qty <= 0 && store.forceInStock !== true) return `<button class="add-btn" disabled>Out of stock</button>`;
+  if (store.foodMenuEnabled === true) {
+    return `
+      <div class="food-add-controls">
+        <select id="food-variant-${product.id}" class="food-variant-select" aria-label="Select portion for ${escapeHtml(product.name)}">
+          ${product.variants.map(variant => `
+            <option value="${escapeHtml(variant.id)}">${escapeHtml(variantLabel(variant))} - ${formatMoney(variant.price)}</option>
+          `).join("")}
+        </select>
+        <button class="add-btn" onclick="handleAdd('${product.id}')">Add</button>
+      </div>
+    `;
+  }
+  if (store.foodMenuEnabled !== true && product.qty <= 0 && store.forceInStock !== true) return `<button class="add-btn" disabled>Out of stock</button>`;
   if (qtyInCart > 0) {
     return `
       <div class="qty-control">
@@ -200,13 +246,32 @@ function renderAction(product, qtyInCart) {
 window.handleAdd = function(productId) {
   const product = allProducts.find(item => item.id === productId);
   if (!product) return;
+  if (store.foodMenuEnabled === true) {
+    const variantId = document.getElementById(`food-variant-${product.id}`)?.value;
+    const variant = product.variants.find(option => option.id === variantId) || product.variants[0];
+    if (!variant) return;
+    addToCart(store.storeId, {
+      id: `${product.id}::${variant.id}`,
+      productId: product.id,
+      source: "food-menu",
+      name: product.name,
+      variantLabel: variantLabel(variant),
+      price: variant.price,
+      unit: "piece",
+      sellingUnit: "piece",
+      maxQty: 99,
+      step: 1
+    });
+    updateCartBadge(store.storeId);
+    return;
+  }
   addToCart(store.storeId, {
     id: product.id,
     name: product.name,
     price: product.price,
     unit: product.unit,
     sellingUnit: product.sellingUnit,
-    maxQty: product.qty,
+    maxQty: store.foodMenuEnabled === true ? 99 : product.qty,
     step: getQtyStepForSellingUnit(product)
   });
   renderProducts();
@@ -218,7 +283,7 @@ window.changeQty = function(productId, delta) {
   if (!product) return;
   const step = getQtyStepForSellingUnit(product);
   const next = getItemQty(store.storeId, productId) + (delta * step);
-  if (store.forceInStock !== true && next > product.qty) return;
+  if (store.foodMenuEnabled !== true && store.forceInStock !== true && next > product.qty) return;
   updateQty(store.storeId, productId, next);
   renderProducts();
   updateCartBadge(store.storeId);
@@ -270,6 +335,78 @@ function updateHeroImages() {
   heroImages = images;
   heroSlide = Math.min(heroSlide, heroImages.length - 1);
   renderHeroCarousel();
+}
+
+function getActiveMenuProducts(items, config) {
+  const day = currentMenuDay();
+  const period = currentMenuPeriod(config.mealTimes || {});
+  const activeItems = new Map(items.filter(item => item.active !== false).map(item => [item.id, item]));
+  if (config.mode !== "scheduled") {
+    return [...activeItems.values()].map(item => toFoodProduct(item, false)).filter(Boolean);
+  }
+  const fixedIds = (Array.isArray(config.fixedItems) ? config.fixedItems : [])
+    .filter(item => item.period === "both" || item.period === period)
+    .map(item => item.itemId);
+  const scheduledIds = Array.isArray(config.weekly?.[day]?.[period]) ? config.weekly[day][period] : [];
+  const specialIds = [...new Set((Array.isArray(config.specials) ? config.specials : [])
+    .filter(item => item.active !== false
+      && (item.day === "all" || item.day === day)
+      && (item.period === "both" || item.period === period))
+    .map(item => item.itemId))];
+  const featuredSet = new Set(specialIds);
+  const regularIds = [...new Set([...fixedIds, ...scheduledIds])].filter(id => !featuredSet.has(id));
+  return [
+    ...specialIds.map(id => toFoodProduct(activeItems.get(id), true)).filter(Boolean),
+    ...regularIds.map(id => toFoodProduct(activeItems.get(id), false)).filter(Boolean)
+  ];
+}
+
+function toFoodProduct(item, featured) {
+  if (!item) return null;
+  const variants = Array.isArray(item.variants) && item.variants.length
+    ? item.variants.filter(variant => Number(variant.price) > 0)
+    : [{ id: "full", label: "Full Plate", pieces: 0, price: Number(item.price || 0) }];
+  if (variants.length === 0) return null;
+  return {
+    id: item.id,
+    name: item.name || "",
+    price: Math.min(...variants.map(variant => Number(variant.price))),
+    sellingPrice: Math.min(...variants.map(variant => Number(variant.price))),
+    unit: "piece",
+    sellingUnit: "piece",
+    qty: 99,
+    alertThreshold: 0,
+    category: item.category || "Prepared fresh",
+    description: item.description || "",
+    variants,
+    imageUrl: item.imageUrl || "",
+    featured
+  };
+}
+
+function currentMenuDay() {
+  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  return days[new Date().getDay()];
+}
+
+function currentMenuPeriod(times) {
+  const defaults = { lunchStart: "10:30", dinnerStart: "18:00" };
+  const settings = { ...defaults, ...times };
+  const now = new Date();
+  const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  return time >= settings.dinnerStart || time < settings.lunchStart ? "dinner" : "lunch";
+}
+
+function getActiveMenuHeading() {
+  if (foodMenuConfig.mode !== "scheduled") return "Menu";
+  const day = currentMenuDay();
+  const period = currentMenuPeriod(foodMenuConfig.mealTimes || {});
+  return `${day.charAt(0).toUpperCase() + day.slice(1)} ${period.charAt(0).toUpperCase() + period.slice(1)} Menu`;
+}
+
+function variantLabel(variant) {
+  const pieces = Number(variant.pieces || 0);
+  return pieces > 0 ? `${variant.label} (${pieces} pc)` : variant.label;
 }
 
 function renderHeroCarousel() {

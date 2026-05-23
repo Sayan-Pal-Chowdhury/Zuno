@@ -358,6 +358,12 @@ onAuthStateChanged(auth, async user => {
     window.location.href = "home.html";
     return;
   }
+  const profile = profileSnap.exists() ? profileSnap.data() : {};
+  const preset = new URLSearchParams(window.location.search).get("preset") || profile.setupPreset || "";
+  if (preset === "food" && !profile.storeId) {
+    document.getElementById("shopType").value = profile.businessType || "restaurant";
+    checkReady();
+  }
   if (profileSnap.exists() && profileSnap.data().storeId) {
     window.location.href = "home.html";
   }
@@ -490,11 +496,14 @@ window.submitSetup = async function() {
         location,
         tagline,
         accountMode: "public_shop",
+        setupPreset: "",
         shopType: customerCategory,
         businessType,
         customerCategory,
         serviceMode: typeInfo.mode,
         deliveryEnabled: true,
+        ...(profileData.inventoryEnabled === false && { inventoryEnabled: false }),
+        ...(profileData.foodMenuEnabled === true && { foodMenuEnabled: true }),
         storeId,
         isLive:    false,
         approvalStatus: "pending",
@@ -518,6 +527,8 @@ window.submitSetup = async function() {
         customerCategory,
         serviceMode: typeInfo.mode,
         deliveryEnabled: true,
+        ...(profileData.inventoryEnabled === false && { inventoryEnabled: false }),
+        ...(profileData.foodMenuEnabled === true && { foodMenuEnabled: true }),
         isLive:   false,
         approvalStatus: "pending",
         createdAt: serverTimestamp(),
