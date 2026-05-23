@@ -7,13 +7,15 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js";
-import { attachSuggestionDropdown, COMMON_ITEM_NAMES, mergeSuggestions, renderOptions } from "./item-suggestions.js";
-import { calculateSellingLineTotal, normalizeSellingUnit, sellingUnitLabel } from "./unit-pricing.js";
+import { attachSuggestionDropdown, mergeSuggestions, renderOptions } from "./item-suggestions.js";
+import { calculateSellingLineTotal, getSellingUnitStockQty, normalizeSellingUnit, sellingUnitLabel } from "./unit-pricing.js";
 
 /* ---------- STATE ---------- */
 let currentUserId = null;
 let productCosts  = {};
 let productList   = [];
+let foodMenuItems = [];
+let foodMenuPrices = {};
 let editId        = null;
 let editOriginalData = null;
 let productEditId = null;
@@ -21,7 +23,7 @@ let allSales      = [];
 let chart         = null;
 let editingCreditSaleId = null;
 let shopProfile   = null;
-let productSuggestions = COMMON_ITEM_NAMES;
+let productSuggestions = [];
 let productEditOriginalName = "";
 
 /* ---------- USER COLLECTION HELPER ---------- */
@@ -95,6 +97,7 @@ if (dateEl) {
   await loadShopProfile();
   refreshOrderDisplay();
   loadProducts();
+  if (shopProfile?.foodMenuEnabled === true) loadFoodMenuSuggestions();
   loadSales();
   loadCustomerOrders();
   initCreditUI();
@@ -242,14 +245,17 @@ function populateMonthFilter(data) {
 function createItemRow(isFirst = false, data = {}) {
   const row = document.createElement("div");
   row.className = "itemRow";
+  const quantityUnitVisible = window._zunoFormConfig?.quantityUnit !== false;
+  const defaultQty = data.qty || (quantityUnitVisible ? "" : 1);
+  const defaultUnit = data.unit || (quantityUnitVisible ? "" : "piece");
 
   row.innerHTML = `
     <input class="product" list="productsList" placeholder="Item" value="${data.product || ""}">
-    <input type="number" class="qty" placeholder="Qty" value="${data.qty || ""}">
-    <select class="unit">
-      <option value="kg"    ${data.unit === "kg"    ? "selected" : ""}>kg</option>
-      <option value="g"     ${data.unit === "g"     ? "selected" : ""}>gram</option>
-      <option value="piece" ${data.unit === "piece" ? "selected" : ""}>piece</option>
+    <input type="number" class="qty" placeholder="Qty" value="${defaultQty}" style="${quantityUnitVisible ? "" : "display:none"}">
+    <select class="unit" style="${quantityUnitVisible ? "" : "display:none"}">
+      <option value="kg"    ${defaultUnit === "kg"    ? "selected" : ""}>kg</option>
+      <option value="g"     ${defaultUnit === "g"     ? "selected" : ""}>gram</option>
+      <option value="piece" ${defaultUnit === "piece" ? "selected" : ""}>piece</option>
     </select>
     <input type="number" class="sellingPrice" placeholder="Price/unit" value="${data.sellingPrice || ""}" style="${window._zunoFormConfig?.sellingPrice === false ? 'display:none' : ''}">
     <input type="number" class="price" placeholder="Total Amount" value="${data.price || ""}">
@@ -266,13 +272,20 @@ function createItemRow(isFirst = false, data = {}) {
 
   if (priceInput) priceInput.addEventListener("input", calculateLiveTotal);
 
+  function getSelectedPricing() {
+    const key = productInput.value.trim().toLowerCase();
+    return shopProfile?.foodMenuEnabled === true
+      ? foodMenuPrices[key] || null
+      : productCosts[key] || null;
+  }
+
   function updateFromSelling() {
-    const qty  = Number(qtyInput.value)  || 0;
+    const qty  = Number(qtyInput.value) || 0;
     const sp   = Number(sellInput.value) || 0;
     const unit = unitInput.value;
 
     if (qty && sp) {
-      const productData = productCosts[productInput.value.trim().toLowerCase()];
+      const productData = getSelectedPricing();
       let total = calculateSellingLineTotal({
         qty,
         price: sp,
@@ -288,10 +301,13 @@ function createItemRow(isFirst = false, data = {}) {
   sellInput.addEventListener("input", updateFromSelling);
   unitInput.addEventListener("change", updateFromSelling);
   productInput.addEventListener("change", () => {
-    const productData = productCosts[productInput.value.trim().toLowerCase()];
-    if (productData?.sellingPrice && !sellInput.value) {
+    const productData = getSelectedPricing();
+    if (productData?.sellingPrice) {
       sellInput.value = productData.sellingPrice;
-      row.querySelector(".unit").value = productData.unit || "kg";
+      unitInput.value = productData.unit || "piece";
+      if (!qtyInput.value || window._zunoFormConfig?.quantityUnit === false) {
+        qtyInput.value = getSellingUnitStockQty(productData.sellingUnit, productData.unit || "piece");
+      }
       updateFromSelling();
     }
   });
@@ -559,14 +575,52 @@ function loadProducts() {
       `;
     });
 
-    document.getElementById("productsList")?.remove();
-    const dl = document.createElement("datalist");
-    dl.id = "productsList";
-    productSuggestions = mergeSuggestions(productList, COMMON_ITEM_NAMES);
-    dl.innerHTML = renderOptions(productSuggestions);
-    attachSuggestionDropdown(document.getElementById("prodName"), () => productSuggestions);
-  document.body.appendChild(dl);
+    updateProductSuggestions();
   });
+}
+
+function loadFoodMenuSuggestions() {
+  onSnapshot(userCol("foodItems"), snap => {
+    foodMenuItems = [];
+    foodMenuPrices = {};
+    snap.docs.forEach(itemDoc => {
+      const item = itemDoc.data();
+      const name = item.name || "";
+      if (!name || item.active === false) return;
+      const variants = Array.isArray(item.variants)
+        ? item.variants.filter(variant => Number(variant.price || 0) > 0)
+        : [];
+      const choices = variants.length > 1
+        ? variants.map((variant, index) => ({
+          name: `${name} - ${variant.label || `Portion ${index + 1}`}`,
+          price: Number(variant.price || 0)
+        }))
+        : [{ name, price: Number(variants[0]?.price || item.price || 0) }];
+
+      choices.forEach(choice => {
+        foodMenuItems.push(choice.name);
+        foodMenuPrices[choice.name.toLowerCase()] = {
+          sellingPrice: choice.price,
+          unit: "piece",
+          sellingUnit: "piece"
+        };
+      });
+    });
+    updateProductSuggestions();
+  });
+}
+
+function updateProductSuggestions() {
+  const sourceNames = shopProfile?.foodMenuEnabled === true ? foodMenuItems : productList;
+  productSuggestions = mergeSuggestions(sourceNames);
+
+  document.getElementById("productsList")?.remove();
+  const dl = document.createElement("datalist");
+  dl.id = "productsList";
+  dl.innerHTML = renderOptions(productSuggestions);
+  document.body.appendChild(dl);
+
+  attachSuggestionDropdown(document.getElementById("prodName"), () => productSuggestions);
 }
 
 /* ---------- PRODUCT ADD / UPDATE ---------- */
@@ -1315,6 +1369,20 @@ function applyFormConfig(config) {
 
   // store for createItemRow to use
   window._zunoFormConfig = config;
+  document.querySelectorAll(".itemRow").forEach(row => {
+    const qty = row.querySelector(".qty");
+    const unit = row.querySelector(".unit");
+    const sellingPrice = row.querySelector(".sellingPrice");
+    const quantityUnitVisible = config.quantityUnit !== false;
+    if (qty) {
+      qty.style.display = quantityUnitVisible ? "" : "none";
+      if (!quantityUnitVisible && !qty.value) qty.value = 1;
+    }
+    if (unit) {
+      unit.style.display = quantityUnitVisible ? "" : "none";
+    }
+    if (sellingPrice) sellingPrice.style.display = config.sellingPrice === false ? "none" : "";
+  });
 }
 
 /* ---------- AI SUMMARY ---------- */

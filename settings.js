@@ -47,7 +47,7 @@ async function loadSettings() {
     const formSnap = await getDoc(doc(db, "users", currentUserId, "settings", "formConfig"));
     if (formSnap.exists()) {
       const f = formSnap.data();
-      const toggles = ["customerName", "phone", "deliveryStatus", "paymentMode", "creditOptions", "sellingPrice"];
+      const toggles = ["customerName", "phone", "deliveryStatus", "paymentMode", "creditOptions", "sellingPrice", "quantityUnit"];
       toggles.forEach(key => {
         const el = document.getElementById("toggle_" + key);
         if (el && f[key] !== undefined) el.checked = f[key];
@@ -96,7 +96,8 @@ window.saveSettings = async () => {
     deliveryStatus: document.getElementById("toggle_deliveryStatus").checked,
     paymentMode:    document.getElementById("toggle_paymentMode").checked,
     creditOptions:  document.getElementById("toggle_creditOptions").checked,
-    sellingPrice:   document.getElementById("toggle_sellingPrice").checked
+    sellingPrice:   document.getElementById("toggle_sellingPrice").checked,
+    quantityUnit:   document.getElementById("toggle_quantityUnit").checked
   };
 
   const profileRef = doc(db, "users", currentUserId, "settings", "profile");

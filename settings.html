@@ -369,12 +369,23 @@ onAuthStateChanged(auth, (user) => {
     </label>
   </div>
 
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Quantity / Kg / Gram</div>
+      <div class="settings-row-sub">Turn off for fixed-price items such as plates or services</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="toggle_quantityUnit" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
 </div>
 
 <button class="save-btn" onclick="saveSettings()">Save Settings</button>
 <p class="save-msg" id="saveMsg"></p>
 
-<script type="module" src="settings.js"></script>
+<script type="module" src="settings.js?v=27"></script>
 <script type="module" src="topbar.js"></script>
 <script type="module" src="navbar.js"></script>
   <script src="pwa.js" defer></script>
