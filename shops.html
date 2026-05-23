@@ -16,49 +16,47 @@
 <body>
   <div id="shop-topbar"></div>
   <main class="shop-main">
-    <section class="hero-card">
-      <div class="hero-copy">
-        <small>Available near you</small>
-        <h1>Shop from local stores</h1>
-        <p>Fresh stock, live availability, simple ordering.</p>
-        <div class="public-login-actions">
-          <a class="public-login-btn primary" href="login.html">Vendor Login</a>
-          <a class="public-login-btn" href="customer-login.html">Customer Login</a>
-        </div>
+    <section class="marketplace-hero" id="marketplaceHero">
+      <div class="marketplace-hero-track" id="marketplaceHeroTrack">
+        <article class="marketplace-hero-slide">
+          <div class="marketplace-hero-copy">
+            <small>Available near you</small>
+            <h1>Shop from local stores</h1>
+            <p>Fresh stock, live availability, simple ordering.</p>
+            <div class="public-login-actions">
+              <a class="public-login-btn primary" href="login.html">Vendor Login</a>
+              <a class="public-login-btn" href="customer-login.html">Customer Login</a>
+            </div>
+          </div>
+        </article>
       </div>
-      <div class="hero-market-stack public-hero-stack" aria-hidden="true">
-        <span>Zuno</span>
-        <b>Local</b>
-      </div>
+      <div class="marketplace-hero-dots" id="marketplaceHeroDots"></div>
     </section>
 
     <section class="customer-strip" id="customerStrip" hidden></section>
 
     <div class="toolbar">
-      <input class="search-input" id="shopSearch" type="search" placeholder="Search shops..." oninput="filterShops()">
+      <input class="search-input" id="shopSearch" type="search" placeholder="Search shops..." oninput="filterShops()" onsearch="filterShops()">
     </div>
 
-    <div class="section-head category-head">
-      <h2>Explore local</h2>
-      <button class="section-link" type="button" onclick="setMarketplaceCategory('all', this)">All</button>
+    <div id="browseFilters">
+      <div class="section-head category-head">
+        <h2>Explore local</h2>
+        <button class="section-link" type="button" onclick="setMarketplaceCategory('all', this)">All</button>
+      </div>
+
+      <div class="category-row marketplace-category-row" id="marketplaceCategoryRow"></div>
+
+      <div class="section-head category-head">
+        <h2>Shop types nearby</h2>
+        <span id="typeCount">All</span>
+      </div>
+
+      <div class="shop-type-scroll" id="businessTypeRow"></div>
     </div>
-
-    <div class="category-row marketplace-category-row" id="marketplaceCategoryRow"></div>
-
-    <div class="section-head category-head">
-      <h2>Shop types nearby</h2>
-      <span id="typeCount">All</span>
-    </div>
-
-    <div class="shop-type-scroll" id="businessTypeRow"></div>
-
-    <section class="featured-carousel" id="featuredCarousel" hidden>
-      <div class="featured-track" id="featuredTrack"></div>
-      <div class="featured-dots" id="featuredDots"></div>
-    </section>
 
     <div class="section-head">
-      <h2>Open Shops</h2>
+      <h2 id="shopsHeading">Open Shops</h2>
       <span id="shopCount">Loading</span>
     </div>
 

@@ -36,7 +36,7 @@ document.getElementById("foodBtn").onclick = async () => {
   await saveMode({
     accountMode: "public_shop",
     setupPreset: "food",
-    businessType: "restaurant",
+    businessType: "home_food",
     shopType: "food",
     customerCategory: "food",
     inventoryEnabled: false,

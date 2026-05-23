@@ -11,6 +11,7 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { findProductImage } from "./product-images.js";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 let userId = "";
@@ -108,7 +109,7 @@ async function saveFoodItem(event) {
   }
 
   const imageFile = document.getElementById("foodItemImage").files[0];
-  const imageUrl = imageFile ? await resizeImage(imageFile) : editingImageUrl;
+  const imageUrl = imageFile ? await resizeImage(imageFile) : (editingImageUrl || await findProductImage(name, "plate"));
   const item = {
     name,
     description: document.getElementById("foodItemDescription").value.trim(),
@@ -137,7 +138,7 @@ window.editFoodItem = itemId => {
   editingImageUrl = item.imageUrl || "";
   document.getElementById("foodItemName").value = item.name || "";
   document.getElementById("foodItemDescription").value = item.description || "";
-  document.getElementById("foodItemCategory").value = item.category || "Meal";
+  document.getElementById("foodItemCategory").value = menuCategoryValue(item.category);
   document.getElementById("foodItemActive").checked = item.active !== false;
   renderVariantRows(normalizeVariants(item));
   document.getElementById("saveFoodItemBtn").textContent = "Save item";
@@ -438,6 +439,18 @@ function variantSummary(item) {
   const variants = normalizeVariants(item);
   if (variants.length === 1) return `${escapeHtml(variants[0].label)} - Rs ${formatNumber(variants[0].price)}`;
   return `${variants.length} portions | From Rs ${formatNumber(Math.min(...variants.map(variant => Number(variant.price || 0))))}`;
+}
+
+function menuCategoryValue(category = "") {
+  const replacements = {
+    Meal: "Veg",
+    Bread: "Breads",
+    Curry: "Veg",
+    Snack: "Snacks",
+    Sweet: "Sweets",
+    Drink: "Drinks"
+  };
+  return replacements[category] || category || "Veg";
 }
 
 function itemName(itemId) {

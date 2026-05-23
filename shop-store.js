@@ -5,6 +5,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -37,17 +38,19 @@ export async function getShopProfile(storeId = getStoreId()) {
   }
   const profile = profileSnap.exists() ? profileSnap.data() : {};
   const visibility = getPublicVisibility(profile, indexData);
+  const typeInfo = resolvePublicBusinessType(profile, indexData);
 
   return {
     uid,
     storeId,
     name: profile.name || indexData.name || "Shop",
     location: profile.location || indexData.location || "",
+    shopDescription: profile.shopDescription || indexData.shopDescription || "",
     tagline: profile.tagline || "Fresh products, fair prices",
     coverPhotoUrl: profile.coverPhotoUrl || indexData.coverPhotoUrl || "",
     shopType: profile.shopType || indexData.shopType || "daily_needs",
-    businessType: profile.businessType || indexData.businessType || legacyBusinessType(profile.shopType || indexData.shopType),
-    businessTypeLabel: profile.businessTypeLabel || indexData.businessTypeLabel || getBusinessType(legacyBusinessType(profile.shopType || indexData.shopType)).label,
+    businessType: typeInfo.id,
+    businessTypeLabel: typeInfo.label,
     customerCategory: profile.customerCategory || indexData.customerCategory || profile.shopType || indexData.shopType || "daily_needs",
     serviceMode: profile.serviceMode || indexData.serviceMode || "delivery",
     deliveryEnabled: profile.deliveryEnabled !== false && indexData.deliveryEnabled !== false,
@@ -135,24 +138,31 @@ export async function listPublicShops() {
 
     const visibility = getPublicVisibility(profile, data);
     if (!visibility.isLive) continue;
+    const typeInfo = resolvePublicBusinessType(profile, data);
+    const foodMenuEnabled = profile.foodMenuEnabled === true || data.foodMenuEnabled === true;
+    const featuredItems = await loadPublicFeaturedItems(data.uid, foodMenuEnabled);
 
     shops.push({
       storeId: d.id,
       uid: data.uid,
       name: profile.name || data.name || "Shop",
       location: profile.location || data.location || "",
+      shopDescription: profile.shopDescription || data.shopDescription || "",
       tagline: profile.tagline || data.tagline || "Fresh products, fair prices",
       coverPhotoUrl: profile.coverPhotoUrl || data.coverPhotoUrl || "",
       shopType: profile.shopType || data.shopType || "daily_needs",
-      businessType: profile.businessType || data.businessType || legacyBusinessType(profile.shopType || data.shopType),
-      businessTypeLabel: profile.businessTypeLabel || data.businessTypeLabel || getBusinessType(legacyBusinessType(profile.shopType || data.shopType)).label,
+      businessType: typeInfo.id,
+      businessTypeLabel: typeInfo.label,
       customerCategory: profile.customerCategory || data.customerCategory || profile.shopType || data.shopType || "daily_needs",
       serviceMode: profile.serviceMode || data.serviceMode || "delivery",
       deliveryEnabled: profile.deliveryEnabled !== false && data.deliveryEnabled !== false,
-      publicOrdersEnabled: profile.publicOrdersEnabled !== false && data.publicOrdersEnabled !== false
+      publicOrdersEnabled: profile.publicOrdersEnabled !== false && data.publicOrdersEnabled !== false,
+      foodMenuEnabled,
+      featuredItems,
+      recentAt: newestTime(profile.updatedAt, data.updatedAt, profile.createdAt, data.createdAt, ...featuredItems.map(item => item.recentAt))
     });
   }
-  return shops;
+  return shops.sort((a, b) => b.recentAt - a.recentAt || a.name.localeCompare(b.name));
 }
 
 function getPublicVisibility(profile = {}, indexData = {}) {
@@ -178,6 +188,49 @@ function legacyBusinessType(shopType = "") {
     other: "other"
   };
   return legacy[shopType] || shopType || "other";
+}
+
+function resolvePublicBusinessType(profile = {}, indexData = {}) {
+  const storedType = profile.businessType || indexData.businessType || legacyBusinessType(profile.shopType || indexData.shopType);
+  const hasFoodMenu = profile.foodMenuEnabled === true || indexData.foodMenuEnabled === true;
+  return getBusinessType(hasFoodMenu && storedType === "restaurant" ? "home_food" : storedType);
+}
+
+async function loadPublicFeaturedItems(uid, foodMenuEnabled) {
+  try {
+    const source = foodMenuEnabled ? "foodItems" : "inventory";
+    const itemsQuery = foodMenuEnabled
+      ? query(collection(db, "users", uid, source), orderBy("updatedAt", "desc"), limit(6))
+      : query(collection(db, "users", uid, source), limit(6));
+    const snap = await getDocs(itemsQuery);
+    return snap.docs
+      .map(itemDoc => {
+        const item = itemDoc.data();
+        const name = item.name || item.product || "";
+        const visible = foodMenuEnabled ? item.active !== false : Number(item.qty || 0) > 0;
+        if (!name || !visible) return null;
+        return {
+          name,
+          imageUrl: item.imageUrl && !shouldReplaceAutoImage(item.imageUrl)
+            ? item.imageUrl
+            : getProductVisual(name, foodMenuEnabled ? "plate" : "bag"),
+          recentAt: newestTime(item.updatedAt, item.createdAt)
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.recentAt - a.recentAt || a.name.localeCompare(b.name))
+      .slice(0, 3);
+  } catch (error) {
+    console.warn("Shop item preview unavailable:", error);
+    return [];
+  }
+}
+
+function newestTime(...values) {
+  return values.reduce((latest, value) => {
+    const timestamp = value?.toMillis?.() || (value ? new Date(value).getTime() : 0);
+    return Math.max(latest, Number.isFinite(timestamp) ? timestamp : 0);
+  }, 0);
 }
 
 export async function getPlatformPaymentSettings() {

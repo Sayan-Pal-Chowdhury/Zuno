@@ -14,6 +14,9 @@ let heroImages = [];
 let heroSlide = 0;
 let heroTimer = null;
 let foodMenuConfig = {};
+let foodMenuItems = [];
+let weeklyMenuOpen = false;
+let selectedFoodVariants = {};
 
 const productIcons = {
   potato: "PT",
@@ -38,6 +41,18 @@ const shopTypes = [
   { id: "essentials", label: "Essentials", keywords: ["oil", "salt", "sugar", "soap", "tea", "coffee", "masala", "spice", "essential"] }
 ];
 
+const foodCategoryOrder = ["Veg", "Chicken", "Fish", "Egg", "Rice", "Breads", "Snacks", "Sweets", "Drinks", "Other"];
+const foodCategoryKeywords = {
+  Chicken: ["chicken", "murgh"],
+  Fish: ["fish", "ilish", "hilsa", "rohu", "katla"],
+  Egg: ["egg", "anda"],
+  Rice: ["rice", "biryani", "pulao", "fried rice"],
+  Breads: ["roti", "naan", "paratha", "bread", "luchi", "puri"],
+  Snacks: ["snack", "roll", "chop", "cutlet", "singara", "samosa", "pakora", "momo"],
+  Sweets: ["sweet", "mithai", "rasgulla", "sandesh", "dessert"],
+  Drinks: ["drink", "tea", "coffee", "lassi", "juice"]
+};
+
 init();
 
 async function init() {
@@ -59,13 +74,13 @@ async function init() {
 
   document.title = store.name;
   document.getElementById("heroTitle").textContent = store.name;
-  document.getElementById("heroSub").textContent = store.tagline || store.location || "Fresh products, fair prices";
+  document.getElementById("heroSub").textContent = store.shopDescription || store.tagline || store.location || "Fresh products, fair prices";
   if (store.coverPhotoUrl) {
     heroImages = [store.coverPhotoUrl];
     renderHeroCarousel();
   }
   document.getElementById("shopStatusRow").innerHTML = `
-    <span class="shop-type-badge">${formatShopType(store.shopType)}</span>
+    <span class="shop-type-badge">${store.businessTypeLabel || formatShopType(store.shopType)}</span>
     <span class="delivery-badge ${store.deliveryEnabled ? "on" : "off"}">
       ${store.deliveryEnabled ? "Delivery on" : "Pickup only"}
     </span>
@@ -93,14 +108,17 @@ async function init() {
 }
 
 function initFoodShop() {
+  document.querySelector(".shop-main")?.classList.add("food-shop");
   document.getElementById("searchInput").placeholder = "Search menu items...";
-  document.getElementById("stockQuickCard").innerHTML = "<strong>Freshly made</strong><span>Cooked today</span>";
-  document.getElementById("typeSectionHeading").hidden = true;
-  document.getElementById("typeRow").hidden = true;
+  setFoodQuickCards();
+  document.getElementById("typeSectionHeading").querySelector("h2").textContent = "Browse menu";
 
   listenFoodMenu(store.uid, data => {
     foodMenuConfig = data.config || {};
-    allProducts = getActiveMenuProducts(data.items || [], foodMenuConfig);
+    foodMenuItems = (data.items || []).filter(item => item.active !== false);
+    allProducts = getActiveMenuProducts(foodMenuItems, foodMenuConfig);
+    renderFoodTypeRow();
+    renderWeeklyMenu();
     renderSearchSuggestions();
     updateHeroImages();
     renderProducts();
@@ -142,8 +160,9 @@ function renderProducts() {
   const grid = document.getElementById("productsGrid");
   const search = document.getElementById("searchInput").value.toLowerCase().trim();
   const products = allProducts.filter(product => {
+    if (store?.foodMenuEnabled === true && currentTypeFilter !== "all" && getFoodCategory(product) !== currentTypeFilter) return false;
     if (store?.foodMenuEnabled !== true && currentTypeFilter !== "all" && getProductType(product.name) !== currentTypeFilter) return false;
-    if (search && !product.name.toLowerCase().includes(search)) return false;
+    if (search && !`${product.name} ${product.description || ""} ${product.category || ""}`.toLowerCase().includes(search)) return false;
     return true;
   });
 
@@ -191,9 +210,37 @@ function renderTypeRow() {
   `).join("");
 }
 
+function renderFoodTypeRow() {
+  const row = document.getElementById("typeRow");
+  if (!row) return;
+  const usedCategories = new Set(allProducts.map(product => getFoodCategory(product)));
+  const categories = foodCategoryOrder.filter(category => usedCategories.has(category));
+  if (currentTypeFilter !== "all" && !usedCategories.has(currentTypeFilter)) currentTypeFilter = "all";
+  const filters = [
+    { id: "all", label: "All", imageUrl: firstProductImage(), initials: "All" },
+    ...categories.map(category => {
+      const item = allProducts.find(product => getFoodCategory(product) === category);
+      return {
+        id: category,
+        label: category,
+        imageUrl: item?.imageUrl || "",
+        initials: category.slice(0, 2).toUpperCase()
+      };
+    })
+  ];
+  row.innerHTML = filters.map(filter => `
+    <button class="category-chip ${currentTypeFilter === filter.id ? "active" : ""}" onclick="setTypeFilter('${filter.id}', this)">
+      <span class="category-image ${filter.imageUrl ? "has-image" : ""}">
+        ${filter.imageUrl ? `<img src="${escapeHtml(filter.imageUrl)}" alt="">` : escapeHtml(filter.initials)}
+      </span>
+      ${escapeHtml(filter.label)}
+    </button>
+  `).join("");
+}
+
 function renderProduct(product) {
   const foodItem = store.foodMenuEnabled === true;
-  const qtyInCart = foodItem ? 0 : getItemQty(store.storeId, product.id);
+  const qtyInCart = foodItem ? getSelectedFoodQty(product) : getItemQty(store.storeId, product.id);
   const out = !foodItem && product.qty <= 0 && store.forceInStock !== true;
   const low = !foodItem && product.alertThreshold > 0 && product.qty <= product.alertThreshold && product.qty > 0;
   const icon = getProductIcon(product.name);
@@ -206,6 +253,7 @@ function renderProduct(product) {
         ${out ? `<b class="pill out">Out</b>` : low ? `<b class="pill low">Low stock</b>` : product.featured ? `<b class="pill">Special</b>` : `<b class="pill">Fresh</b>`}
       </div>
       <div class="product-body">
+        ${foodItem ? `<span class="food-category-label">${escapeHtml(getFoodCategory(product))}</span>` : ""}
         <p class="product-name">${escapeHtml(product.name)}</p>
         <div class="product-price">${foodItem ? `From ${formatMoney(product.price)}` : `${formatMoney(product.price)} / ${sellingUnitLabel(product.sellingUnit, product.unit)}`}</div>
         <div class="product-stock ${low ? "low" : ""}">${foodItem ? escapeHtml(product.description || product.category || "Prepared fresh") : out ? "Currently unavailable" : product.qty <= 0 ? "Available to order" : `${roundQty(product.qty)} ${product.unit} available`}</div>
@@ -219,14 +267,21 @@ function renderProduct(product) {
 
 function renderAction(product, qtyInCart) {
   if (store.foodMenuEnabled === true) {
+    const selectedVariantId = getSelectedFoodVariant(product).id;
     return `
       <div class="food-add-controls">
-        <select id="food-variant-${product.id}" class="food-variant-select" aria-label="Select portion for ${escapeHtml(product.name)}">
+        <select id="food-variant-${product.id}" class="food-variant-select" aria-label="Select portion for ${escapeHtml(product.name)}" onchange="setFoodVariant('${product.id}', this.value)">
           ${product.variants.map(variant => `
-            <option value="${escapeHtml(variant.id)}">${escapeHtml(variantLabel(variant))} - ${formatMoney(variant.price)}</option>
+            <option value="${escapeHtml(variant.id)}" ${variant.id === selectedVariantId ? "selected" : ""}>${escapeHtml(variantLabel(variant))} - ${formatMoney(variant.price)}</option>
           `).join("")}
         </select>
-        <button class="add-btn" onclick="handleAdd('${product.id}')">Add</button>
+        ${qtyInCart > 0 ? `
+          <div class="qty-control">
+            <button onclick="changeFoodQty('${product.id}', '${selectedVariantId}', -1)" aria-label="Reduce quantity">-</button>
+            <span>${formatQty(qtyInCart)}</span>
+            <button onclick="changeFoodQty('${product.id}', '${selectedVariantId}', 1)" aria-label="Increase quantity">+</button>
+          </div>
+        ` : `<button class="add-btn" onclick="handleAdd('${product.id}')">Add</button>`}
       </div>
     `;
   }
@@ -250,6 +305,7 @@ window.handleAdd = function(productId) {
     const variantId = document.getElementById(`food-variant-${product.id}`)?.value;
     const variant = product.variants.find(option => option.id === variantId) || product.variants[0];
     if (!variant) return;
+    selectedFoodVariants[product.id] = variant.id;
     addToCart(store.storeId, {
       id: `${product.id}::${variant.id}`,
       productId: product.id,
@@ -262,6 +318,7 @@ window.handleAdd = function(productId) {
       maxQty: 99,
       step: 1
     });
+    renderProducts();
     updateCartBadge(store.storeId);
     return;
   }
@@ -404,9 +461,156 @@ function getActiveMenuHeading() {
   return `${day.charAt(0).toUpperCase() + day.slice(1)} ${period.charAt(0).toUpperCase() + period.slice(1)} Menu`;
 }
 
+function getFoodCategory(product) {
+  const stored = String(product.category || "").trim();
+  const mapped = {
+    Bread: "Breads",
+    Snack: "Snacks",
+    Sweet: "Sweets",
+    Drink: "Drinks"
+  }[stored] || stored;
+  if (foodCategoryOrder.includes(mapped)) return mapped;
+  const name = String(product.name || "").toLowerCase();
+  const matched = Object.entries(foodCategoryKeywords).find(([, words]) => words.some(word => name.includes(word)));
+  if (matched) return matched[0];
+  return stored === "Meal" || stored === "Curry" ? "Veg" : "Other";
+}
+
+function setFoodQuickCards() {
+  document.getElementById("fulfillmentIcon").innerHTML = store.deliveryEnabled ? iconBike() : iconBag();
+  document.getElementById("stockIcon").innerHTML = iconChef();
+  document.getElementById("paymentIcon").innerHTML = iconPayment();
+  document.getElementById("stockQuickCard").querySelector("strong").textContent = "Freshly made";
+  document.getElementById("stockQuickCard").querySelector("div > span:not(.quick-icon)").textContent = "Cooked today";
+}
+
+window.toggleWeeklyMenu = function() {
+  weeklyMenuOpen = !weeklyMenuOpen;
+  document.getElementById("weeklyMenuContent").hidden = !weeklyMenuOpen;
+  document.getElementById("weeklyMenuToggle").textContent = weeklyMenuOpen ? "Hide schedule" : "View schedule";
+};
+
+window.setFoodVariant = function(productId, variantId) {
+  selectedFoodVariants[productId] = variantId;
+  renderProducts();
+};
+
+window.changeFoodQty = function(productId, variantId, delta) {
+  const lineId = `${productId}::${variantId}`;
+  const current = getItemQty(store.storeId, lineId);
+  updateQty(store.storeId, lineId, current + delta);
+  renderProducts();
+  updateCartBadge(store.storeId);
+};
+
+function renderWeeklyMenu() {
+  const section = document.getElementById("weeklyMenuSection");
+  const content = document.getElementById("weeklyMenuContent");
+  const scheduled = foodMenuConfig.mode === "scheduled";
+  section.hidden = !scheduled;
+  if (!scheduled) return;
+
+  const menuItemsById = new Map(foodMenuItems.map(item => [item.id, item]));
+  const fixed = (Array.isArray(foodMenuConfig.fixedItems) ? foodMenuConfig.fixedItems : [])
+    .map(assignment => ({ item: menuItemsById.get(assignment.itemId), note: schedulePeriodLabel(assignment.period) }))
+    .filter(assignment => Boolean(assignment.item));
+  const specials = (Array.isArray(foodMenuConfig.specials) ? foodMenuConfig.specials : [])
+    .filter(special => special.active !== false)
+    .map(special => ({
+      item: menuItemsById.get(special.itemId),
+      note: `${special.day === "all" ? "Every day" : capitalise(special.day)} - ${schedulePeriodLabel(special.period)}`
+    }))
+    .filter(special => Boolean(special.item));
+  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  content.innerHTML = `
+    ${fixed.length ? `
+      <div class="weekly-block">
+        <strong>Available every day</strong>
+        <div class="weekly-food-list">${fixed.map(assignment => renderWeeklyFood(assignment.item, assignment.note)).join("")}</div>
+      </div>` : ""}
+    ${days.map(day => `
+      <article class="weekly-day ${day === currentMenuDay() ? "today" : ""}">
+        <h3>${capitalise(day)}${day === currentMenuDay() ? " - Today" : ""}</h3>
+        ${renderWeeklyMeal(day, "lunch", menuItemsById)}
+        ${renderWeeklyMeal(day, "dinner", menuItemsById)}
+      </article>
+    `).join("")}
+    ${specials.length ? `
+      <div class="weekly-block">
+        <strong>Specials</strong>
+        <div class="weekly-food-list">${specials.map(special => renderWeeklyFood(special.item, special.note)).join("")}</div>
+      </div>` : ""}
+  `;
+  content.hidden = !weeklyMenuOpen;
+}
+
+function renderWeeklyMeal(day, period, itemMap) {
+  const ids = Array.isArray(foodMenuConfig.weekly?.[day]?.[period]) ? foodMenuConfig.weekly[day][period] : [];
+  const items = ids.map(id => itemMap.get(id)).filter(Boolean);
+  return `
+    <div class="weekly-meal">
+      <span>${capitalise(period)}</span>
+      <div class="weekly-food-list">${items.length ? items.map(item => renderWeeklyFood(item)).join("") : `<em>Menu not set</em>`}</div>
+    </div>
+  `;
+}
+
+function renderWeeklyFood(item, note = "") {
+  const product = toFoodProduct(item, false);
+  if (!product) return "";
+  return `
+    <div class="weekly-food">
+      ${product.imageUrl ? `<img src="${escapeHtml(product.imageUrl)}" alt="">` : `<b>${escapeHtml(product.name.slice(0, 2).toUpperCase())}</b>`}
+      <div>
+        <strong>${escapeHtml(product.name)}</strong>
+        <small>${escapeHtml(product.description || getFoodCategory(product))}</small>
+        <small>${escapeHtml(product.variants.map(variant => `${variantLabel(variant)} - ${formatMoney(variant.price)}`).join(" | "))}</small>
+        ${note ? `<small class="weekly-food-note">${escapeHtml(note)}</small>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function schedulePeriodLabel(period = "both") {
+  return period === "both" ? "Lunch and dinner" : capitalise(period);
+}
+
+function capitalise(value = "") {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function iconBike() {
+  return `<svg viewBox="0 0 24 24"><path d="M5 17a3 3 0 1 0 0-.01M19 17a3 3 0 1 0 0-.01M5 17h6l-3-7h5l3 7M10 7h3"/></svg>`;
+}
+
+function iconBag() {
+  return `<svg viewBox="0 0 24 24"><path d="M7 9V7a5 5 0 0 1 10 0v2M5 9h14l-1 11H6L5 9Z"/></svg>`;
+}
+
+function iconChef() {
+  return `<svg viewBox="0 0 24 24"><path d="M6 11a4 4 0 0 1 1-7 5 5 0 0 1 10 0 4 4 0 0 1 1 7v8H6v-8ZM8 15h8"/></svg>`;
+}
+
+function iconPayment() {
+  return `<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 14h4"/></svg>`;
+}
+
 function variantLabel(variant) {
   const pieces = Number(variant.pieces || 0);
   return pieces > 0 ? `${variant.label} (${pieces} pc)` : variant.label;
+}
+
+function getSelectedFoodVariant(product) {
+  const selectedId = selectedFoodVariants[product.id];
+  const inCartVariant = product.variants.find(option => getItemQty(store.storeId, `${product.id}::${option.id}`) > 0);
+  const variant = product.variants.find(option => option.id === selectedId) || inCartVariant || product.variants[0];
+  selectedFoodVariants[product.id] = variant.id;
+  return variant;
+}
+
+function getSelectedFoodQty(product) {
+  const variant = getSelectedFoodVariant(product);
+  return getItemQty(store.storeId, `${product.id}::${variant.id}`);
 }
 
 function renderHeroCarousel() {

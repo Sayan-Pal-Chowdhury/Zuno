@@ -37,9 +37,9 @@
     </div>
 
     <div class="quick-strip">
-      <div class="quick-card"><strong id="fulfillmentTitle">Express</strong><span id="fulfillmentSub">Fast pickup</span></div>
-      <div class="quick-card" id="stockQuickCard"><strong>Live stock</strong><span>Updated now</span></div>
-      <div class="quick-card"><strong>COD</strong><span>Pay later</span></div>
+      <div class="quick-card" id="fulfillmentCard"><span class="quick-icon" id="fulfillmentIcon" aria-hidden="true"></span><div><strong id="fulfillmentTitle">Express</strong><span id="fulfillmentSub">Fast pickup</span></div></div>
+      <div class="quick-card" id="stockQuickCard"><span class="quick-icon" id="stockIcon" aria-hidden="true"></span><div><strong>Live stock</strong><span>Updated now</span></div></div>
+      <div class="quick-card" id="paymentQuickCard"><span class="quick-icon" id="paymentIcon" aria-hidden="true"></span><div><strong>COD</strong><span>Pay later</span></div></div>
     </div>
 
     <div class="section-head category-head" id="typeSectionHeading">
@@ -53,6 +53,14 @@
         All
       </button>
     </div>
+
+    <section class="weekly-menu-section" id="weeklyMenuSection" hidden>
+      <div class="section-head">
+        <h2>Weekly Menu</h2>
+        <button class="section-link" id="weeklyMenuToggle" type="button" onclick="toggleWeeklyMenu()">View schedule</button>
+      </div>
+      <div class="weekly-menu-content" id="weeklyMenuContent" hidden></div>
+    </section>
 
     <div class="section-head">
       <h2 id="productsHeading">Shop by items</h2>

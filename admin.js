@@ -16,6 +16,7 @@ import {
   setDoc,
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { imageLibraryId } from "./product-images.js";
 
 const ADMIN_EMAILS = ["sayan123401@gmail.com"];
 
@@ -382,7 +383,7 @@ function renderImages() {
   const list = document.getElementById("adminImagesList");
   if (!list) return;
   if (imageCandidates.length === 0) {
-    list.innerHTML = `<div class="empty">No missing/default product images found yet.</div>`;
+    list.innerHTML = `<div class="empty">No missing/default product or menu images found yet.</div>`;
     return;
   }
   renderList("adminImagesList", imageCandidates, item => `
@@ -523,9 +524,10 @@ window.prepareImageProduct = product => {
 };
 
 async function scanMissingImages() {
-  const [inventorySnap, productsSnap] = await Promise.all([
+  const [inventorySnap, productsSnap, foodItemsSnap] = await Promise.all([
     getDocs(collectionGroup(db, "inventory")),
-    getDocs(collectionGroup(db, "products"))
+    getDocs(collectionGroup(db, "products")),
+    getDocs(collectionGroup(db, "foodItems"))
   ]);
   const map = new Map();
   const addCandidate = (name, shopName = "Shop") => {
@@ -546,6 +548,10 @@ async function scanMissingImages() {
     const data = item.data();
     if (!data.imageUrl || isDefaultImage(data.imageUrl)) addCandidate(data.name || data.product, data.shopName || "");
   });
+  foodItemsSnap.forEach(item => {
+    const data = item.data();
+    if (!data.imageUrl || isDefaultImage(data.imageUrl)) addCandidate(data.name || data.product, "Food menu");
+  });
 
   imageCandidates = [...map.values()].sort((a, b) => b.count - a.count || a.product.localeCompare(b.product));
   renderImages();
@@ -562,9 +568,10 @@ async function updateProductImageEverywhere() {
 
   msg.textContent = "Preparing image...";
   const imageUrl = await fileToDataUrl(file);
-  const [inventorySnap, productsSnap] = await Promise.all([
+  const [inventorySnap, productsSnap, foodItemsSnap] = await Promise.all([
     getDocs(collectionGroup(db, "inventory")),
-    getDocs(collectionGroup(db, "products"))
+    getDocs(collectionGroup(db, "products")),
+    getDocs(collectionGroup(db, "foodItems"))
   ]);
 
   const updates = [];
@@ -576,9 +583,21 @@ async function updateProductImageEverywhere() {
     const data = item.data();
     if (sameProduct(data.name || data.product, product)) updates.push(updateDoc(item.ref, { imageUrl, imageUpdatedAt: serverTimestamp() }));
   });
+  foodItemsSnap.forEach(item => {
+    const data = item.data();
+    if (sameProduct(data.name || data.product, product)) updates.push(updateDoc(item.ref, { imageUrl, imageUpdatedAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+  });
 
-  await Promise.all(updates);
-  msg.textContent = `Updated ${updates.length} records for ${product}.`;
+  await Promise.all([
+    ...updates,
+    setDoc(doc(db, "platformSettings", `itemImage_${imageLibraryId(product)}`), {
+      name: product,
+      imageUrl,
+      updatedAt: serverTimestamp(),
+      updatedBy: auth.currentUser?.email || "admin"
+    }, { merge: true })
+  ]);
+  msg.textContent = `Saved default image and updated ${updates.length} matching records for ${product}.`;
   document.getElementById("adminImageFile").value = "";
   await scanMissingImages();
 }

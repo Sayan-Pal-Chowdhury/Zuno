@@ -56,10 +56,27 @@
     .settings-row input[type="text"],
     .settings-row input[type="tel"],
     .settings-row input[type="email"],
-    .settings-row select {
+    .settings-row select,
+    .settings-row textarea {
       width: 220px;
-      height: 36px;
       font-size: 13px;
+    }
+
+    .settings-row input[type="text"],
+    .settings-row input[type="tel"],
+    .settings-row input[type="email"],
+    .settings-row select {
+      height: 36px;
+    }
+
+    .settings-row textarea {
+      min-height: 76px;
+      resize: vertical;
+      padding: 9px 10px;
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      line-height: 1.4;
     }
 
     .cover-upload {
@@ -186,6 +203,14 @@ onAuthStateChanged(auth, (user) => {
 
   <div class="settings-row">
     <div class="settings-row-left">
+      <div class="settings-row-label">Shop Description</div>
+      <div class="settings-row-sub">Shown to customers on your listing and shop page</div>
+    </div>
+    <textarea id="shopDescription" maxlength="180" placeholder="e.g. Homemade Bengali lunch and dinner delivered locally"></textarea>
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
       <div class="settings-row-label">Digital Shop</div>
       <div class="settings-row-sub" id="digitalShopLink">Your public shop link will appear here</div>
     </div>
@@ -267,9 +292,10 @@ onAuthStateChanged(auth, (user) => {
 
   <div class="settings-row">
     <div class="settings-row-left">
-      <div class="settings-row-label">Address</div>
+      <div class="settings-row-label">Shop Location</div>
+      <div class="settings-row-sub">Shown to customers and used in shop search</div>
     </div>
-    <input type="text" id="shopAddress" placeholder="e.g. Kolkata, WB">
+    <input type="text" id="shopAddress" placeholder="e.g. Barrackpore, West Bengal">
   </div>
 </div>
 

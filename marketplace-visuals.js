@@ -22,7 +22,7 @@ const PRODUCT_VISUALS = [
   { keys: ["onion", "pyaz"], title: "Onion", a: "#c77bd8", b: "#f5ddff", kind: "onion" },
   { keys: ["tomato"], title: "Tomato", a: "#f2554a", b: "#ffd7d2", kind: "tomato" },
   { keys: ["chilli", "chili", "mirchi"], title: "Chilli", a: "#21a965", b: "#d7ffe8", kind: "chilli" },
-  { keys: ["bread"], title: "Bread", a: "#d7904b", b: "#ffe6bd", kind: "bread" },
+  { keys: ["bread", "roti", "naan", "paratha", "luchi", "puri"], title: "Bread", a: "#d7904b", b: "#ffe6bd", kind: "bread" },
   { keys: ["roll", "egg roll", "kathi"], title: "Roll", a: "#ffb35c", b: "#ffe7bd", kind: "wrap" },
   { keys: ["chicken"], title: "Chicken", a: "#d96b4a", b: "#ffe2d7", kind: "plate" },
   { keys: ["fish"], title: "Fish", a: "#5fb3e8", b: "#ddf4ff", kind: "fish" },
@@ -38,10 +38,10 @@ export function getCategoryVisual(categoryId = "all") {
   return makeVisual(visual);
 }
 
-export function getProductVisual(productName = "") {
+export function getProductVisual(productName = "", fallbackKind = "bag") {
   const lower = productName.toLowerCase();
   const visual = PRODUCT_VISUALS.find(item => item.keys.some(key => lower.includes(key)));
-  return makeVisual(visual || { title: productName || "Item", a: "#ffda00", b: "#fff2a8", kind: "bag" });
+  return makeVisual(visual || { title: productName || "Item", a: "#ffda00", b: "#fff2a8", kind: fallbackKind });
 }
 
 export function shouldReplaceAutoImage(url = "") {

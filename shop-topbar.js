@@ -123,6 +123,7 @@ function renderShopSession(session) {
   if (!el) return;
 
   if (!session) {
+    el.classList.remove("vendor-session", "customer-session");
     el.hidden = true;
     el.innerHTML = "";
     if (loginMenu) loginMenu.hidden = false;
@@ -132,6 +133,8 @@ function renderShopSession(session) {
 
   if (loginMenu) loginMenu.hidden = true;
   if (loginPopover) loginPopover.hidden = true;
+  el.classList.toggle("vendor-session", session.role === "vendor");
+  el.classList.toggle("customer-session", session.role === "customer");
   el.hidden = false;
   el.innerHTML = `
     <div class="shop-session-copy">

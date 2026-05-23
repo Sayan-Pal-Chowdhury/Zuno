@@ -361,7 +361,7 @@ onAuthStateChanged(auth, async user => {
   const profile = profileSnap.exists() ? profileSnap.data() : {};
   const preset = new URLSearchParams(window.location.search).get("preset") || profile.setupPreset || "";
   if (preset === "food" && !profile.storeId) {
-    document.getElementById("shopType").value = profile.businessType || "restaurant";
+    document.getElementById("shopType").value = profile.businessType === "restaurant" ? "home_food" : (profile.businessType || "home_food");
     checkReady();
   }
   if (profileSnap.exists() && profileSnap.data().storeId) {

@@ -25,8 +25,11 @@ async function loadSettings() {
     if (profileSnap.exists()) {
       const p = profileSnap.data();
       if (p.name || p.shopName) document.getElementById("shopName").value = p.name || p.shopName;
+      document.getElementById("shopDescription").value = p.shopDescription || "";
       if (p.businessType || p.shopType) {
-        document.getElementById("shopType").value = normalizeBusinessType(p.businessType || p.shopType);
+        document.getElementById("shopType").value = p.foodMenuEnabled === true && p.businessType === "restaurant"
+          ? "home_food"
+          : normalizeBusinessType(p.businessType || p.shopType);
       }
       document.getElementById("deliveryEnabled").checked = p.deliveryEnabled !== false;
       document.getElementById("publicOrdersEnabled").checked = p.publicOrdersEnabled !== false;
@@ -70,6 +73,7 @@ window.saveSettings = async () => {
   const profile = {
     name:        document.getElementById("shopName").value.trim(),
     shopName:    document.getElementById("shopName").value.trim(),
+    shopDescription: document.getElementById("shopDescription").value.trim(),
     shopType:    typeInfo.category,
     businessType,
     businessTypeLabel: typeInfo.label,
@@ -100,7 +104,7 @@ window.saveSettings = async () => {
   const existingData = existingProfile.exists() ? existingProfile.data() : {};
   const fullProfile = {
     ...profile,
-    tagline: existingData.tagline || (profile.location ? `Fresh daily in ${profile.location}` : "Fresh products, fair prices"),
+    tagline: profile.location ? `Fresh daily in ${profile.location}` : "Fresh products, fair prices",
     updatedAt: serverTimestamp()
   };
 
@@ -110,6 +114,7 @@ window.saveSettings = async () => {
       uid: currentUserId,
       name: profile.name,
       location: profile.location,
+      shopDescription: profile.shopDescription,
       tagline: fullProfile.tagline,
       shopType: profile.shopType || "daily_needs",
       businessType: profile.businessType,
