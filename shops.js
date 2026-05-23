@@ -1,10 +1,10 @@
 import { initShopTopbar } from "./shop-topbar.js";
-import { listPublicShops } from "./shop-store.js";
+import { listPublicShops } from "./shop-store.js?v=25";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { BUSINESS_TYPES, CUSTOMER_CATEGORIES, getBusinessType, getCustomerCategory } from "./marketplace-categories.js";
-import { shouldReplaceAutoImage } from "./marketplace-visuals.js";
+import { shouldReplaceAutoImage } from "./marketplace-visuals.js?v=25";
 
 let allShops = [];
 let currentCategoryFilter = "all";
