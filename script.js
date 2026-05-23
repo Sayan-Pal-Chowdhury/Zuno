@@ -16,6 +16,8 @@ let productCosts  = {};
 let productList   = [];
 let foodMenuItems = [];
 let foodMenuPrices = {};
+let foodMenuChoices = [];
+let foodCostRecords = {};
 let editId        = null;
 let editOriginalData = null;
 let productEditId = null;
@@ -74,14 +76,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   currentUserId = user.uid;
-// apply form config from settings
-const cachedConfig = localStorage.getItem("zunoFormConfig_" + user.uid);
-if (cachedConfig) applyFormConfig(JSON.parse(cachedConfig));
-
-// fetch fresh from Firestore
-getDoc(doc(db, "users", user.uid, "settings", "formConfig")).then(configSnap => {
-  if (configSnap.exists()) applyFormConfig(configSnap.data());
-});
+  const cachedConfig = localStorage.getItem("zunoFormConfig_" + user.uid);
     // date persistence
 const savedDate = localStorage.getItem("zunoOrderDate");
 const todayDate = new Date().toISOString().split("T")[0];
@@ -95,9 +90,27 @@ if (dateEl) {
   initEditSaleModal(currentUserId, productCosts, () => {});
 
   await loadShopProfile();
+  const configSnap = await getDoc(doc(db, "users", user.uid, "settings", "formConfig"));
+  const storedConfig = configSnap.exists()
+    ? configSnap.data()
+    : (cachedConfig ? JSON.parse(cachedConfig) : {});
+  applyFormConfig({
+    ...storedConfig,
+    quantity: storedConfig.quantity !== false,
+    weightUnit: storedConfig.weightUnit !== undefined
+      ? storedConfig.weightUnit !== false
+      : (storedConfig.quantityUnit !== undefined
+        ? storedConfig.quantityUnit !== false
+        : shopProfile?.foodMenuEnabled !== true)
+  });
   refreshOrderDisplay();
-  loadProducts();
-  if (shopProfile?.foodMenuEnabled === true) loadFoodMenuSuggestions();
+  if (shopProfile?.foodMenuEnabled === true) {
+    setupFoodCostingUI();
+    loadFoodMenuSuggestions();
+    loadFoodCosts();
+  } else {
+    loadProducts();
+  }
   loadSales();
   loadCustomerOrders();
   initCreditUI();
@@ -245,14 +258,15 @@ function populateMonthFilter(data) {
 function createItemRow(isFirst = false, data = {}) {
   const row = document.createElement("div");
   row.className = "itemRow";
-  const quantityUnitVisible = window._zunoFormConfig?.quantityUnit !== false;
-  const defaultQty = data.qty || (quantityUnitVisible ? "" : 1);
-  const defaultUnit = data.unit || (quantityUnitVisible ? "" : "piece");
+  const quantityVisible = window._zunoFormConfig?.quantity !== false;
+  const weightUnitVisible = window._zunoFormConfig?.weightUnit !== false;
+  const defaultQty = data.qty || (quantityVisible ? "" : 1);
+  const defaultUnit = data.unit || (weightUnitVisible ? "" : "piece");
 
   row.innerHTML = `
     <input class="product" list="productsList" placeholder="Item" value="${data.product || ""}">
-    <input type="number" class="qty" placeholder="Qty" value="${defaultQty}" style="${quantityUnitVisible ? "" : "display:none"}">
-    <select class="unit" style="${quantityUnitVisible ? "" : "display:none"}">
+    <input type="number" class="qty" placeholder="Qty" value="${defaultQty}" style="${quantityVisible ? "" : "display:none"}">
+    <select class="unit" style="${weightUnitVisible ? "" : "display:none"}">
       <option value="kg"    ${defaultUnit === "kg"    ? "selected" : ""}>kg</option>
       <option value="g"     ${defaultUnit === "g"     ? "selected" : ""}>gram</option>
       <option value="piece" ${defaultUnit === "piece" ? "selected" : ""}>piece</option>
@@ -305,7 +319,7 @@ function createItemRow(isFirst = false, data = {}) {
     if (productData?.sellingPrice) {
       sellInput.value = productData.sellingPrice;
       unitInput.value = productData.unit || "piece";
-      if (!qtyInput.value || window._zunoFormConfig?.quantityUnit === false) {
+      if (!qtyInput.value || window._zunoFormConfig?.quantity === false) {
         qtyInput.value = getSellingUnitStockQty(productData.sellingUnit, productData.unit || "piece");
       }
       updateFromSelling();
@@ -358,20 +372,23 @@ document.getElementById("mainBtn").onclick = async () => {
     const sellingPrice = Number(r.querySelector(".sellingPrice").value) || 0;
 
     if (product && qty && price) {
-      const productData = productCosts[product];
-      let cost = 0, baseUnit = "kg";
-
-      if (productData) { cost = productData.cost; baseUnit = productData.unit; }
-
-      let finalQty = qty;
-      if (unit === "g"  && baseUnit === "kg") finalQty = qty / 1000;
-      if (unit === "kg" && baseUnit === "g")  finalQty = qty * 1000;
-
-      const hasCost = !!productData;
-      const profit  = hasCost ? price - (cost * finalQty) : null;
-      items.push({ product, qty, unit, price, sellingPrice, sellingUnit: normalizeSellingUnit(productData?.sellingUnit || "", unit), profit, hasCost });
+      const productData = getPricingForItem({ product });
+      const lineProfit = calculateProfitLine({ qty, unit, price }, productData);
+      items.push({
+        product,
+        source: productData?.source || "",
+        foodCostKey: productData?.foodCostKey || "",
+        qty,
+        unit,
+        price,
+        sellingPrice,
+        sellingUnit: normalizeSellingUnit(productData?.sellingUnit || "", unit),
+        profit: lineProfit.profit,
+        hasCost: lineProfit.hasCost,
+        costPrice: lineProfit.costPrice
+      });
       totalAmount += price;
-      if (hasCost) totalProfit += profit;
+      if (lineProfit.hasCost) totalProfit += lineProfit.profit;
     }
   });
 
@@ -579,36 +596,136 @@ function loadProducts() {
   });
 }
 
-function loadFoodMenuSuggestions() {
-  onSnapshot(userCol("foodItems"), snap => {
-    foodMenuItems = [];
-    foodMenuPrices = {};
-    snap.docs.forEach(itemDoc => {
-      const item = itemDoc.data();
-      const name = item.name || "";
-      if (!name || item.active === false) return;
-      const variants = Array.isArray(item.variants)
-        ? item.variants.filter(variant => Number(variant.price || 0) > 0)
-        : [];
-      const choices = variants.length > 1
-        ? variants.map((variant, index) => ({
-          name: `${name} - ${variant.label || `Portion ${index + 1}`}`,
-          price: Number(variant.price || 0)
-        }))
-        : [{ name, price: Number(variants[0]?.price || item.price || 0) }];
+function setupFoodCostingUI() {
+  const heading = document.getElementById("productSectionTitle");
+  const standardEditor = document.getElementById("standardProductEditor");
+  const note = document.getElementById("foodCostingNote");
+  const sellingHeading = document.getElementById("productSellingPriceHeading");
+  if (heading) heading.textContent = "▼ Menu Costing";
+  if (standardEditor) standardEditor.hidden = true;
+  if (note) note.hidden = false;
+  if (sellingHeading) sellingHeading.textContent = "Menu Price";
+}
 
-      choices.forEach(choice => {
-        foodMenuItems.push(choice.name);
-        foodMenuPrices[choice.name.toLowerCase()] = {
-          sellingPrice: choice.price,
-          unit: "piece",
-          sellingUnit: "piece"
-        };
-      });
-    });
-    updateProductSuggestions();
+function foodCostKey(itemId, variantId = "full") {
+  return `${itemId}::${variantId}`;
+}
+
+function foodCostDocumentId(key) {
+  return encodeURIComponent(key);
+}
+
+function buildFoodChoices(itemDoc) {
+  const item = itemDoc.data();
+  const name = String(item.name || "").trim();
+  if (!name) return [];
+
+  const pricedVariants = Array.isArray(item.variants)
+    ? item.variants.filter(variant => Number(variant.price || 0) > 0)
+    : [];
+  const variants = pricedVariants.length > 0
+    ? pricedVariants
+    : [{ id: "full", label: "Full Plate", price: Number(item.price || 0) }];
+
+  return variants.map((variant, index) => {
+    const variantId = variant.id || `portion-${index + 1}`;
+    const variantLabel = variant.label || `Portion ${index + 1}`;
+    return {
+      key: foodCostKey(itemDoc.id, variantId),
+      itemId: itemDoc.id,
+      variantId,
+      variantLabel,
+      name: variants.length > 1 ? `${name} - ${variantLabel}` : name,
+      sellingPrice: Number(variant.price || 0),
+      active: item.active !== false
+    };
   });
 }
+
+function loadFoodMenuSuggestions() {
+  onSnapshot(userCol("foodItems"), snap => {
+    foodMenuChoices = snap.docs
+      .flatMap(buildFoodChoices)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    rebuildFoodMenuPricing();
+  });
+}
+
+function loadFoodCosts() {
+  onSnapshot(userCol("foodCosts"), snap => {
+    foodCostRecords = {};
+    snap.forEach(costDoc => {
+      const record = costDoc.data();
+      if (record.key) foodCostRecords[record.key] = record;
+    });
+    rebuildFoodMenuPricing();
+  });
+}
+
+function rebuildFoodMenuPricing() {
+  foodMenuItems = foodMenuChoices.filter(choice => choice.active).map(choice => choice.name);
+  foodMenuPrices = {};
+  foodMenuChoices.forEach(choice => {
+    const costRecord = foodCostRecords[choice.key];
+    foodMenuPrices[choice.name.toLowerCase()] = {
+      source: "food-menu",
+      foodCostKey: choice.key,
+      sellingPrice: choice.sellingPrice,
+      cost: Number(costRecord?.cost || 0),
+      hasCost: costRecord?.cost !== undefined && costRecord?.cost !== "",
+      unit: "piece",
+      sellingUnit: "piece"
+    };
+  });
+  updateProductSuggestions();
+  renderFoodCosting();
+  updateProductCosts(foodMenuPrices);
+}
+
+function renderFoodCosting() {
+  const table = document.getElementById("productTable");
+  if (!table || shopProfile?.foodMenuEnabled !== true) return;
+  if (foodMenuChoices.length === 0) {
+    table.innerHTML = `<tr><td colspan="4" class="food-cost-empty">Add dishes in Menu first, then their cost prices will appear here.</td></tr>`;
+    return;
+  }
+
+  table.innerHTML = foodMenuChoices.map(choice => {
+    const cost = foodCostRecords[choice.key]?.cost ?? "";
+    const inactive = choice.active ? "" : ` <span class="food-cost-inactive">Off</span>`;
+    return `
+      <tr>
+        <td>${escapeHtml(choice.name)}${inactive}</td>
+        <td><input class="food-cost-input" type="number" min="0" step="0.01" value="${escapeHtml(cost)}" placeholder="Cost"></td>
+        <td>${choice.sellingPrice ? `₹${choice.sellingPrice} / portion` : "Not set"}</td>
+        <td><button onclick="saveFoodCost('${choice.key}', this.closest('tr').querySelector('.food-cost-input').value)">Save</button></td>
+      </tr>
+    `;
+  }).join("");
+}
+
+window.saveFoodCost = async (key, value) => {
+  const choice = foodMenuChoices.find(item => item.key === key);
+  if (!choice) return;
+  const trimmedValue = String(value ?? "").trim();
+  if (!trimmedValue) {
+    await deleteDoc(userDoc("foodCosts", foodCostDocumentId(key)));
+    showToast("Cost price removed.");
+    return;
+  }
+  const cost = Number(trimmedValue);
+  if (!Number.isFinite(cost) || cost < 0) return alert("Enter a valid cost price.");
+  await setDoc(userDoc("foodCosts", foodCostDocumentId(key)), {
+    key,
+    itemId: choice.itemId,
+    variantId: choice.variantId,
+    name: choice.name,
+    sellingPrice: choice.sellingPrice,
+    cost,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  showToast("Cost price saved.");
+};
 
 function updateProductSuggestions() {
   const sourceNames = shopProfile?.foodMenuEnabled === true ? foodMenuItems : productList;
@@ -621,6 +738,44 @@ function updateProductSuggestions() {
   document.body.appendChild(dl);
 
   attachSuggestionDropdown(document.getElementById("prodName"), () => productSuggestions);
+}
+
+function itemPricingName(item = {}) {
+  const product = String(item.product || "").trim();
+  const variant = String(item.variantLabel || "").trim();
+  if (!variant || product.toLowerCase().endsWith(` - ${variant}`.toLowerCase())) return product;
+  return `${product} - ${variant}`;
+}
+
+function getPricingForItem(item = {}) {
+  const key = itemPricingName(item).toLowerCase();
+  return shopProfile?.foodMenuEnabled === true
+    ? foodMenuPrices[key] || null
+    : productCosts[key] || null;
+}
+
+function calculateProfitLine(item, productData) {
+  if (!productData || (productData.source === "food-menu" && !productData.hasCost)) {
+    return { profit: null, hasCost: false, costPrice: null };
+  }
+  let finalQty = Number(item.qty || 0);
+  if (item.unit === "g" && productData.unit === "kg") finalQty /= 1000;
+  if (item.unit === "kg" && productData.unit === "g") finalQty *= 1000;
+  return {
+    profit: Number(item.price || 0) - (Number(productData.cost || 0) * finalQty),
+    hasCost: true,
+    costPrice: Number(productData.cost || 0)
+  };
+}
+
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[char]));
 }
 
 /* ---------- PRODUCT ADD / UPDATE ---------- */
@@ -961,25 +1116,22 @@ function normalizeCustomerOrderItems(orderItems) {
     const price = Number(item.price || 0);
     const sellingPrice = Number(item.sellingPrice || (qty ? price / qty : 0));
     const sellingUnit = normalizeSellingUnit(item.sellingUnit || "", unit);
-    const productData = productCosts[product];
-    let finalQty = qty;
-
-    if (productData) {
-      if (unit === "g" && productData.unit === "kg") finalQty = qty / 1000;
-      if (unit === "kg" && productData.unit === "g") finalQty = qty * 1000;
-    }
+    const productData = getPricingForItem({ ...item, product });
+    const lineProfit = calculateProfitLine({ qty, unit, price }, productData);
 
     return {
       product,
-      source: item.source || "",
+      source: productData?.source || item.source || "",
+      foodCostKey: productData?.foodCostKey || item.foodCostKey || "",
       variantLabel: item.variantLabel || "",
       qty,
       unit,
       price,
       sellingPrice,
       sellingUnit,
-      profit: productData ? price - (Number(productData.cost || 0) * finalQty) : null,
-      hasCost: !!productData
+      profit: lineProfit.profit,
+      hasCost: lineProfit.hasCost,
+      costPrice: lineProfit.costPrice
     };
   });
 }
@@ -1059,28 +1211,22 @@ window.recalcSale = async (id) => {
   let totalProfit = 0;
 
   const updatedItems = s.items.map(item => {
-    const key         = item.product.toLowerCase();
-    const productData = productCosts[key];
+    const productData = getPricingForItem(item);
 
-    if (!productData) {
+    if (!productData || (productData.source === "food-menu" && !productData.hasCost)) {
       missing.push(item.product);
       return { ...item, profit: null, hasCost: false };
     }
 
-    let finalQty   = Number(item.qty);
-    const baseUnit = productData.unit || "kg";
-    if (item.unit === "g"  && baseUnit === "kg") finalQty = finalQty / 1000;
-    if (item.unit === "kg" && baseUnit === "g")  finalQty = finalQty * 1000;
-
-    const profit = Number(item.price) - (productData.cost * finalQty);
-    totalProfit += profit;
-    return { ...item, profit, hasCost: true };
+    const lineProfit = calculateProfitLine(item, productData);
+    totalProfit += lineProfit.profit;
+    return { ...item, profit: lineProfit.profit, hasCost: true, costPrice: lineProfit.costPrice };
   });
 
   await updateDoc(saleRef, { items: updatedItems, totalProfit });
 
   if (missing.length > 0) {
-    alert(`Updated what was possible. Still missing: ${missing.join(", ")}. Please add their prices in Products or Inventory.`);
+    alert(`Updated what was possible. Still missing: ${missing.join(", ")}. Please add their cost prices first.`);
   }
 };
 
@@ -1101,22 +1247,16 @@ window.recalcAllSales = async () => {
 
     let totalProfit = 0;
     const updatedItems = s.items.map(item => {
-      const key         = item.product.toLowerCase();
-      const productData = productCosts[key];
+      const productData = getPricingForItem(item);
 
-      if (!productData) {
+      if (!productData || (productData.source === "food-menu" && !productData.hasCost)) {
         allMissing.add(item.product);
         return { ...item, profit: null, hasCost: false };
       }
 
-      let finalQty   = Number(item.qty);
-      const baseUnit = productData.unit || "kg";
-      if (item.unit === "g"  && baseUnit === "kg") finalQty = finalQty / 1000;
-      if (item.unit === "kg" && baseUnit === "g")  finalQty = finalQty * 1000;
-
-      const profit = Number(item.price) - (productData.cost * finalQty);
-      totalProfit += profit;
-      return { ...item, profit, hasCost: true };
+      const lineProfit = calculateProfitLine(item, productData);
+      totalProfit += lineProfit.profit;
+      return { ...item, profit: lineProfit.profit, hasCost: true, costPrice: lineProfit.costPrice };
     });
 
     await updateDoc(userDoc("sales", d.id), { items: updatedItems, totalProfit });
@@ -1124,7 +1264,7 @@ window.recalcAllSales = async () => {
   }
 
   if (allMissing.size > 0) {
-    alert(`Updated ${updated} sales. Still missing prices for: ${[...allMissing].join(", ")}. Add them in Products or Inventory.`);
+    alert(`Updated ${updated} sales. Still missing cost prices for: ${[...allMissing].join(", ")}.`);
   } else {
     alert(`Done! Updated ${updated} sales successfully.`);
   }
@@ -1373,13 +1513,15 @@ function applyFormConfig(config) {
     const qty = row.querySelector(".qty");
     const unit = row.querySelector(".unit");
     const sellingPrice = row.querySelector(".sellingPrice");
-    const quantityUnitVisible = config.quantityUnit !== false;
+    const quantityVisible = config.quantity !== false;
+    const weightUnitVisible = config.weightUnit !== false;
     if (qty) {
-      qty.style.display = quantityUnitVisible ? "" : "none";
-      if (!quantityUnitVisible && !qty.value) qty.value = 1;
+      qty.style.display = quantityVisible ? "" : "none";
+      if (!quantityVisible && !qty.value) qty.value = 1;
     }
     if (unit) {
-      unit.style.display = quantityUnitVisible ? "" : "none";
+      unit.style.display = weightUnitVisible ? "" : "none";
+      if (!weightUnitVisible) unit.value = "piece";
     }
     if (sellingPrice) sellingPrice.style.display = config.sellingPrice === false ? "none" : "";
   });

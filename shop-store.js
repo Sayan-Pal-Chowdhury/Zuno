@@ -200,7 +200,7 @@ async function loadPublicFeaturedItems(uid, foodMenuEnabled) {
   try {
     const source = foodMenuEnabled ? "foodItems" : "inventory";
     const itemsQuery = foodMenuEnabled
-      ? query(collection(db, "users", uid, source), orderBy("updatedAt", "desc"), limit(6))
+      ? collection(db, "users", uid, source)
       : query(collection(db, "users", uid, source), limit(6));
     const snap = await getDocs(itemsQuery);
     return snap.docs

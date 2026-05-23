@@ -8,7 +8,7 @@
       window.location.replace("/shops.html");
     }
   </script>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=29">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#00236f">
@@ -91,31 +91,34 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
-<h2 onclick="toggleSection('productSection')">▼ Products</h2>
+<h2 id="productSectionTitle" onclick="toggleSection('productSection')">▼ Products</h2>
 <div id="productSection">
-  <input id="prodName" placeholder="Product">
-  <input id="prodCost" type="number" placeholder="Cost">
-  <input id="prodSellingPrice" type="number" placeholder="Selling price">
-  <select id="prodUnit">
-    <option value="kg">kg</option>
-    <option value="g">gram</option>
-    <option value="piece">piece</option>
-  </select>
-  <select id="prodSellingUnit">
-    <option value="kg">sell / kg</option>
-    <option value="500g">sell / 500g</option>
-    <option value="250g">sell / 250g</option>
-    <option value="100g">sell / 100g</option>
-    <option value="g">sell / gram</option>
-    <option value="piece">sell / piece</option>
-  </select>
-  <button onclick="addOrUpdateProduct()" id="prodBtn">Add</button>
+  <div id="standardProductEditor">
+    <input id="prodName" placeholder="Product">
+    <input id="prodCost" type="number" placeholder="Cost">
+    <input id="prodSellingPrice" type="number" placeholder="Selling price">
+    <select id="prodUnit">
+      <option value="kg">kg</option>
+      <option value="g">gram</option>
+      <option value="piece">piece</option>
+    </select>
+    <select id="prodSellingUnit">
+      <option value="kg">sell / kg</option>
+      <option value="500g">sell / 500g</option>
+      <option value="250g">sell / 250g</option>
+      <option value="100g">sell / 100g</option>
+      <option value="g">sell / gram</option>
+      <option value="piece">sell / piece</option>
+    </select>
+    <button onclick="addOrUpdateProduct()" id="prodBtn">Add</button>
+  </div>
+  <p id="foodCostingNote" hidden>Menu items and selling prices update from Menu. Add cost price here to calculate profit.</p>
   <table border="1">
     <thead>
       <tr>
         <th>Name</th>
         <th>Cost</th>
-        <th>Selling Price</th>
+        <th id="productSellingPriceHeading">Selling Price</th>
         <th>Action</th>
       </tr>
     </thead>
@@ -182,7 +185,7 @@ onAuthStateChanged(auth, (user) => {
 <link rel="stylesheet" href="voice.css">
 <script type="module" src="voice.js"></script>
 
-<script type="module" src="script.js?v=27"></script>
+<script type="module" src="script.js?v=29"></script>
 <script type="module" src="topbar.js"></script>
 <script type="module" src="navbar.js"></script>
 

@@ -47,11 +47,17 @@ async function loadSettings() {
     const formSnap = await getDoc(doc(db, "users", currentUserId, "settings", "formConfig"));
     if (formSnap.exists()) {
       const f = formSnap.data();
-      const toggles = ["customerName", "phone", "deliveryStatus", "paymentMode", "creditOptions", "sellingPrice", "quantityUnit"];
+      const toggles = ["customerName", "phone", "deliveryStatus", "paymentMode", "creditOptions", "sellingPrice"];
       toggles.forEach(key => {
         const el = document.getElementById("toggle_" + key);
         if (el && f[key] !== undefined) el.checked = f[key];
       });
+      document.getElementById("toggle_quantity").checked = f.quantity !== false;
+      document.getElementById("toggle_weightUnit").checked = f.weightUnit !== undefined
+        ? f.weightUnit !== false
+        : f.quantityUnit !== false;
+    } else if (profileSnap.exists() && profileSnap.data().foodMenuEnabled === true) {
+      document.getElementById("toggle_weightUnit").checked = false;
     }
   } catch (e) {
     console.log("Settings load error:", e);
@@ -97,7 +103,8 @@ window.saveSettings = async () => {
     paymentMode:    document.getElementById("toggle_paymentMode").checked,
     creditOptions:  document.getElementById("toggle_creditOptions").checked,
     sellingPrice:   document.getElementById("toggle_sellingPrice").checked,
-    quantityUnit:   document.getElementById("toggle_quantityUnit").checked
+    quantity:       document.getElementById("toggle_quantity").checked,
+    weightUnit:     document.getElementById("toggle_weightUnit").checked
   };
 
   const profileRef = doc(db, "users", currentUserId, "settings", "profile");

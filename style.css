@@ -365,6 +365,37 @@ body > button:hover { background: var(--bg); }
   box-shadow: var(--shadow-sm);
 }
 
+#standardProductEditor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+#standardProductEditor[hidden] {
+  display: none;
+}
+
+#foodCostingNote {
+  flex-basis: 100%;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.food-cost-input {
+  width: 110px;
+}
+
+.food-cost-inactive {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.food-cost-empty {
+  color: var(--text-muted);
+}
+
 #prodName { width: 150px; }
 #prodCost { width: 100px; }
 #prodSellingPrice { width: 120px; }

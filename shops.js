@@ -1,5 +1,5 @@
 import { initShopTopbar } from "./shop-topbar.js";
-import { listPublicShops } from "./shop-store.js?v=28";
+import { listPublicShops } from "./shop-store.js?v=29";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";

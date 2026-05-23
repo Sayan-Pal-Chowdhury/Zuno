@@ -15,6 +15,7 @@ let currentUserId = null;
 let allSales      = [];
 let productCosts  = {};
 let editingCreditSaleId = null;
+let foodBusiness = false;
 
 /* ---------- HELPERS ---------- */
 function userCol(colName) {
@@ -51,14 +52,17 @@ async function findCreditCustomer(customer, phone) {
 }
 
 /* ---------- AUTH GATE ---------- */
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = "login.html"; return; }
   currentUserId = user.uid;
+  const profileSnap = await getDoc(userDoc("settings", "profile"));
+  foodBusiness = profileSnap.exists() && profileSnap.data().foodMenuEnabled === true;
 
   initEditSaleModal(currentUserId, productCosts, () => {
   document.getElementById("salesTableWrapper")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
-  loadProducts();
+  if (foodBusiness) loadFoodCosts();
+  else loadProducts();
   loadSales();
 });
 
@@ -72,6 +76,42 @@ function loadProducts() {
     });
     updateProductCosts(productCosts);
   });
+}
+
+function loadFoodCosts() {
+  onSnapshot(userCol("foodCosts"), snap => {
+    productCosts = {};
+    snap.forEach(d => {
+      const item = d.data();
+      if (!item.name || item.cost === undefined || item.cost === "") return;
+      productCosts[item.name.toLowerCase()] = {
+        cost: Number(item.cost),
+        unit: "piece",
+        source: "food-menu",
+        foodCostKey: item.key || ""
+      };
+    });
+    updateProductCosts(productCosts);
+  });
+}
+
+function itemPricingName(item = {}) {
+  const product = String(item.product || "").trim();
+  const variant = String(item.variantLabel || "").trim();
+  if (!variant || product.toLowerCase().endsWith(` - ${variant}`.toLowerCase())) return product;
+  return `${product} - ${variant}`;
+}
+
+function getProductCost(item) {
+  return productCosts[itemPricingName(item).toLowerCase()];
+}
+
+function calculateItemProfit(item, productData) {
+  let finalQty = Number(item.qty || 0);
+  const baseUnit = productData.unit || "kg";
+  if (item.unit === "g" && baseUnit === "kg") finalQty /= 1000;
+  if (item.unit === "kg" && baseUnit === "g") finalQty *= 1000;
+  return Number(item.price || 0) - (Number(productData.cost || 0) * finalQty);
 }
 
 /* ---------- LOAD SALES ---------- */
@@ -503,22 +543,16 @@ window.recalcSale = async (id) => {
   let totalProfit = 0;
 
   const updatedItems = s.items.map(item => {
-    const key         = item.product.toLowerCase();
-    const productData = productCosts[key];
+    const productData = getProductCost(item);
     if (!productData) { missing.push(item.product); return { ...item, profit: null, hasCost: false }; }
 
-    let finalQty   = Number(item.qty);
-    const baseUnit = productData.unit || "kg";
-    if (item.unit === "g"  && baseUnit === "kg") finalQty = finalQty / 1000;
-    if (item.unit === "kg" && baseUnit === "g")  finalQty = finalQty * 1000;
-
-    const profit = Number(item.price) - (productData.cost * finalQty);
+    const profit = calculateItemProfit(item, productData);
     totalProfit += profit;
-    return { ...item, profit, hasCost: true };
+    return { ...item, profit, hasCost: true, costPrice: productData.cost };
   });
 
   await updateDoc(saleRef, { items: updatedItems, totalProfit });
-  if (missing.length > 0) alert(`Still missing: ${missing.join(", ")}. Add prices in Products or Inventory.`);
+  if (missing.length > 0) alert(`Still missing: ${missing.join(", ")}. Add their cost prices first.`);
 };
 
 /* ---------- RECALC ALL ---------- */
@@ -534,18 +568,12 @@ window.recalcAllSales = async () => {
 
     let totalProfit = 0;
     const updatedItems = s.items.map(item => {
-      const key         = item.product.toLowerCase();
-      const productData = productCosts[key];
+      const productData = getProductCost(item);
       if (!productData) { allMissing.add(item.product); return { ...item, profit: null, hasCost: false }; }
 
-      let finalQty   = Number(item.qty);
-      const baseUnit = productData.unit || "kg";
-      if (item.unit === "g"  && baseUnit === "kg") finalQty = finalQty / 1000;
-      if (item.unit === "kg" && baseUnit === "g")  finalQty = finalQty * 1000;
-
-      const profit = Number(item.price) - (productData.cost * finalQty);
+      const profit = calculateItemProfit(item, productData);
       totalProfit += profit;
-      return { ...item, profit, hasCost: true };
+      return { ...item, profit, hasCost: true, costPrice: productData.cost };
     });
 
     await updateDoc(userDoc("sales", d.id), { items: updatedItems, totalProfit });

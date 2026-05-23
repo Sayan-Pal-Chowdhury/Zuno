@@ -371,11 +371,22 @@ onAuthStateChanged(auth, (user) => {
 
   <div class="settings-row">
     <div class="settings-row-left">
-      <div class="settings-row-label">Quantity / Kg / Gram</div>
-      <div class="settings-row-sub">Turn off for fixed-price items such as plates or services</div>
+      <div class="settings-row-label">Quantity</div>
+      <div class="settings-row-sub">Allow multiple portions or pieces in an order</div>
     </div>
     <label class="toggle">
-      <input type="checkbox" id="toggle_quantityUnit" checked>
+      <input type="checkbox" id="toggle_quantity" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <div class="settings-row">
+    <div class="settings-row-left">
+      <div class="settings-row-label">Weight Unit (kg / gram)</div>
+      <div class="settings-row-sub">Turn off for plates, portions or services</div>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="toggle_weightUnit" checked>
       <span class="toggle-slider"></span>
     </label>
   </div>
@@ -385,7 +396,7 @@ onAuthStateChanged(auth, (user) => {
 <button class="save-btn" onclick="saveSettings()">Save Settings</button>
 <p class="save-msg" id="saveMsg"></p>
 
-<script type="module" src="settings.js?v=27"></script>
+<script type="module" src="settings.js?v=29"></script>
 <script type="module" src="topbar.js"></script>
 <script type="module" src="navbar.js"></script>
   <script src="pwa.js" defer></script>
