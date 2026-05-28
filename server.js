@@ -192,8 +192,8 @@ app.post("/chat-helper", async (req, res) => {
     })).filter(customer => customer.name);
 
     const prompt = `
-You are a parser for a small shop sales app. Return ONLY valid JSON.
-Do not save data. Do not explain.
+Return ONLY minified valid JSON. No markdown. No explanation.
+Parse this small shop chat message into a sale draft.
 
 User text:
 "${String(text).slice(0, 500)}"
@@ -217,39 +217,10 @@ alu/aloo = potato
 pyaj/piyaj/peyaj = onion
 ada/adrak = ginger
 
-Rules:
-- Choose intent: add_sale, add_inventory, query, unknown. Prefer add_sale when quantities and products are present.
-- Match products to known products when possible.
-- Units: kg, g, piece only.
-- paymentMode: cash, upi, credit, or empty string if not said.
-- deliveryStatus: delivered, pending, or empty string if not said.
-- If a number after a product is ambiguous, put it in price and set needsClarification true with clarification.
-- sellingPrice means rate per unit. price means line total.
-- If total is clear, use price.
-- For partial credit, amountPaid is the paid amount.
+Rules: intent is add_sale/add_inventory/query/unknown. Prefer add_sale when quantities and products are present. Match products to known products. Units only kg,g,piece. paymentMode only cash,upi,credit,"". deliveryStatus only delivered,pending,"". If a product number is ambiguous, put it in price and set needsClarification true. For partial credit, amountPaid is paid amount.
 
-Return this shape:
-{
-  "intent": "add_sale",
-  "customer": "",
-  "phone": "",
-  "paymentMode": "",
-  "deliveryStatus": "",
-  "amountPaid": 0,
-  "items": [
-    {
-      "product": "",
-      "qty": 0,
-      "unit": "kg",
-      "sellingPrice": 0,
-      "sellingUnit": "kg",
-      "price": 0,
-      "needsClarification": false,
-      "clarification": ""
-    }
-  ],
-  "confidence": 0.0
-}
+JSON keys exactly:
+{"intent":"add_sale","customer":"","phone":"","paymentMode":"","deliveryStatus":"","amountPaid":0,"items":[{"product":"","qty":0,"unit":"kg","sellingPrice":0,"sellingUnit":"kg","price":0,"needsClarification":false,"clarification":""}],"confidence":0}
 `;
 
     const response = await ai.models.generateContent({
@@ -257,7 +228,8 @@ Return this shape:
       contents: prompt,
       config: {
         temperature: 0.05,
-        maxOutputTokens: 700
+        maxOutputTokens: 1500,
+        responseMimeType: "application/json"
       }
     });
 
