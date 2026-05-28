@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+require("dotenv").config();
 const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
@@ -169,5 +170,108 @@ JSON format:
   }
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.post("/chat-helper", async (req, res) => {
+  try {
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
+    }
 
+    const { text, products = [], aliases = {}, customers = [] } = req.body || {};
+    if (!text) return res.status(400).json({ error: "No text provided" });
+
+    const safeProducts = products.slice(0, 80).map(product => ({
+      name: String(product.name || "").slice(0, 60),
+      unit: product.unit || "piece",
+      sellingPrice: Number(product.sellingPrice || 0),
+      sellingUnit: product.sellingUnit || product.unit || "piece"
+    })).filter(product => product.name);
+
+    const safeCustomers = customers.slice(0, 40).map(customer => ({
+      name: String(customer.name || "").slice(0, 60),
+      phone: String(customer.phone || "").slice(0, 15)
+    })).filter(customer => customer.name);
+
+    const prompt = `
+You are a parser for a small shop sales app. Return ONLY valid JSON.
+Do not save data. Do not explain.
+
+User text:
+"${String(text).slice(0, 500)}"
+
+Known products:
+${JSON.stringify(safeProducts)}
+
+Known aliases:
+${JSON.stringify(aliases)}
+
+Known customers:
+${JSON.stringify(safeCustomers)}
+
+Understand spelling mistakes and Bengali/Hindi shop words:
+cast/cas/cahs/csh = cash
+credut/credt/baki/udhar/due = credit
+delivred/deliverd/done/diyechi/diya = delivered
+pendng/later/not delivered = pending
+rosun/roshun/lahsun = garlic
+alu/aloo = potato
+pyaj/piyaj/peyaj = onion
+ada/adrak = ginger
+
+Rules:
+- Choose intent: add_sale, add_inventory, query, unknown. Prefer add_sale when quantities and products are present.
+- Match products to known products when possible.
+- Units: kg, g, piece only.
+- paymentMode: cash, upi, credit, or empty string if not said.
+- deliveryStatus: delivered, pending, or empty string if not said.
+- If a number after a product is ambiguous, put it in price and set needsClarification true with clarification.
+- sellingPrice means rate per unit. price means line total.
+- If total is clear, use price.
+- For partial credit, amountPaid is the paid amount.
+
+Return this shape:
+{
+  "intent": "add_sale",
+  "customer": "",
+  "phone": "",
+  "paymentMode": "",
+  "deliveryStatus": "",
+  "amountPaid": 0,
+  "items": [
+    {
+      "product": "",
+      "qty": 0,
+      "unit": "kg",
+      "sellingPrice": 0,
+      "sellingUnit": "kg",
+      "price": 0,
+      "needsClarification": false,
+      "clarification": ""
+    }
+  ],
+  "confidence": 0.0
+}
+`;
+
+    const response = await ai.models.generateContent({
+      model: "models/gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        temperature: 0.05,
+        maxOutputTokens: 700
+      }
+    });
+
+    const rawText = response.text.trim().replace(/```json/g, "").replace(/```/g, "").trim();
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found in Gemini response: " + rawText);
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    parsed.items = Array.isArray(parsed.items) ? parsed.items.slice(0, 12) : [];
+    res.json(parsed);
+  } catch (error) {
+    console.error("Chat helper error:", error);
+    res.status(500).json({ error: "Failed to parse chat", details: error.message });
+  }
+});
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
