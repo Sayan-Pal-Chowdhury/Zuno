@@ -3,7 +3,7 @@ import {
   collection, addDoc, doc, updateDoc,
   deleteDoc, getDocs, getDoc, query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale } from "./credit.js";
+import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale } from "./credit.js?v=40";
 import { calculateSellingLineTotal, normalizeSellingUnit } from "./unit-pricing.js";
 
 /* ---------- STATE ---------- */
@@ -315,7 +315,7 @@ window.saveEditSale = async () => {
       if (unit === "g"  && baseUnit === "kg") finalQty = qty / 1000;
       if (unit === "kg" && baseUnit === "g")  finalQty = qty * 1000;
 
-      const hasCost = !!productData;
+      const hasCost = !!productData && productData.hasCost !== false;
       const profit  = hasCost ? price - (cost * finalQty) : null;
       items.push({ product, qty, unit, price, sellingPrice, sellingUnit: normalizeSellingUnit(productData?.sellingUnit || "", unit), profit, hasCost });
       totalAmount += price;
@@ -328,16 +328,16 @@ window.saveEditSale = async () => {
     return;
   }
 
-  const creditAmount = paymentMode === "credit" && deliveryStatus === "delivered"
+  const creditAmount = paymentMode === "credit"
     ? (creditType === "full" ? totalAmount : Math.max(0, totalAmount - amountPaid))
     : 0;
 
-  const paidAlreadyApplied = _editId && _editOriginal?.paymentMode === "credit"
-    ? Math.max(0, getOriginalCreditAmount(_editOriginal) - Number(_editOriginal.creditAmount || 0))
+  const paidAfterSale = _editId && _editOriginal?.paymentMode === "credit"
+    ? Math.max(0, getOriginalCreditAmount(_editOriginal) - Number(_editOriginal.creditAmount || 0) - Number(_editOriginal.initialCreditPayment || 0))
     : 0;
-  const originalCreditAmount = paymentMode === "credit" ? creditAmount : 0;
+  const originalCreditAmount = paymentMode === "credit" ? totalAmount : 0;
   const remainingCreditAmount = paymentMode === "credit"
-    ? Math.max(0, originalCreditAmount - paidAlreadyApplied)
+    ? Math.max(0, creditAmount - paidAfterSale)
     : 0;
 
   const data = {
@@ -347,7 +347,9 @@ window.saveEditSale = async () => {
     creditType:   paymentMode === "credit" ? creditType : null,
     amountPaid:   paymentMode === "credit" ? amountPaid : 0,
     creditAmount: remainingCreditAmount,
-    originalCreditAmount
+    originalCreditAmount,
+    initialCreditPayment: paymentMode === "credit" ? amountPaid : 0,
+    creditApplied: false
   };
 
   if (_editId) {
@@ -356,7 +358,7 @@ window.saveEditSale = async () => {
     const isNowDelivered = deliveryStatus === "delivered";
 
     // reverse old credit if needed
-    if (_editOriginal?.paymentMode === "credit") {
+    if (_editOriginal?.paymentMode === "credit" && _editOriginal?.deliveryStatus === "delivered") {
       await reverseCreditForSale({
         userId: _userId,
         sale: _editOriginal,
@@ -377,30 +379,34 @@ window.saveEditSale = async () => {
       await deductInventory(items);
     }
 
-    if (paymentMode === "credit" && data.originalCreditAmount > 0) {
+    if (paymentMode === "credit" && data.originalCreditAmount > 0 && data.deliveryStatus === "delivered") {
       await handleCreditFromSale({
         userId: _userId, customer, phone,
         creditAmount: data.creditAmount,
         originalCreditAmount: data.originalCreditAmount,
+        initialPaymentAmount: data.initialCreditPayment,
         orderNumber, date, isEdit: true, oldCreditAmount: 0
       });
+      await updateDoc(userDoc("sales", _editId), { creditApplied: true });
     }
 
   } else {
     // --- NEW sale ---
-    await addDoc(userCol("sales"), data);
+    const saleRef = await addDoc(userCol("sales"), data);
 
     if (deliveryStatus === "delivered") {
       await deductInventory(items);
     }
 
-    if (paymentMode === "credit" && data.originalCreditAmount > 0) {
+    if (paymentMode === "credit" && data.originalCreditAmount > 0 && deliveryStatus === "delivered") {
       await handleCreditFromSale({
         userId: _userId, customer, phone,
         creditAmount: data.creditAmount,
         originalCreditAmount: data.originalCreditAmount,
+        initialPaymentAmount: data.initialCreditPayment,
         orderNumber, date
       });
+      await updateDoc(saleRef, { creditApplied: true });
     }
   }
 

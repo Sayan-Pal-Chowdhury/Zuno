@@ -5,7 +5,8 @@ import {
   RecaptchaVerifier,
   signInWithEmailAndPassword,
   signInWithPhoneNumber,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -17,6 +18,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: "select_account" });
+const FIREBASE_AUTH_HOST = "sale-data-8d963.firebaseapp.com";
+const PRIMARY_HOST = "sale-data-8d963.web.app";
 
 let confirmationResult = null;
 let recaptchaVerifier = null;
@@ -42,6 +46,9 @@ sendOtpBtn.onclick = sendOtp;
 verifyOtpBtn.onclick = verifyOtp;
 googleBtn.onclick = signInWithGoogle;
 roleLogoutBtn.onclick = logoutForCustomer;
+
+startHostedGoogleLogin();
+completeGoogleRedirect();
 
 onAuthStateChanged(auth, async user => {
   if (!user || routing) return;
@@ -121,10 +128,31 @@ async function verifyOtp() {
 }
 
 async function signInWithGoogle() {
+  if (window.location.hostname === PRIMARY_HOST) {
+    window.location.href = `https://${FIREBASE_AUTH_HOST}/customer-login.html?google=start`;
+    return;
+  }
+
   try {
     msg.textContent = "";
-    const credential = await signInWithPopup(auth, provider);
-    await finishCustomerLogin(credential.user);
+    await signInWithRedirect(auth, provider);
+  } catch (error) {
+    console.error(error);
+    showMessage(cleanFirebaseError(error.message));
+  }
+}
+
+function startHostedGoogleLogin() {
+  if (window.location.hostname !== FIREBASE_AUTH_HOST) return;
+  if (new URLSearchParams(window.location.search).get("google") !== "start") return;
+  window.history.replaceState(null, "", window.location.pathname);
+  signInWithGoogle();
+}
+
+async function completeGoogleRedirect() {
+  try {
+    const credential = await getRedirectResult(auth);
+    if (credential?.user) await finishCustomerLogin(credential.user);
   } catch (error) {
     console.error(error);
     showMessage(cleanFirebaseError(error.message));

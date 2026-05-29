@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inventory — Sales Tracker</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=46">
   <link rel="stylesheet" href="inventory.css">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#00236f">
@@ -24,30 +25,23 @@
   <button class="btn-primary" onclick="openAddStockModal()">+ Add Stock</button>
 </div>
 
-<!-- EDIT MODAL -->
+<!-- EDIT PURCHASE ENTRY MODAL -->
 <div id="editModal" class="modal-overlay hidden">
-  <div class="modal-box">
-    <h3 style="margin-bottom:16px;font-size:16px;font-weight:600;">Edit Stock</h3>
-    <div class="stock-form" style="flex-direction:column;">
-      <div class="form-group" style="width:100%;">
-        <label>Product Name</label>
-        <input type="text" id="editProduct" style="width:100%;">
+  <div class="modal-box" style="max-width:720px;">
+    <h3 style="margin-bottom:16px;font-size:16px;font-weight:600;">Edit Stock Entry</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 14px;">Correct this purchase entry. Current stock and linked payment totals will be recalculated.</p>
+    <div class="stock-form">
+      <div class="form-group"><label>Product Name</label><input type="text" id="editProduct"></div>
+      <div class="form-group"><label>Quantity Bought</label><input type="number" id="editQty"></div>
+      <div class="form-group">
+        <label>Unit</label>
+        <select id="editUnit"><option value="kg">kg</option><option value="g">gram</option><option value="piece">piece</option></select>
       </div>
-      <div class="form-group" style="width:100%;">
-        <label>Total Quantity (current stock)</label>
-        <input type="number" id="editQty" style="width:100%;">
-      </div>
-      <div class="form-group" style="width:100%;">
-        <label>Total Purchase Cost (₹) — all stock bought</label>
-        <input type="number" id="editPurchaseCost" style="width:100%;">
-      </div>
-      <div class="form-group" style="width:100%;">
-        <label>Selling Price / Unit (₹)</label>
-        <input type="number" id="editSellingPrice" style="width:100%;" placeholder="e.g. 30">
-      </div>
-      <div class="form-group" style="width:100%;">
+      <div class="form-group"><label>Total Purchase Cost (Rs)</label><input type="number" id="editPurchaseCost"></div>
+      <div class="form-group"><label>Selling Price / Unit (Rs)</label><input type="number" id="editSellingPrice" placeholder="e.g. 30"></div>
+      <div class="form-group">
         <label>Selling Unit</label>
-        <select id="editSellingUnit" style="width:100%;">
+        <select id="editSellingUnit">
           <option value="kg">kg</option>
           <option value="500g">500g</option>
           <option value="250g">250g</option>
@@ -56,15 +50,17 @@
           <option value="piece">piece</option>
         </select>
       </div>
-      <div class="form-group" style="width:100%;">
-        <label>Purchase Date</label>
-        <input type="date" id="editDate" style="width:100%;">
-      </div>
-      <div style="display:flex;gap:10px;margin-top:6px;">
-        <button class="btn-primary" onclick="saveEdit()" style="flex:1;">Save</button>
+      <div class="form-group"><label>Purchase Date</label><input type="date" id="editDate"></div>
+      <div class="form-group"><label>Low Stock Alert (qty)</label><input type="number" id="editAlert"></div>
+      <div class="form-group"><label>Vendor Name (optional)</label><input type="text" id="editVendorName"></div>
+      <div class="form-group"><label>Vendor Phone (optional)</label><input type="text" id="editVendorPhone"></div>
+      <div class="form-group"><label>Amount Paid to Vendor (Rs)</label><input type="number" id="editVendorAmountPaid"></div>
+      <div class="form-group"><label>Note (optional)</label><input type="text" id="editNote"></div>
+      <div style="display:flex;gap:10px;margin-top:6px;width:100%;">
+        <button class="btn-primary" onclick="saveEdit()" style="flex:1;">Save Entry</button>
         <button onclick="closeEditModal()" style="flex:1;background:var(--bg);border:1.5px solid var(--border-dark);color:var(--text-secondary);">Cancel</button>
       </div>
-      <p id="editMsg" class="msg"></p>
+      <p id="editMsg" class="msg" style="width:100%;"></p>
     </div>
   </div>
 </div>
@@ -197,13 +193,10 @@
   </table>
 </div>
 
-<link rel="stylesheet" href="voice.css">
-<script type="module" src="voice.js"></script>
-
-<script type="module" src="inventory.js"></script>
+<script type="module" src="inventory.js?v=41"></script>
 <script type="module" src="topbar.js"></script>
-<script type="module" src="navbar.js"></script>
+<script type="module" src="navbar.js?v=46"></script>
 
-  <script src="pwa.js" defer></script>
+  <script src="pwa.js?v=59" defer></script>
 </body>
 </html>

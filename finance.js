@@ -143,7 +143,7 @@ function updateOverview() {
     if (s.deliveryStatus !== "delivered") return;
     if (s.paymentMode === "cash" || s.paymentMode === "upi") {
       cashIn += Number(s.totalAmount || 0);
-    } else if (s.paymentMode === "credit") {
+    } else if (s.paymentMode === "credit" && s.initialCreditPayment === undefined) {
       cashIn += Number(s.amountPaid || 0);
     }
   });
@@ -416,7 +416,7 @@ function calculateCashAtHand() {
   allSales.forEach(s => {
     if (s.deliveryStatus !== "delivered") return;
     if (s.paymentMode === "cash" || s.paymentMode === "upi") cashIn += Number(s.totalAmount || 0);
-    else if (s.paymentMode === "credit") cashIn += Number(s.amountPaid || 0);
+    else if (s.paymentMode === "credit" && s.initialCreditPayment === undefined) cashIn += Number(s.amountPaid || 0);
   });
   allCredit.forEach(c => { cashIn += Number(c.totalPaid || 0); });
   allVendors.forEach(v => { cashOut += Number(v.amountPaid || 0); });

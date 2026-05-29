@@ -5,7 +5,7 @@ import {
   RecaptchaVerifier,
   signInWithEmailAndPassword,
   signInWithPhoneNumber,
-  signInWithPopup,
+  signInWithRedirect,
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -13,6 +13,9 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase
 import { checkShopSetup } from "./shop-init.js";
 
 const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: "select_account" });
+const FIREBASE_AUTH_HOST = "sale-data-8d963.firebaseapp.com";
+const PRIMARY_HOST = "sale-data-8d963.web.app";
 
 let confirmationResult = null;
 let recaptchaVerifier = null;
@@ -37,6 +40,8 @@ sendOtpBtn.onclick = sendOtp;
 verifyOtpBtn.onclick = verifyOtp;
 googleBtn.onclick = signInWithGoogle;
 roleLogoutBtn.onclick = logoutForVendor;
+
+startHostedGoogleLogin();
 
 onAuthStateChanged(auth, user => {
   if (user && !routing) {
@@ -117,14 +122,25 @@ async function verifyOtp() {
 }
 
 async function signInWithGoogle() {
+  if (window.location.hostname === PRIMARY_HOST) {
+    window.location.href = `https://${FIREBASE_AUTH_HOST}/login.html?google=start`;
+    return;
+  }
+
   try {
     msg.textContent = "";
-    await signInWithPopup(auth, provider);
-    await routeVendor();
+    await signInWithRedirect(auth, provider);
   } catch (error) {
     console.error(error);
     showMessage(cleanFirebaseError(error.message));
   }
+}
+
+function startHostedGoogleLogin() {
+  if (window.location.hostname !== FIREBASE_AUTH_HOST) return;
+  if (new URLSearchParams(window.location.search).get("google") !== "start") return;
+  window.history.replaceState(null, "", window.location.pathname);
+  signInWithGoogle();
 }
 
 async function routeVendor() {

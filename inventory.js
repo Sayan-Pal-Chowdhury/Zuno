@@ -2,22 +2,52 @@ import { db, auth } from "./firebase.js";
 import {
   collection, addDoc, onSnapshot,
   doc, updateDoc, deleteDoc,
-  query, orderBy, getDocs
+  query, orderBy, getDocs, getDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { findProductImage } from "./product-images.js";
 import { shouldReplaceAutoImage } from "./marketplace-visuals.js";
 import { attachSuggestionDropdown, COMMON_ITEM_NAMES, mergeSuggestions, renderOptions } from "./item-suggestions.js";
-import { normalizeSellingUnit, sellingUnitLabel } from "./unit-pricing.js";
+import { formatDisplayQtyForSellingUnit, normalizeSellingUnit, sellingUnitLabel } from "./unit-pricing.js";
 
 /* ---------- STATE ---------- */
 let currentUserId  = null;
 let inventoryMap   = {};
 let salesData      = [];
 let historyDocs    = [];
-let editingId      = null;
+let editingHistoryId = null;
 let hiddenProducts = [];
 let productSuggestions = COMMON_ITEM_NAMES;
+
+function normalizeProduct(value = "") {
+  return String(value).trim().toLowerCase();
+}
+
+function isWeightUnit(unit) {
+  return unit === "kg" || unit === "g";
+}
+
+function chooseStorageUnit(...units) {
+  const usable = units.filter(Boolean);
+  if (usable.some(unit => unit === "piece")) return "piece";
+  return usable.includes("kg") ? "kg" : (usable[0] || "kg");
+}
+
+function convertQty(qty, fromUnit, toUnit) {
+  const value = Number(qty || 0);
+  if (fromUnit === toUnit || !fromUnit || !toUnit) return value;
+  if (fromUnit === "g" && toUnit === "kg") return value / 1000;
+  if (fromUnit === "kg" && toUnit === "g") return value * 1000;
+  return value;
+}
+
+function isPurchaseEntry(entry = {}) {
+  return entry.type === "in" && (entry.purchaseCost !== undefined || /stock added|inventory purchase/i.test(entry.note || ""));
+}
+
+function unitIsCompatible(existingUnit, incomingUnit) {
+  return existingUnit === incomingUnit || (isWeightUnit(existingUnit) && isWeightUnit(incomingUnit));
+}
 
 /* ---------- USER COLLECTION HELPER ---------- */
 function userCol(colName) {
@@ -164,7 +194,9 @@ function loadHistory() {
 
         const actionBtn = h.type === "deleted"
           ? `<button class="restore-btn" onclick="restoreStock('${d.id}')">Restore</button>`
-          : "—";
+          : isPurchaseEntry(h)
+            ? `<button class="card-edit-btn" onclick="openPurchaseEdit('${d.id}')">Edit</button>`
+            : "—";
 
         table.innerHTML += `
           <tr>
@@ -195,92 +227,115 @@ window.addStock = async () => {
   const purchaseCost   = Number(document.getElementById("stockPurchaseCost").value) || 0;
   const sellingPrice   = Number(document.getElementById("stockSellingPrice").value) || 0;
   const sellingUnit    = document.getElementById("stockSellingUnit").value;
+  const vendorName     = document.getElementById("vendorName").value.trim();
+  const vendorPhone    = document.getElementById("vendorPhone").value.trim();
+  const vendorAmountPaid = Number(document.getElementById("vendorAmountPaid").value) || 0;
 
   if (!product || !qty || !date) {
     showMsg("Please fill product, quantity and date.", "error");
     return;
   }
+  if (vendorAmountPaid > purchaseCost) {
+    showMsg("Vendor amount paid cannot be more than the purchase cost.", "error");
+    return;
+  }
 
   const costPerUnit = purchaseCost > 0 ? purchaseCost / qty : 0;
-  const key         = product.toLowerCase();
+  const key         = normalizeProduct(product);
   const existing    = inventoryMap[key];
+  if (existing && !unitIsCompatible(existing.unit, unit)) {
+    showMsg("This product already uses a different unit type.", "error");
+    return;
+  }
+  const storageUnit = existing ? chooseStorageUnit(existing.unit, unit) : unit;
+  const entryQtyForStock = convertQty(qty, unit, storageUnit);
+  const alertForStock = convertQty(alertThreshold, unit, storageUnit);
+  const costPerStorageUnit = entryQtyForStock > 0 ? purchaseCost / entryQtyForStock : 0;
 
   if (existing) {
-    const prevTotalQty   = existing.totalQtyBought || 0;
+    const unitChanged = existing.unit !== storageUnit;
+    const existingQty    = convertQty(existing.qty, existing.unit, storageUnit);
+    const prevTotalQty   = convertQty(existing.totalQtyBought || 0, existing.unit, storageUnit);
     const prevTotalCost  = existing.totalInvested  || 0;
-    const newTotalQty    = prevTotalQty + qty;
+    const newTotalQty    = prevTotalQty + entryQtyForStock;
     const newTotalCost   = prevTotalCost + purchaseCost;
     const newWeightedAvg = newTotalQty > 0 ? newTotalCost / newTotalQty : 0;
     const isNewer        = date > (existing.lastPurchaseDate || "");
 
     await updateDoc(userDoc("inventory", existing.id), {
-      qty:             existing.qty + qty,
-      unit,
-      alertThreshold,
+      qty:             existingQty + entryQtyForStock,
+      unit:            storageUnit,
+      alertThreshold:  alertForStock,
       weightedAvgCost: newWeightedAvg,
       totalInvested:   newTotalCost,
       totalQtyBought:  newTotalQty,
       ...(sellingPrice > 0 && { sellingPrice }),
-      sellingUnit:     normalizeSellingUnit(sellingUnit, unit),
+      sellingUnit:     normalizeSellingUnit(sellingUnit, storageUnit),
       ...(isNewer && { lastPurchaseDate: date })
     });
 
-    if ((costPerUnit > 0 && isNewer) || sellingPrice > 0) {
-      await updateProductCost(product, costPerUnit > 0 && isNewer ? costPerUnit : null, unit, sellingPrice, sellingUnit);
+    if ((costPerStorageUnit > 0 && (isNewer || unitChanged)) || sellingPrice > 0) {
+      await updateProductCost(product, costPerStorageUnit > 0 && (isNewer || unitChanged) ? costPerStorageUnit : null, storageUnit, sellingPrice, sellingUnit);
     }
 
   } else {
     await addDoc(userCol("inventory"), {
-      product, qty, unit, alertThreshold,
-      weightedAvgCost:   costPerUnit,
+      product, qty: entryQtyForStock, unit: storageUnit, alertThreshold: alertForStock,
+      weightedAvgCost:   costPerStorageUnit,
       totalInvested:     purchaseCost,
-      totalQtyBought:    qty,
+      totalQtyBought:    entryQtyForStock,
       sellingPrice,
-      sellingUnit:       normalizeSellingUnit(sellingUnit, unit),
+      sellingUnit:       normalizeSellingUnit(sellingUnit, storageUnit),
       firstPurchaseDate: date,
       lastPurchaseDate:  date
     });
 
-    if (costPerUnit > 0 || sellingPrice > 0) {
-      await updateProductCost(product, costPerUnit > 0 ? costPerUnit : null, unit, sellingPrice, sellingUnit);
+    if (costPerStorageUnit > 0 || sellingPrice > 0) {
+      await updateProductCost(product, costPerStorageUnit > 0 ? costPerStorageUnit : null, storageUnit, sellingPrice, sellingUnit);
     }
   }
 
+  let cashAdjustmentId = "";
+  let vendorPaymentId = "";
+  if (!vendorName && purchaseCost > 0) {
+    const cashRef = await addDoc(userCol("cashAdjustments"), {
+      type: "inventory_purchase",
+      amount: purchaseCost,
+      date,
+      product,
+      note: `Inventory purchase: ${product} ${qty} ${unit}`
+    });
+    cashAdjustmentId = cashRef.id;
+  }
+  if (vendorName && purchaseCost > 0) {
+    const vendorRef = await addDoc(userCol("vendorPayments"), {
+      vendorName,
+      vendorPhone: vendorPhone || "",
+      product,
+      totalCost: purchaseCost,
+      amountPaid: vendorAmountPaid,
+      remaining: Math.max(0, purchaseCost - vendorAmountPaid),
+      date,
+      status: vendorAmountPaid >= purchaseCost ? "paid" : vendorAmountPaid > 0 ? "partial" : "unpaid"
+    });
+    vendorPaymentId = vendorRef.id;
+  }
   await addDoc(userCol("inventoryHistory"), {
     product, qty, unit, date,
     type: "in",
     costPerUnit,
     purchaseCost,
-    note: note || "Stock added"
-  });
-
-  const vendorName       = document.getElementById("vendorName").value.trim();
-const vendorPhone      = document.getElementById("vendorPhone").value.trim();
-const vendorAmountPaid = Number(document.getElementById("vendorAmountPaid").value) || 0;
-
-const cashPurchaseAmount = vendorName ? 0 : purchaseCost;
-if (cashPurchaseAmount > 0) {
-  await addDoc(userCol("cashAdjustments"), {
-    type: "inventory_purchase",
-    amount: cashPurchaseAmount,
-    date,
-    product,
-    note: `Inventory purchase: ${product} ${qty} ${unit}`
-  });
-}
-
-if (vendorName && purchaseCost > 0) {
-  await addDoc(userCol("vendorPayments"), {
+    sellingPrice,
+    sellingUnit,
+    alertThreshold,
     vendorName,
-    vendorPhone: vendorPhone || "",
-    product,
-    totalCost:   purchaseCost,
-    amountPaid:  vendorAmountPaid,
-    remaining:   Math.max(0, purchaseCost - vendorAmountPaid),
-    date,
-    status:      vendorAmountPaid >= purchaseCost ? "paid" : vendorAmountPaid > 0 ? "partial" : "unpaid"
+    vendorPhone,
+    vendorAmountPaid,
+    cashAdjustmentId,
+    vendorPaymentId,
+    note: note || "Stock added",
+    createdAt: serverTimestamp()
   });
-}
 
   document.getElementById("stockProduct").value      = "";
   document.getElementById("stockQty").value          = "";
@@ -289,9 +344,9 @@ if (vendorName && purchaseCost > 0) {
   document.getElementById("stockPurchaseCost").value = "";
   document.getElementById("stockSellingPrice").value = "";
   document.getElementById("stockSellingUnit").value  = "kg";
-  document.getElementById("vendorName").value       = "";
-document.getElementById("vendorPhone").value      = "";
-document.getElementById("vendorAmountPaid").value = "";
+  document.getElementById("vendorName").value        = "";
+  document.getElementById("vendorPhone").value       = "";
+  document.getElementById("vendorAmountPaid").value  = "";
 
   showMsg("Stock added successfully!");
 };
@@ -309,7 +364,10 @@ async function updateProductCost(productName, costPerUnit, unit, sellingPrice = 
 
   if (found) {
     const update = { unit };
-    if (costPerUnit !== null && costPerUnit > 0) update.cost = Math.round(costPerUnit * 100) / 100;
+    if (costPerUnit !== null && costPerUnit > 0) {
+      update.cost = Math.round(costPerUnit * 100) / 100;
+      update.costConfigured = true;
+    }
     if (sellingPrice > 0) update.sellingPrice = Math.round(sellingPrice * 100) / 100;
     update.sellingUnit = normalizeSellingUnit(sellingUnit, unit);
     await updateDoc(userDoc("products", found.id), update);
@@ -317,6 +375,7 @@ async function updateProductCost(productName, costPerUnit, unit, sellingPrice = 
     await addDoc(userCol("products"), {
       name: productName,
       cost: costPerUnit !== null && costPerUnit > 0 ? Math.round(costPerUnit * 100) / 100 : 0,
+      costConfigured: costPerUnit !== null && costPerUnit > 0,
       sellingPrice: sellingPrice > 0 ? Math.round(sellingPrice * 100) / 100 : 0,
       unit,
       sellingUnit: normalizeSellingUnit(sellingUnit, unit)
@@ -379,6 +438,9 @@ function renderStockCards() {
       const isLow  = item.alertThreshold > 0 && item.qty <= item.alertThreshold && item.qty > 0;
       const isDone = item.qty === 0;
       const pData  = calculateProfit(key, item);
+      const displayQtyParts = formatDisplayQtyForSellingUnit(item.qty, item).split(" ");
+      const displayUnit = displayQtyParts.pop() || item.unit;
+      const displayQty = displayQtyParts.join(" ");
 
       const avgCostDisplay = item.weightedAvgCost > 0
         ? `₹${(Math.round(item.weightedAvgCost * 100) / 100).toLocaleString("en-IN")} / ${item.unit}`
@@ -439,13 +501,13 @@ function renderStockCards() {
           <div class="card-top-actions">
             <div class="product-name" style="margin-bottom:0">${item.product}</div>
             <div class="card-actions">
-              <button class="card-edit-btn" onclick="openEditModal('${key}')">Edit</button>
+              <button class="card-edit-btn" onclick="openLatestPurchaseEdit('${key}')">Edit Latest Stock</button>
               <button class="card-del-btn"  onclick="deleteStock('${key}')">Delete</button>
             </div>
           </div>
           <div style="margin-top:6px;">
-            <span class="stock-qty">${Math.round(item.qty * 100) / 100}</span>
-            <span class="stock-unit">${item.unit}</span>
+            <span class="stock-qty">${displayQty}</span>
+            <span class="stock-unit">${displayUnit}</span>
           </div>
           ${item.alertThreshold > 0
             ? `<div class="alert-threshold">Alert at ${item.alertThreshold} ${item.unit}</div>`
@@ -471,90 +533,203 @@ function renderStockCards() {
   }
 }
 
-/* ---------- OPEN EDIT MODAL ---------- */
-window.openEditModal = (key) => {
-  const item = inventoryMap[key];
-  if (!item) return;
-  editingId = item.id;
-  document.getElementById("editProduct").value      = item.product;
-  document.getElementById("editQty").value          = item.qty;
-  document.getElementById("editPurchaseCost").value = item.totalInvested || "";
-  document.getElementById("editSellingPrice").value = item.sellingPrice || "";
-  document.getElementById("editSellingUnit").value  = item.sellingUnit || item.unit || "kg";
-  document.getElementById("editDate").value         = item.lastPurchaseDate || "";
+/* ---------- EDIT INDIVIDUAL STOCK PURCHASE ---------- */
+window.openLatestPurchaseEdit = (key) => {
+  const latest = historyDocs.find(entry => isPurchaseEntry(entry) && normalizeProduct(entry.product) === key);
+  if (!latest) {
+    showMsg("No editable purchase entry was found for this product.", "error");
+    return;
+  }
+  window.openPurchaseEdit(latest.id);
+};
+
+window.openPurchaseEdit = async (historyId) => {
+  const entry = historyDocs.find(item => item.id === historyId && isPurchaseEntry(item));
+  if (!entry) return;
+  let linkedVendor = null;
+  if (!entry.vendorName && Number(entry.purchaseCost || 0) > 0) {
+    linkedVendor = await findPurchaseFinanceDoc(entry, "vendorPayments");
+  }
+  editingHistoryId = historyId;
+  document.getElementById("editProduct").value = entry.product || "";
+  document.getElementById("editQty").value = entry.qty || "";
+  document.getElementById("editUnit").value = entry.unit || "kg";
+  document.getElementById("editPurchaseCost").value = entry.purchaseCost || "";
+  document.getElementById("editSellingPrice").value = entry.sellingPrice || "";
+  document.getElementById("editSellingUnit").value = entry.sellingUnit || entry.unit || "kg";
+  document.getElementById("editDate").value = entry.date || "";
+  document.getElementById("editAlert").value = entry.alertThreshold || "";
+  document.getElementById("editVendorName").value = entry.vendorName || linkedVendor?.vendorName || "";
+  document.getElementById("editVendorPhone").value = entry.vendorPhone || linkedVendor?.vendorPhone || "";
+  document.getElementById("editVendorAmountPaid").value = entry.vendorAmountPaid || linkedVendor?.amountPaid || "";
+  document.getElementById("editNote").value = entry.note || "";
   document.getElementById("editModal").classList.remove("hidden");
 };
 
 window.closeEditModal = () => {
-  editingId = null;
+  editingHistoryId = null;
   document.getElementById("editModal").classList.add("hidden");
   document.getElementById("editMsg").innerText = "";
 };
 
-/* ---------- SAVE EDIT ---------- */
-window.saveEdit = async () => {
-  const newProduct      = document.getElementById("editProduct").value.trim();
-  const newQty          = Number(document.getElementById("editQty").value);
-  const newPurchaseCost = Number(document.getElementById("editPurchaseCost").value) || 0;
-  const newSellingPrice = Number(document.getElementById("editSellingPrice").value) || 0;
-  const newSellingUnit  = document.getElementById("editSellingUnit").value;
-  const newDate         = document.getElementById("editDate").value;
+async function findPurchaseFinanceDoc(entry, collectionName) {
+  const storedId = collectionName === "cashAdjustments" ? entry.cashAdjustmentId : entry.vendorPaymentId;
+  if (storedId) {
+    const existing = await getDoc(userDoc(collectionName, storedId));
+    if (existing.exists()) return { id: existing.id, ...existing.data() };
+  }
+  const snap = await getDocs(userCol(collectionName));
+  const matches = snap.docs.filter(item => {
+    const data = item.data();
+    if (normalizeProduct(data.product) !== normalizeProduct(entry.product) || data.date !== entry.date) return false;
+    if (collectionName === "cashAdjustments") {
+      return data.type === "inventory_purchase" && Number(data.amount || 0) === Number(entry.purchaseCost || 0);
+    }
+    return Number(data.totalCost || 0) === Number(entry.purchaseCost || 0)
+      && (!entry.vendorName || normalizeProduct(data.vendorName) === normalizeProduct(entry.vendorName));
+  });
+  return matches.length === 1 ? { id: matches[0].id, ...matches[0].data() } : null;
+}
 
-  if (!newProduct || isNaN(newQty)) {
-    document.getElementById("editMsg").innerText = "Please fill all fields.";
+async function reconcilePurchaseFinance(oldEntry, newEntry) {
+  const oldCash = await findPurchaseFinanceDoc(oldEntry, "cashAdjustments");
+  const oldVendor = await findPurchaseFinanceDoc(oldEntry, "vendorPayments");
+  let cashAdjustmentId = "";
+  let vendorPaymentId = "";
+  if (newEntry.vendorName && newEntry.purchaseCost > 0) {
+    if (oldCash) await deleteDoc(userDoc("cashAdjustments", oldCash.id));
+    const vendorData = {
+      vendorName: newEntry.vendorName,
+      vendorPhone: newEntry.vendorPhone || "",
+      product: newEntry.product,
+      totalCost: newEntry.purchaseCost,
+      amountPaid: newEntry.vendorAmountPaid,
+      remaining: Math.max(0, newEntry.purchaseCost - newEntry.vendorAmountPaid),
+      date: newEntry.date,
+      status: newEntry.vendorAmountPaid >= newEntry.purchaseCost ? "paid" : newEntry.vendorAmountPaid > 0 ? "partial" : "unpaid"
+    };
+    if (oldVendor) {
+      await updateDoc(userDoc("vendorPayments", oldVendor.id), vendorData);
+      vendorPaymentId = oldVendor.id;
+    } else {
+      vendorPaymentId = (await addDoc(userCol("vendorPayments"), vendorData)).id;
+    }
+  } else if (newEntry.purchaseCost > 0) {
+    if (oldVendor) await deleteDoc(userDoc("vendorPayments", oldVendor.id));
+    const cashData = {
+      type: "inventory_purchase",
+      amount: newEntry.purchaseCost,
+      date: newEntry.date,
+      product: newEntry.product,
+      note: `Inventory purchase: ${newEntry.product} ${newEntry.qty} ${newEntry.unit}`
+    };
+    if (oldCash) {
+      await updateDoc(userDoc("cashAdjustments", oldCash.id), cashData);
+      cashAdjustmentId = oldCash.id;
+    } else {
+      cashAdjustmentId = (await addDoc(userCol("cashAdjustments"), cashData)).id;
+    }
+  } else {
+    if (oldCash) await deleteDoc(userDoc("cashAdjustments", oldCash.id));
+    if (oldVendor) await deleteDoc(userDoc("vendorPayments", oldVendor.id));
+  }
+  return { cashAdjustmentId, vendorPaymentId };
+}
+
+async function rebuildProductFromHistory(productName) {
+  const key = normalizeProduct(productName);
+  if (!key) return;
+  const purchases = historyDocs.filter(entry => isPurchaseEntry(entry) && normalizeProduct(entry.product) === key);
+  const existing = inventoryMap[key];
+  if (!purchases.length) {
+    if (existing) await updateDoc(userDoc("inventory", existing.id), { qty: 0, totalInvested: 0, totalQtyBought: 0, weightedAvgCost: 0 });
     return;
   }
-
-  const item = Object.values(inventoryMap).find(i => i.id === editingId);
-  if (!item) return;
-
-  const oldQty  = item.qty;
-  const qtyDiff = newQty - oldQty;
-
-  if (qtyDiff !== 0) {
-    await addDoc(userCol("inventoryHistory"), {
-      product: newProduct,
-      qty:     Math.abs(qtyDiff),
-      unit:    item.unit,
-      date:    new Date().toISOString().split("T")[0],
-      type:    qtyDiff > 0 ? "in" : "out",
-      note:    `Edit adjustment — qty changed from ${oldQty} to ${newQty}`
-    });
+  const storageUnit = chooseStorageUnit(...purchases.map(entry => entry.unit), existing?.unit);
+  const totalQtyBought = purchases.reduce((sum, entry) => sum + convertQty(entry.qty, entry.unit, storageUnit), 0);
+  const totalInvested = purchases.reduce((sum, entry) => sum + Number(entry.purchaseCost || 0), 0);
+  const soldQty = historyDocs
+    .filter(entry => entry.type === "out" && normalizeProduct(entry.product) === key)
+    .reduce((sum, entry) => sum + convertQty(entry.qty, entry.unit, storageUnit), 0);
+  const sorted = [...purchases].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+  const latest = sorted[sorted.length - 1];
+  const update = {
+    product: latest.product,
+    qty: Math.max(0, totalQtyBought - soldQty),
+    unit: storageUnit,
+    alertThreshold: convertQty(Number(latest.alertThreshold || existing?.alertThreshold || 0), latest.unit || storageUnit, storageUnit),
+    weightedAvgCost: totalQtyBought > 0 ? totalInvested / totalQtyBought : 0,
+    totalInvested,
+    totalQtyBought,
+    sellingPrice: Number(latest.sellingPrice || existing?.sellingPrice || 0),
+    sellingUnit: normalizeSellingUnit(latest.sellingUnit || existing?.sellingUnit || "", storageUnit),
+    firstPurchaseDate: sorted[0].date || "",
+    lastPurchaseDate: latest.date || ""
+  };
+  if (existing) {
+    await updateDoc(userDoc("inventory", existing.id), update);
+  } else {
+    await addDoc(userCol("inventory"), update);
   }
-
-  const newCostPerUnit = newPurchaseCost > 0 && item.totalQtyBought > 0
-    ? newPurchaseCost / item.totalQtyBought
-    : item.weightedAvgCost;
-
-  const isNewer = newDate && newDate > (item.lastPurchaseDate || "");
-
-  await updateDoc(userDoc("inventory", editingId), {
-    product:         newProduct,
-    qty:             newQty,
-    totalInvested:   newPurchaseCost || item.totalInvested,
-    weightedAvgCost: newCostPerUnit,
-    sellingPrice:    newSellingPrice,
-    sellingUnit:     normalizeSellingUnit(newSellingUnit, item.unit),
-    ...(isNewer && { lastPurchaseDate: newDate })
-  });
-
-  if ((newCostPerUnit > 0 && isNewer) || newSellingPrice > 0) {
-    await updateProductCost(newProduct, newCostPerUnit > 0 && isNewer ? newCostPerUnit : null, item.unit, newSellingPrice, newSellingUnit);
+  if (update.weightedAvgCost > 0 || update.sellingPrice > 0) {
+    await updateProductCost(latest.product, update.weightedAvgCost > 0 ? update.weightedAvgCost : null, storageUnit, update.sellingPrice, update.sellingUnit);
   }
+}
 
-  await addDoc(userCol("inventoryHistory"), {
-    product:      newProduct,
-    qty:          newQty,
-    unit:         item.unit,
-    date:         new Date().toISOString().split("T")[0],
-    type:         "edit",
-    costPerUnit:  newCostPerUnit,
-    purchaseCost: newPurchaseCost,
-    note:         `Edited — was: ${item.product} ${item.qty}${item.unit} @ ₹${Math.round(item.weightedAvgCost * 100) / 100}/unit`
+window.saveEdit = async () => {
+  const original = historyDocs.find(entry => entry.id === editingHistoryId);
+  if (!original) return;
+  const updated = {
+    ...original,
+    product: document.getElementById("editProduct").value.trim(),
+    qty: Number(document.getElementById("editQty").value),
+    unit: document.getElementById("editUnit").value,
+    purchaseCost: Number(document.getElementById("editPurchaseCost").value) || 0,
+    sellingPrice: Number(document.getElementById("editSellingPrice").value) || 0,
+    sellingUnit: document.getElementById("editSellingUnit").value,
+    date: document.getElementById("editDate").value,
+    alertThreshold: Number(document.getElementById("editAlert").value) || 0,
+    vendorName: document.getElementById("editVendorName").value.trim(),
+    vendorPhone: document.getElementById("editVendorPhone").value.trim(),
+    vendorAmountPaid: Number(document.getElementById("editVendorAmountPaid").value) || 0,
+    note: document.getElementById("editNote").value.trim() || "Stock added"
+  };
+  if (!updated.product || !updated.qty || !updated.date) {
+    document.getElementById("editMsg").innerText = "Please fill product, quantity and date.";
+    return;
+  }
+  if (updated.vendorAmountPaid > updated.purchaseCost) {
+    document.getElementById("editMsg").innerText = "Vendor amount paid cannot be more than the purchase cost.";
+    return;
+  }
+  updated.costPerUnit = updated.purchaseCost > 0 ? updated.purchaseCost / updated.qty : 0;
+  const financeIds = await reconcilePurchaseFinance(original, updated);
+  Object.assign(updated, financeIds);
+  await updateDoc(userDoc("inventoryHistory", editingHistoryId), {
+    product: updated.product,
+    qty: updated.qty,
+    unit: updated.unit,
+    date: updated.date,
+    costPerUnit: updated.costPerUnit,
+    purchaseCost: updated.purchaseCost,
+    sellingPrice: updated.sellingPrice,
+    sellingUnit: updated.sellingUnit,
+    alertThreshold: updated.alertThreshold,
+    vendorName: updated.vendorName,
+    vendorPhone: updated.vendorPhone,
+    vendorAmountPaid: updated.vendorAmountPaid,
+    cashAdjustmentId: updated.cashAdjustmentId,
+    vendorPaymentId: updated.vendorPaymentId,
+    note: updated.note,
+    editedAt: serverTimestamp()
   });
-
+  historyDocs = historyDocs.map(entry => entry.id === editingHistoryId ? updated : entry);
+  await rebuildProductFromHistory(original.product);
+  if (normalizeProduct(updated.product) !== normalizeProduct(original.product)) {
+    await rebuildProductFromHistory(updated.product);
+  }
   closeEditModal();
-  showMsg("Stock updated successfully!");
+  showMsg("Stock entry corrected and inventory recalculated.");
 };
 
 /* ---------- DELETE STOCK ---------- */

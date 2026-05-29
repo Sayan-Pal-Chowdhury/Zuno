@@ -2,9 +2,14 @@ import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebase
 import { getFirestore, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+const hostingDomains = ["sale-data-8d963.web.app", "sale-data-8d963.firebaseapp.com"];
+const hostedAuthDomain = hostingDomains.includes(window.location.hostname)
+  ? window.location.hostname
+  : "sale-data-8d963.firebaseapp.com";
+
 const firebaseConfig = {
   apiKey: "AIzaSyB8EWVdmJQcxoURS-lVrHy5eA-IjPRBSSg",
-  authDomain: "sale-data-8d963.firebaseapp.com",
+  authDomain: hostedAuthDomain,
   projectId: "sale-data-8d963",
 };
 

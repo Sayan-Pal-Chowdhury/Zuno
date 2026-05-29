@@ -1,4 +1,4 @@
-import { initEditSaleModal, openEditSaleModal, updateProductCosts } from "./editSaleModal.js";
+import { initEditSaleModal, openEditSaleModal, updateProductCosts } from "./editSaleModal.js?v=40";
 import { db, auth } from "./firebase.js";
 import {
   collection, addDoc, onSnapshot,
@@ -6,7 +6,7 @@ import {
   orderBy, where, getDocs, getDoc, setDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js";
+import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js?v=40";
 import { attachSuggestionDropdown, mergeSuggestions, renderOptions } from "./item-suggestions.js";
 import { calculateSellingLineTotal, getSellingUnitStockQty, normalizeSellingUnit, sellingUnitLabel } from "./unit-pricing.js";
 
@@ -27,6 +27,7 @@ let editingCreditSaleId = null;
 let shopProfile   = null;
 let productSuggestions = [];
 let productEditOriginalName = "";
+let customerSuggestions = [];
 
 /* ---------- USER COLLECTION HELPER ---------- */
 function userCol(colName) {
@@ -60,6 +61,46 @@ async function findCreditCustomer(customer, phone) {
     if (!found && sameCustomer(c, customer, phone)) found = { id: d.id, ...c };
   });
   return found;
+}
+
+async function loadCustomerSuggestions() {
+  const [salesSnap, creditSnap, customerSnap] = await Promise.all([
+    getDocs(userCol("sales")),
+    getDocs(userCol("credit")),
+    getDocs(userCol("customers")).catch(() => null)
+  ]);
+  const byKey = {};
+  const addCustomer = record => {
+    const name = String(record.name || record.customer || record.customerName || "").trim();
+    const phone = String(record.phone || record.customerPhone || "").trim();
+    const key = normalizeName(name) || phone;
+    if (!key) return;
+    if (!byKey[key] || (!byKey[key].phone && phone)) byKey[key] = { name, phone };
+  };
+  salesSnap.forEach(saleDoc => addCustomer(saleDoc.data()));
+  creditSnap.forEach(creditDoc => addCustomer(creditDoc.data()));
+  customerSnap?.forEach(customerDoc => addCustomer(customerDoc.data()));
+  customerSuggestions = Object.values(byKey);
+
+  const nameInput = document.getElementById("customerName");
+  const phoneInput = document.getElementById("phone");
+  const applyMatch = value => {
+    const cleanValue = String(value || "").split(" - ")[0].trim();
+    const phoneValue = String(value || "").match(/\b\d{6,}\b/)?.[0] || "";
+    const match = customerSuggestions.find(customer =>
+      normalizeName(customer.name) === normalizeName(cleanValue) ||
+      customer.phone === String(value || "").trim() ||
+      customer.phone === phoneValue
+    );
+    if (!match) return;
+    if (nameInput) nameInput.value = match.name || nameInput.value;
+    if (phoneInput) phoneInput.value = match.phone || phoneInput.value;
+  };
+  const customerLabels = () => customerSuggestions
+    .map(customer => customer.name ? `${customer.name}${customer.phone ? ` - ${customer.phone}` : ""}` : customer.phone)
+    .filter(Boolean);
+  attachSuggestionDropdown(nameInput, customerLabels, applyMatch);
+  attachSuggestionDropdown(phoneInput, customerLabels, applyMatch);
 }
 
 function getOriginalCreditAmount(sale) {
@@ -114,6 +155,7 @@ if (dateEl) {
   loadSales();
   loadCustomerOrders();
   initCreditUI();
+  loadCustomerSuggestions();
 });
 
 async function loadShopProfile() {
@@ -399,12 +441,12 @@ document.getElementById("mainBtn").onclick = async () => {
     ? (creditType === "full" ? totalAmount : Math.max(0, totalAmount - amountPaid))
     : 0;
 
-  const paidAlreadyApplied = editId && editOriginalData?.paymentMode === "credit"
-    ? Math.max(0, getOriginalCreditAmount(editOriginalData) - Number(editOriginalData.creditAmount || 0))
+  const paidAfterSale = editId && editOriginalData?.paymentMode === "credit"
+    ? Math.max(0, getOriginalCreditAmount(editOriginalData) - Number(editOriginalData.creditAmount || 0) - Number(editOriginalData.initialCreditPayment || 0))
     : 0;
-  const originalCreditAmount = paymentMode === "credit" ? creditAmount : 0;
+  const originalCreditAmount = paymentMode === "credit" ? totalAmount : 0;
   const remainingCreditAmount = paymentMode === "credit"
-    ? Math.max(0, originalCreditAmount - paidAlreadyApplied)
+    ? Math.max(0, creditAmount - paidAfterSale)
     : 0;
 
   const data = {
@@ -414,7 +456,9 @@ document.getElementById("mainBtn").onclick = async () => {
     creditType:   paymentMode === "credit" ? creditType : null,
     amountPaid:   paymentMode === "credit" ? amountPaid : 0,
     creditAmount: remainingCreditAmount,
-    originalCreditAmount
+    originalCreditAmount,
+    initialCreditPayment: paymentMode === "credit" ? amountPaid : 0,
+    creditApplied: false
   };
 
   if (editId) {
@@ -422,7 +466,7 @@ document.getElementById("mainBtn").onclick = async () => {
     const isNowDelivered = data.deliveryStatus === "delivered";
 
     // reverse old credit if was credit sale
-    if (editOriginalData?.paymentMode === "credit") {
+    if (editOriginalData?.paymentMode === "credit" && editOriginalData?.deliveryStatus === "delivered") {
       await reverseCreditForSale({
         userId: currentUserId,
         sale: editOriginalData,
@@ -447,10 +491,12 @@ document.getElementById("mainBtn").onclick = async () => {
         userId: currentUserId,
         customer, phone, creditAmount: data.creditAmount,
         originalCreditAmount: data.originalCreditAmount,
+        initialPaymentAmount: data.initialCreditPayment,
         orderNumber, date,
         isEdit: true,
         oldCreditAmount: 0 // already reversed above
       });
+      await updateDoc(userDoc("sales", editId), { creditApplied: true });
       showToast(`✓ Credit updated for ${customer} — ₹${creditAmount.toLocaleString("en-IN")}`);
     }
 
@@ -458,7 +504,7 @@ document.getElementById("mainBtn").onclick = async () => {
     editOriginalData = null;
 
   } else {
-    await addDoc(userCol("sales"), data);
+    const saleRef = await addDoc(userCol("sales"), data);
 
     if (data.deliveryStatus === "delivered") {
       await deductInventory(items);
@@ -470,8 +516,10 @@ document.getElementById("mainBtn").onclick = async () => {
         userId: currentUserId,
         customer, phone, creditAmount: data.creditAmount,
         originalCreditAmount: data.originalCreditAmount,
+        initialPaymentAmount: data.initialCreditPayment,
         orderNumber, date
       });
+      await updateDoc(saleRef, { creditApplied: true });
       showToast(`✓ Credit added for ${customer} — ₹${creditAmount.toLocaleString("en-IN")}`);
     }
   }
@@ -572,6 +620,7 @@ function loadProducts() {
       const p = d.data();
       productCosts[p.name.toLowerCase()] = {
         cost: Number(p.cost),
+        hasCost: p.costConfigured !== false,
         sellingPrice: Number(p.sellingPrice || 0),
         unit: p.unit || "kg",
         sellingUnit: normalizeSellingUnit(p.sellingUnit || "", p.unit || "kg")
@@ -755,7 +804,7 @@ function getPricingForItem(item = {}) {
 }
 
 function calculateProfitLine(item, productData) {
-  if (!productData || (productData.source === "food-menu" && !productData.hasCost)) {
+  if (!productData || productData.hasCost === false) {
     return { profit: null, hasCost: false, costPrice: null };
   }
   let finalQty = Number(item.qty || 0);
@@ -791,13 +840,13 @@ window.addOrUpdateProduct = async () => {
   if (!name) return;
 
   if (productEditId) {
-    await updateDoc(userDoc("products", productEditId), { name, cost: Number(cost) || 0, sellingPrice, unit, sellingUnit: normalizeSellingUnit(sellingUnit, unit) });
+    await updateDoc(userDoc("products", productEditId), { name, cost: Number(cost) || 0, costConfigured: String(cost).trim() !== "", sellingPrice, unit, sellingUnit: normalizeSellingUnit(sellingUnit, unit) });
     await syncInventoryProduct(name, Number(cost) || 0, sellingPrice, unit, sellingUnit, productEditOriginalName);
     productEditId = null;
     productEditOriginalName = "";
     document.getElementById("prodBtn").innerText = "Add";
   } else {
-    await addDoc(userCol("products"), { name, cost: Number(cost) || 0, sellingPrice, unit, sellingUnit: normalizeSellingUnit(sellingUnit, unit) });
+    await addDoc(userCol("products"), { name, cost: Number(cost) || 0, costConfigured: String(cost).trim() !== "", sellingPrice, unit, sellingUnit: normalizeSellingUnit(sellingUnit, unit) });
     await syncInventoryProduct(name, Number(cost) || 0, sellingPrice, unit, sellingUnit);
   }
 
@@ -1156,16 +1205,20 @@ window.updateStatus = async (id, newStatus) => {
     if (!wasDelivered && isNowDelivered) {
       await deductInventory(saleData.items);
       if (saleData.customerOrderId) await markCustomerOrderDelivered(saleData.customerOrderId, saleData);
-      if (saleData.paymentMode === "credit" && (saleData.creditAmount || 0) > 0) {
-      await handleCreditFromSale({
-        userId: currentUserId,
-        customer: saleData.customer,
-        phone: saleData.phone,
-        creditAmount: saleData.creditAmount,
-        orderNumber: saleData.orderNumber,
-        date: saleData.date
-      });
-    }
+      if (saleData.paymentMode === "credit" && saleData.creditApplied !== true && Number(saleData.totalAmount || 0) > 0) {
+        const initialPaymentAmount = Number(saleData.amountPaid || 0);
+        await handleCreditFromSale({
+          userId: currentUserId,
+          customer: saleData.customer,
+          phone: saleData.phone,
+          creditAmount: Math.max(0, Number(saleData.totalAmount || 0) - initialPaymentAmount),
+          originalCreditAmount: Number(saleData.totalAmount || 0),
+          initialPaymentAmount,
+          orderNumber: saleData.orderNumber,
+          date: saleData.date
+        });
+        await updateDoc(saleRef, { creditApplied: true, initialCreditPayment: initialPaymentAmount });
+      }
   } else if (wasDelivered && !isNowDelivered) {
     await revertInventory(saleData.items);
     if (saleData.customerOrderId) await markCustomerOrderReopened(saleData.customerOrderId, saleData);
@@ -1174,6 +1227,7 @@ window.updateStatus = async (id, newStatus) => {
         userId: currentUserId,
         sale: saleData
       });
+      await updateDoc(saleRef, { creditApplied: false });
     }
   }
 };
@@ -1213,7 +1267,7 @@ window.recalcSale = async (id) => {
   const updatedItems = s.items.map(item => {
     const productData = getPricingForItem(item);
 
-    if (!productData || (productData.source === "food-menu" && !productData.hasCost)) {
+    if (!productData || productData.hasCost === false) {
       missing.push(item.product);
       return { ...item, profit: null, hasCost: false };
     }
@@ -1249,7 +1303,7 @@ window.recalcAllSales = async () => {
     const updatedItems = s.items.map(item => {
       const productData = getPricingForItem(item);
 
-      if (!productData || (productData.source === "food-menu" && !productData.hasCost)) {
+      if (!productData || productData.hasCost === false) {
         allMissing.add(item.product);
         return { ...item, profit: null, hasCost: false };
       }
@@ -1526,45 +1580,6 @@ function applyFormConfig(config) {
     if (sellingPrice) sellingPrice.style.display = config.sellingPrice === false ? "none" : "";
   });
 }
-
-/* ---------- AI SUMMARY ---------- */
-window.generateSummary = async function () {
-  try {
-    const snapshot = await getDocs(userCol("sales"));
-    const salesData = [];
-    snapshot.forEach(d => salesData.push(d.data()));
-
-    if (salesData.length === 0) {
-      document.getElementById("summary").innerText = "No data available.";
-      return;
-    }
-
-    const response = await fetch("https://zuno-production.up.railway.app/summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sales: salesData }),
-    });
-
-    const data = await response.json();
-    document.getElementById("summary").innerText = data.summary;
-  } catch (error) {
-    console.error("AI Error:", error);
-    document.getElementById("summary").innerText = "Error generating summary";
-  }
-};
-
-/* ---------- AI WARMUP ---------- */
-window.addEventListener("load", async () => {
-  try {
-    await fetch("https://zuno-production.up.railway.app/summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sales: [] }),
-    });
-  } catch (e) {
-    console.log("AI warmup failed (ok)");
-  }
-});
 
 /* ---------- LIVE TOTAL ---------- */
 function calculateLiveTotal() {

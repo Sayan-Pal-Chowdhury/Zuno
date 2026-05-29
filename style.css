@@ -552,20 +552,6 @@ td:nth-child(8) {
   margin: 20px 0 4px;
 }
 
-/* ===== AI SUMMARY ===== */
-#summary {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px 18px;
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.7;
-  margin-top: 10px;
-  min-height: 20px;
-  white-space: pre-wrap;
-}
-
 /* ===== ORDER CREDIT MODALS ===== */
 .modal-overlay {
   position: fixed;
@@ -687,6 +673,12 @@ td:nth-child(8) {
 /* ===== MOBILE ===== */
 @media (max-width: 600px) {
   body { padding: 16px 12px; }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 
   h1 { font-size: 22px; }
 

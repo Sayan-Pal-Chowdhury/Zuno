@@ -1,4 +1,4 @@
-const CACHE_NAME = "zuno-pwa-v29";
+const CACHE_NAME = "zuno-pwa-v72";
 
 const APP_SHELL = [
   "/",
@@ -21,10 +21,11 @@ const APP_SHELL = [
   "/inventory.htm",
   "/menu.html",
   "/style.css",
+  "/home.css",
   "/inventory.css",
   "/menu.css",
-  "/voice.css",
   "/auth.js",
+  "/home.js",
   "/customer-login.js",
   "/account-type.js",
   "/shop-init.js",
@@ -54,7 +55,6 @@ const APP_SHELL = [
   "/settings.js",
   "/admin.js",
   "/topbar.js",
-  "/voice.js",
   "/pwa.js",
   "/manifest.json",
   "/zuno-icon-192.png",
@@ -92,6 +92,10 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  if (url.pathname.startsWith("/__/")) {
     return;
   }
 

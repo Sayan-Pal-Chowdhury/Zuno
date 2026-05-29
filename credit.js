@@ -72,6 +72,27 @@ function getOriginalCreditAmount(sale) {
   return Math.max(0, Number(sale.totalAmount || 0) - Number(sale.amountPaid || 0));
 }
 
+async function hasRecordedCreditFromSale(userId, sale) {
+  if (sale.creditApplied === true) return true;
+  if (!sale.orderNumber) return false;
+
+  const credit = await findCreditByCustomer(userId, sale.customer, sale.phone);
+  if (!credit) return false;
+
+  const snap = await getDocs(
+    query(
+      collection(db, "users", userId, "creditHistory"),
+      where("creditId", "==", credit.id)
+    )
+  );
+  let recorded = false;
+  snap.forEach(d => {
+    const history = d.data();
+    if (history.type === "credit" && history.orderNumber === sale.orderNumber) recorded = true;
+  });
+  return recorded;
+}
+
 export async function applyCreditPaymentToSales({ userId, customer, phone, amount }) {
   if (!userId || !amount || amount <= 0) return [];
 
@@ -165,10 +186,12 @@ export async function updateSaleCreditBalance({ userId, saleId, newCreditAmount,
 
 export async function reverseCreditForSale({ userId, sale, preservePaid = false }) {
   if (!userId || !sale || sale.paymentMode !== "credit") return;
+  if (!(await hasRecordedCreditFromSale(userId, sale))) return;
 
   const currentCreditAmount = Number(sale.creditAmount || 0);
   const originalCreditAmount = getOriginalCreditAmount(sale);
   const paidCreditAmount = Math.max(0, originalCreditAmount - currentCreditAmount);
+  const initialPaymentAmount = Number(sale.initialCreditPayment || 0);
 
   await reverseCreditFromSale({
     userId,
@@ -176,7 +199,7 @@ export async function reverseCreditForSale({ userId, sale, preservePaid = false 
     phone: sale.phone,
     creditAmount: currentCreditAmount,
     originalCreditAmount,
-    paidCreditAmount: preservePaid ? 0 : paidCreditAmount,
+    paidCreditAmount: preservePaid ? initialPaymentAmount : paidCreditAmount,
     orderNumber: sale.orderNumber
   });
 }
@@ -718,8 +741,9 @@ function showToast(msg) {
 }
 
 /* ---------- EXPORTED: create or update credit from sale ---------- */
-export async function handleCreditFromSale({ userId, customer, phone, creditAmount, originalCreditAmount = null, orderNumber, date, saleId, isEdit = false, oldCreditAmount = 0 }) {
+export async function handleCreditFromSale({ userId, customer, phone, creditAmount, originalCreditAmount = null, initialPaymentAmount = 0, orderNumber, date, saleId, isEdit = false, oldCreditAmount = 0 }) {
   const creditForTotal = originalCreditAmount === null ? creditAmount : Number(originalCreditAmount || 0);
+  const paidAtSale = Math.max(0, Number(initialPaymentAmount || 0));
   if (!userId || (creditAmount <= 0 && creditForTotal <= 0)) return;
 
   const creditCol     = collection(db, "users", userId, "credit");
@@ -732,9 +756,11 @@ export async function handleCreditFromSale({ userId, customer, phone, creditAmou
     const prevCredit = isEdit ? oldCreditAmount : 0;
     const newTotal   = (existing.totalCredit || 0) - prevCredit + creditForTotal;
     const newBalance = (existing.balance     || 0) - prevCredit + creditAmount;
+    const newTotalPaid = Number(existing.totalPaid || 0) + paidAtSale;
 
     await updateDoc(doc(db, "users", userId, "credit", existing.id), {
       totalCredit:      Math.max(0, newTotal),
+      totalPaid:        newTotalPaid,
       balance:          Math.max(0, newBalance),
       lastOrderNumber:  orderNumber,
       lastOrderDate:    date,
@@ -753,13 +779,26 @@ export async function handleCreditFromSale({ userId, customer, phone, creditAmou
       balanceAfter: Math.max(0, newBalance)
     });
 
+    if (paidAtSale > 0) {
+      await addDoc(creditHistCol, {
+        creditId:     existing.id,
+        customerName: customer,
+        type:         "payment",
+        amount:       paidAtSale,
+        date,
+        orderNumber,
+        note:         "Paid during credit sale",
+        balanceAfter: Math.max(0, newBalance)
+      });
+    }
+
   } else {
     // create new
     const newDoc = await addDoc(creditCol, {
       name:             customer,
       phone:            phone || "",
       totalCredit:      creditForTotal,
-      totalPaid:        0,
+      totalPaid:        paidAtSale,
       balance:          creditAmount,
       lastOrderNumber:  orderNumber,
       lastOrderDate:    date,
@@ -779,6 +818,19 @@ export async function handleCreditFromSale({ userId, customer, phone, creditAmou
       note:         "Credit from sale",
       balanceAfter: creditAmount
     });
+
+    if (paidAtSale > 0) {
+      await addDoc(creditHistCol, {
+        creditId:     newDoc.id,
+        customerName: customer,
+        type:         "payment",
+        amount:       paidAtSale,
+        date,
+        orderNumber,
+        note:         "Paid during credit sale",
+        balanceAfter: creditAmount
+      });
+    }
   }
 }
 

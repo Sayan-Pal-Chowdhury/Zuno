@@ -2,7 +2,7 @@ import { auth, db } from "./firebase.js";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithRedirect,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -30,11 +30,14 @@ let settlements = [];
 let queries = [];
 
 const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: "select_account" });
+const FIREBASE_AUTH_HOST = "sale-data-8d963.firebaseapp.com";
+const PRIMARY_HOST = "sale-data-8d963.web.app";
 const gate = document.getElementById("adminGate");
 const app = document.getElementById("adminApp");
 const gateMsg = document.getElementById("gateMsg");
 
-document.getElementById("adminLoginBtn").onclick = () => signInWithPopup(auth, provider);
+document.getElementById("adminLoginBtn").onclick = signInWithGoogle;
 document.getElementById("logoutBtn").onclick = () => signOut(auth);
 document.getElementById("refreshBtn").onclick = loadAdminData;
 
@@ -54,6 +57,8 @@ document.getElementById("scanImagesBtn").onclick = scanMissingImages;
 document.getElementById("adminImageSaveBtn").onclick = updateProductImageEverywhere;
 document.getElementById("savePaymentSettingsBtn").onclick = savePaymentSettings;
 document.getElementById("refreshSettlementsBtn").onclick = loadAdminData;
+
+startHostedGoogleLogin();
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
@@ -75,6 +80,21 @@ onAuthStateChanged(auth, async user => {
   document.getElementById("adminSub").textContent = user.email;
   await loadAdminData();
 });
+
+function signInWithGoogle() {
+  if (window.location.hostname === PRIMARY_HOST) {
+    window.location.href = `https://${FIREBASE_AUTH_HOST}/admin.html?google=start`;
+    return;
+  }
+  signInWithRedirect(auth, provider);
+}
+
+function startHostedGoogleLogin() {
+  if (window.location.hostname !== FIREBASE_AUTH_HOST) return;
+  if (new URLSearchParams(window.location.search).get("google") !== "start") return;
+  window.history.replaceState(null, "", window.location.pathname);
+  signInWithGoogle();
+}
 
 async function loadAdminData() {
   await Promise.all([

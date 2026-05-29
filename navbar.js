@@ -6,6 +6,11 @@ const ADMIN_EMAILS = ["sayan123401@gmail.com"];
 
 /* ---------- DETECT ACTIVE PAGE ---------- */
 const path = window.location.pathname.toLowerCase();
+const localNavigationSuffix = ["127.0.0.1", "localhost"].includes(window.location.hostname) ? "?local=41" : "";
+
+function appHref(route) {
+  return `${route}${localNavigationSuffix}`;
+}
 
 function isActive(page) {
   if (page === "home"      && (path === "/" || path.includes("home")))       return true;
@@ -21,26 +26,43 @@ function isActive(page) {
 const style = document.createElement("style");
 style.textContent = `
   /* ===== BODY PADDING ===== */
-  body { padding-bottom: 90px !important; }
+  body { padding-bottom: 108px !important; }
+
+  @media (max-width: 600px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
 
   /* ===== BOTTOM BAR ===== */
   .zuno-nav {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 64px;
+    bottom: 10px;
+    left: 50%;
+    right: auto;
+    width: min(92vw, 600px);
+    height: 70px;
+    transform: translateX(-50%) translateY(var(--zuno-nav-keyboard-offset, 0px));
     background: rgba(255,255,255,0.92);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border-top: 1px solid rgba(0,0,0,0.07);
+    border: 1px solid rgba(0,0,0,0.07);
+    border-radius: 26px;
     display: flex;
     align-items: center;
     justify-content: space-around;
-    padding: 0 8px;
-    padding-bottom: env(safe-area-inset-bottom);
+    padding: 0 8px calc(env(safe-area-inset-bottom) / 2);
     z-index: 900;
-    box-shadow: 0 -4px 24px rgba(0,0,0,0.05);
+    box-shadow: 0 12px 34px rgba(13, 38, 25, 0.12);
+    transition: transform 0.18s ease, opacity 0.18s ease;
+  }
+
+  body.keyboard-open .zuno-nav {
+    transform: translateX(-50%) translateY(120%);
+    opacity: 0;
+    pointer-events: none;
   }
 
   .zuno-nav-item {
@@ -49,17 +71,17 @@ style.textContent = `
     align-items: center;
     gap: 3px;
     text-decoration: none;
-    padding: 8px 12px;
-    border-radius: 14px;
+    padding: 8px 8px;
+    border-radius: 16px;
     transition: background 0.2s, transform 0.15s;
     cursor: pointer;
     border: none;
     background: none;
-    min-width: 52px;
+    min-width: 48px;
     position: relative;
   }
 
-  .zuno-nav-item:hover { background: rgba(0,0,0,0.04); }
+  .zuno-nav-item:hover { background: rgba(52,201,138,0.08); }
   .zuno-nav-item:active { transform: scale(0.92); }
 
   .zuno-nav-icon {
@@ -69,7 +91,7 @@ style.textContent = `
   }
 
   .zuno-nav-label {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 500;
     color: #aaa;
     letter-spacing: 0.02em;
@@ -111,16 +133,16 @@ style.textContent = `
   }
 
   .zuno-nav-add-circle {
-    width: 46px;
-    height: 46px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     background: linear-gradient(135deg, #34c98a, #2aa572);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 16px rgba(52,201,138,0.4);
+    box-shadow: 0 10px 28px rgba(52,201,138,0.38);
     transition: transform 0.2s, box-shadow 0.2s;
-    margin-top: -10px;
+    margin-top: -18px;
   }
 
   .zuno-nav-add:hover .zuno-nav-add-circle {
@@ -131,13 +153,13 @@ style.textContent = `
   .zuno-nav-add:active .zuno-nav-add-circle { transform: scale(0.94); }
 
   .zuno-nav-add-icon {
-    font-size: 22px;
+    font-size: 24px;
     color: white;
     line-height: 1;
   }
 
   .zuno-nav-add-label {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 600;
     color: #34c98a;
     letter-spacing: 0.02em;
@@ -372,7 +394,7 @@ style.textContent = `
   .zuno-btn-logout  { background: #c0392b; color: white; }
 
   @media (min-width: 600px) {
-    .zuno-nav { max-width: 600px; left: 50%; transform: translateX(-50%); border-radius: 20px 20px 0 0; }
+    .zuno-nav { width: min(600px, 72vw); }
     .zuno-drawer { max-width: 480px; }
   }
 `;
@@ -405,7 +427,7 @@ nav.innerHTML = `
     </div>
     <div class="zuno-drawer-items">
 
-      <a href="/customer.html" class="zuno-drawer-item">
+      <a href="${appHref("/customer.html")}" class="zuno-drawer-item">
         <div class="zuno-drawer-item-icon" style="background:#fff0f0;">👥</div>
         <div class="zuno-drawer-item-text">
           <span class="zuno-drawer-item-title">Customers</span>
@@ -414,7 +436,7 @@ nav.innerHTML = `
         <span class="soon-badge">Soon</span>
       </a>
 
-      <a href="/finance.html" class="zuno-drawer-item">
+      <a href="${appHref("/finance.html")}" class="zuno-drawer-item">
         <div class="zuno-drawer-item-icon" style="background:#fff8e8;">💰</div>
         <div class="zuno-drawer-item-text">
           <span class="zuno-drawer-item-title">Finance</span>
@@ -425,7 +447,7 @@ nav.innerHTML = `
 
       <div class="zuno-drawer-divider"></div>
 
-      <a href="/settings.html" class="zuno-drawer-item">
+      <a href="${appHref("/settings.html")}" class="zuno-drawer-item">
         <div class="zuno-drawer-item-icon" style="background:#f5f5f3;">⚙️</div>
         <div class="zuno-drawer-item-text">
           <span class="zuno-drawer-item-title">Settings</span>
@@ -434,7 +456,7 @@ nav.innerHTML = `
         <span class="zuno-drawer-item-arrow">›</span>
       </a>
 
-      <a href="/admin.html" class="zuno-drawer-item" id="zunoAdminDrawerItem" hidden>
+      <a href="${appHref("/admin.html")}" class="zuno-drawer-item" id="zunoAdminDrawerItem" hidden>
         <div class="zuno-drawer-item-icon" style="background:#fff7cc;">A</div>
         <div class="zuno-drawer-item-text">
           <span class="zuno-drawer-item-title">Admin</span>
@@ -459,29 +481,29 @@ nav.innerHTML = `
   <!-- BOTTOM NAV BAR -->
   <nav class="zuno-nav">
 
-    <a href="/home.html" class="zuno-nav-item ${isActive("home") ? "active" : ""}">
+    <a href="${appHref("/home.html")}" class="zuno-nav-item ${isActive("home") ? "active" : ""}">
       <span class="zuno-nav-icon">🏠</span>
       <span class="zuno-nav-label">Home</span>
     </a>
 
-    <a href="/inventory.htm" id="zunoStockNavLink" class="zuno-nav-item ${isActive("inventory") || isActive("menu") ? "active" : ""}" data-feature-link="inventoryEnabled">
+    <a href="${appHref("/inventory.htm")}" id="zunoStockNavLink" class="zuno-nav-item ${isActive("inventory") || isActive("menu") ? "active" : ""}" data-feature-link="inventoryEnabled">
       <span class="zuno-nav-icon">📦</span>
       <span class="zuno-nav-label">Inventory</span>
     </a>
 
-    <a href="/index.html" class="zuno-nav-add">
+    <a href="${appHref("/index.html")}" class="zuno-nav-add">
       <div class="zuno-nav-add-circle">
         <span class="zuno-nav-add-icon">＋</span>
       </div>
       <span class="zuno-nav-add-label">Order</span>
     </a>
 
-    <a href="/credit.html" class="zuno-nav-item ${isActive("credit") ? "active" : ""}" data-feature-link="creditEnabled">
+    <a href="${appHref("/credit.html")}" class="zuno-nav-item ${isActive("credit") ? "active" : ""}" data-feature-link="creditEnabled">
       <span class="zuno-nav-icon">💳</span>
       <span class="zuno-nav-label">Credit</span>
     </a>
 
-    <a href="/sales.html" class="zuno-nav-item ${isActive("sales") ? "active" : ""}">
+    <a href="${appHref("/sales.html")}" class="zuno-nav-item ${isActive("sales") ? "active" : ""}">
       <span class="zuno-nav-icon">📊</span>
       <span class="zuno-nav-label">Sales</span>
     </a>
@@ -574,9 +596,10 @@ function applyFeatureVisibility(profile) {
   const stockLink = document.getElementById("zunoStockNavLink");
   const usesFoodMenu = profile.foodMenuEnabled === true;
   if (stockLink) {
-    stockLink.href = usesFoodMenu ? "/menu.html" : "/inventory.htm";
+    stockLink.href = appHref(usesFoodMenu ? "/menu.html" : "/inventory.htm");
     stockLink.dataset.featureLink = usesFoodMenu ? "menuEnabled" : "inventoryEnabled";
     stockLink.querySelector(".zuno-nav-label").textContent = usesFoodMenu ? "Menu" : "Inventory";
+    stockLink.querySelector(".zuno-nav-icon").textContent = usesFoodMenu ? "🍽️" : "📦";
     stockLink.classList.toggle("active", usesFoodMenu ? path.includes("menu") : path.includes("inventory"));
   }
 
@@ -592,11 +615,11 @@ function applyFeatureVisibility(profile) {
 
   Object.entries(disabledPages).forEach(([key, isCurrentPage]) => {
     if (isCurrentPage && profile[key] === false) {
-      window.location.href = "/home.html";
+      window.location.href = appHref("/home.html");
     }
   });
 
   if (usesFoodMenu && path.includes("inventory")) {
-    window.location.href = "/menu.html";
+    window.location.href = appHref("/menu.html");
   }
 }

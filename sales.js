@@ -1,4 +1,4 @@
-import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js";
+import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js?v=40";
 import { db, auth } from "./firebase.js";
 import {
   collection, onSnapshot, query,
@@ -8,7 +8,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/f
 import {
   initEditSaleModal, openEditSaleModal,
   openAddSaleModal, deleteSaleById, updateProductCosts
-} from "./editSaleModal.js";
+} from "./editSaleModal.js?v=40";
 
 /* ---------- STATE ---------- */
 let currentUserId = null;
@@ -72,7 +72,7 @@ function loadProducts() {
     productCosts = {};
     snap.forEach(d => {
       const p = d.data();
-      productCosts[p.name.toLowerCase()] = { cost: Number(p.cost), unit: p.unit || "kg" };
+      productCosts[p.name.toLowerCase()] = { cost: Number(p.cost), unit: p.unit || "kg", hasCost: p.costConfigured !== false };
     });
     updateProductCosts(productCosts);
   });
@@ -86,6 +86,7 @@ function loadFoodCosts() {
       if (!item.name || item.cost === undefined || item.cost === "") return;
       productCosts[item.name.toLowerCase()] = {
         cost: Number(item.cost),
+        hasCost: item.hasCost !== false,
         unit: "piece",
         source: "food-menu",
         foodCostKey: item.key || ""
@@ -328,18 +329,22 @@ window.updateStatus = async (id, newStatus) => {
 
   // import deduct/revert from editSaleModal indirectly via re-save isn't needed
   // status change inventory handled by editSaleModal pattern
-if (!wasDelivered && isNowDelivered) {
+  if (!wasDelivered && isNowDelivered) {
     await deductInventory(saleData.items);
     if (saleData.customerOrderId) await markCustomerOrderDelivered(saleData.customerOrderId, saleData);
-    if (saleData.paymentMode === "credit" && (saleData.creditAmount || 0) > 0) {
+    if (saleData.paymentMode === "credit" && saleData.creditApplied !== true && Number(saleData.totalAmount || 0) > 0) {
+      const initialPaymentAmount = Number(saleData.amountPaid || 0);
       await handleCreditFromSale({
         userId: currentUserId,
         customer: saleData.customer,
         phone: saleData.phone,
-        creditAmount: saleData.creditAmount,
+        creditAmount: Math.max(0, Number(saleData.totalAmount || 0) - initialPaymentAmount),
+        originalCreditAmount: Number(saleData.totalAmount || 0),
+        initialPaymentAmount,
         orderNumber: saleData.orderNumber,
         date: saleData.date
       });
+      await updateDoc(saleRef, { creditApplied: true, initialCreditPayment: initialPaymentAmount });
     }
   } else if (wasDelivered && !isNowDelivered) {
     await revertInventory(saleData.items);
@@ -349,6 +354,7 @@ if (!wasDelivered && isNowDelivered) {
         userId: currentUserId,
         sale: saleData
       });
+      await updateDoc(saleRef, { creditApplied: false });
     }
   }
 };
@@ -544,7 +550,7 @@ window.recalcSale = async (id) => {
 
   const updatedItems = s.items.map(item => {
     const productData = getProductCost(item);
-    if (!productData) { missing.push(item.product); return { ...item, profit: null, hasCost: false }; }
+    if (!productData || productData.hasCost === false) { missing.push(item.product); return { ...item, profit: null, hasCost: false }; }
 
     const profit = calculateItemProfit(item, productData);
     totalProfit += profit;
@@ -569,7 +575,7 @@ window.recalcAllSales = async () => {
     let totalProfit = 0;
     const updatedItems = s.items.map(item => {
       const productData = getProductCost(item);
-      if (!productData) { allMissing.add(item.product); return { ...item, profit: null, hasCost: false }; }
+      if (!productData || productData.hasCost === false) { allMissing.add(item.product); return { ...item, profit: null, hasCost: false }; }
 
       const profit = calculateItemProfit(item, productData);
       totalProfit += profit;

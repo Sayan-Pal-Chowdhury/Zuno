@@ -1,6 +1,16 @@
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js").catch((error) => {
+  window.addEventListener("load", async () => {
+    const localDevelopment = ["127.0.0.1", "localhost"].includes(window.location.hostname);
+    if (localDevelopment) {
+      const registrations = await navigator.serviceWorker.getRegistrations().catch(() => []);
+      await Promise.all(registrations.map(registration => registration.unregister()));
+      const cacheNames = await caches.keys().catch(() => []);
+      await Promise.all(cacheNames
+        .filter(cacheName => cacheName.startsWith("zuno-pwa-"))
+        .map(cacheName => caches.delete(cacheName)));
+      return;
+    }
+    navigator.serviceWorker.register("/service-worker.js", { updateViaCache: "none" }).catch((error) => {
       console.warn("Zuno service worker registration failed:", error);
     });
   });
