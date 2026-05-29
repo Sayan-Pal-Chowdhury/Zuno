@@ -317,6 +317,18 @@ function normalize(value = "") {
     .trim();
 }
 
+function expandCompactQuantities(text, catalog) {
+  const ignored = new Set(["kg", "g", "gm", "rs", "cash", "upi", "credit", "pending", "delivered", "deliver"]);
+  return text.replace(/\b(\d+(?:\.\d+)?)([a-z][a-z0-9_-]*)\b/g, (token, qty, word) => {
+    if (ignored.has(word)) return token;
+    const canonical = BUILTIN_PRODUCT_ALIASES[word] || learnedAliases[word] || word;
+    const known = findCatalogMatches(canonical, catalog).length > 0;
+    if (!known) return token;
+    const unit = shopProfile.foodMenuEnabled === true ? "piece" : "g";
+    return `${qty}${unit} ${word}`;
+  });
+}
+
 function escapeHtml(value = "") {
   return String(value).replace(/[&<>"']/g, char => ({
     "&": "&amp;",
@@ -1612,8 +1624,8 @@ function priceData(afterText, qty, unit, product) {
 }
 
 async function handleSaleCommand(original) {
-  const text = normalize(original);
   const catalog = saleCatalog();
+  const text = expandCompactQuantities(normalize(original), catalog);
   const mentions = findMentions(text, catalog);
   if (!mentions.length) {
     const looseMatch = findLooseProductRequest(text, catalog);
@@ -1680,6 +1692,8 @@ async function handleSaleCommand(original) {
   }).filter(Boolean);
 
   const customer = extractCustomer(text, mentions);
+  const strayQuantity = findStrayQuantity(text, mentions);
+  if (strayQuantity) missing.push(`product name for ${strayQuantity}`);
   const saleDefaults = currentSaleDefaults();
   const paymentMode = extractPayment(text) || saleDefaults.paymentMode;
   if (formConfig.paymentMode !== false && !paymentMode) missing.push("payment (cash, UPI or credit)");
@@ -1725,6 +1739,23 @@ async function handleSaleCommand(original) {
     return;
   }
   renderSalePreview(draft);
+}
+
+function findStrayQuantity(text, mentions) {
+  const claimed = new Set();
+  mentions.forEach((mention, index) => {
+    const previousEnd = index ? mentions[index - 1].end : 0;
+    const before = text.slice(previousEnd, mention.index);
+    const matches = [...before.matchAll(/\b\d+(?:\.\d+)?\s*(kg|g|piece)\b/g)];
+    if (matches.length) claimed.add(previousEnd + matches[matches.length - 1].index);
+  });
+  const quantities = [...text.matchAll(/\b\d+(?:\.\d+)?\s*(kg|g|piece)\b/g)];
+  const stray = quantities.find(match => {
+    const end = match.index + match[0].length;
+    const next = text.slice(end).trimStart().split(/\s+/)[0] || "";
+    return !claimed.has(match.index) && !BUILTIN_PAYMENT_ALIASES[next] && next !== "rs";
+  });
+  return stray ? stray[0] : "";
 }
 
 function inferNewSaleProduct(text) {
