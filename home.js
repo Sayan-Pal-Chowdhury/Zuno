@@ -1389,12 +1389,36 @@ function catalogAliases(catalog) {
     }
   });
   Object.entries(BUILTIN_PRODUCT_ALIASES).forEach(([alias, canonical]) => {
-    if (catalog[canonical]) aliases.push({ alias, key: canonical, product: catalog[canonical] });
+    const matches = findCatalogMatches(canonical, catalog);
+    if (matches.length === 1) aliases.push({ alias, key: matches[0].key, product: matches[0].product });
   });
   Object.entries(learnedAliases).forEach(([alias, key]) => {
-    if (catalog[normalize(key)]) aliases.push({ alias: normalize(alias), key: normalize(key), product: catalog[normalize(key)] });
+    const matches = findCatalogMatches(key, catalog);
+    if (matches.length === 1) aliases.push({ alias: normalize(alias), key: matches[0].key, product: matches[0].product });
   });
   return aliases.sort((a, b) => b.alias.length - a.alias.length);
+}
+
+function findCatalogMatches(name, catalog = saleCatalog()) {
+  const requested = normalize(name);
+  if (!requested) return [];
+  const entries = Object.entries(catalog).map(([key, product]) => ({ key, product }));
+  const exact = entries.find(entry => entry.key === requested);
+  if (exact) return [exact];
+  const requestedWords = requested.split(/\s+/).filter(Boolean);
+  return entries
+    .map(entry => {
+      const words = entry.key.split(/\s+/).filter(Boolean);
+      const matchingWords = requestedWords.filter(word => words.includes(word)).length;
+      const startsWith = entry.key.startsWith(requested);
+      const contains = entry.key.includes(requested);
+      return {
+        ...entry,
+        score: (startsWith ? 5 : 0) + (contains ? 3 : 0) + matchingWords
+      };
+    })
+    .filter(entry => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.key.length - b.key.length);
 }
 
 function findMentions(text, catalog) {
@@ -1441,12 +1465,13 @@ function findLooseProductRequest(text, catalog, mentions = []) {
       const end = start + match[1].length;
       const overlapsKnown = mentions.some(mention => start < mention.end && end > mention.index);
       if (!overlapsKnown) {
-        const phraseWords = phrase.split(/\s+/).filter(Boolean);
+        const canonicalPhrase = BUILTIN_PRODUCT_ALIASES[phrase] || learnedAliases[phrase] || phrase;
+        const phraseWords = normalize(canonicalPhrase).split(/\s+/).filter(Boolean);
         const scored = catalogEntries
           .map(entry => {
             const matchingWords = phraseWords.filter(word => entry.words.includes(word)).length;
-            const startsWithPhrase = entry.key.startsWith(phrase);
-            const containsPhrase = entry.key.includes(phrase);
+            const startsWithPhrase = entry.key.startsWith(normalize(canonicalPhrase));
+            const containsPhrase = entry.key.includes(normalize(canonicalPhrase));
             return {
               ...entry,
               score: (startsWithPhrase ? 4 : 0) + (containsPhrase ? 2 : 0) + matchingWords
@@ -1593,6 +1618,10 @@ async function handleSaleCommand(original) {
   if (!mentions.length) {
     const looseMatch = findLooseProductRequest(text, catalog);
     if (looseMatch) {
+      if (looseMatch.choices.length === 1) {
+        handleSaleCommand(replaceProductPhrase(original, looseMatch.phrase, looseMatch.choices[0].product.name));
+        return;
+      }
       renderProductChoiceQuestion(original, looseMatch);
       return;
     }
@@ -1609,6 +1638,10 @@ async function handleSaleCommand(original) {
   if (unknownProduct) {
     const looseMatch = findLooseProductRequest(text, catalog, mentions);
     if (looseMatch) {
+      if (looseMatch.choices.length === 1) {
+        handleSaleCommand(replaceProductPhrase(original, looseMatch.phrase, looseMatch.choices[0].product.name));
+        return;
+      }
       renderProductChoiceQuestion(original, looseMatch);
       return;
     }
@@ -2328,7 +2361,11 @@ function showPendingOrders() {
 }
 
 function getSalePricing(productName) {
-  return saleCatalog()[normalize(productName)] || null;
+  const catalog = saleCatalog();
+  const exact = catalog[normalize(productName)];
+  if (exact) return exact;
+  const matches = findCatalogMatches(BUILTIN_PRODUCT_ALIASES[normalize(productName)] || productName, catalog);
+  return matches.length === 1 ? matches[0].product : null;
 }
 
 function enrichSaleItem(item) {
