@@ -424,7 +424,7 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .marketplace-hero {
   position: relative;
-  min-height: 224px;
+  min-height: 202px;
   margin-bottom: 14px;
   border-radius: 22px;
   overflow: hidden;
@@ -434,14 +434,14 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .marketplace-hero-track {
   display: flex;
-  min-height: 224px;
+  min-height: 202px;
   transition: transform .48s ease;
 }
 
 .marketplace-hero-slide {
   position: relative;
   flex: 0 0 100%;
-  min-height: 224px;
+  min-height: 202px;
   display: flex;
   align-items: center;
   padding: 20px 22px;
@@ -452,7 +452,7 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 
 .marketplace-hero-slide:not(.has-cover) {
-  padding-right: 210px;
+  padding-right: 150px;
 }
 
 .marketplace-hero-slide:not(.has-cover)::before,
@@ -499,20 +499,20 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .marketplace-delivery-art {
   position: absolute;
-  right: 18px;
-  bottom: 18px;
+  right: 20px;
+  top: 26px;
   z-index: 1;
-  width: 178px;
-  height: 116px;
+  width: 108px;
+  height: 148px;
   pointer-events: none;
 }
 
 .delivery-shop {
   position: absolute;
-  left: 4px;
-  bottom: 30px;
-  width: 58px;
-  height: 54px;
+  left: 50%;
+  top: 0;
+  width: 52px;
+  height: 48px;
   display: grid;
   place-items: center;
   border-radius: 18px 18px 14px 14px;
@@ -520,7 +520,8 @@ button { -webkit-tap-highlight-color: transparent; }
   color: #17b978;
   font-size: 28px;
   font-weight: 1000;
-  box-shadow: 0 14px 28px rgba(25,23,19,.12);
+  box-shadow: 0 12px 24px rgba(25,23,19,.12);
+  transform: translateX(-50%);
 }
 
 .delivery-shop::before {
@@ -537,20 +538,23 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .delivery-path {
   position: absolute;
-  left: 18px;
-  right: 12px;
-  bottom: 20px;
-  height: 6px;
+  left: 50%;
+  top: 56px;
+  width: 6px;
+  height: 72px;
   border-radius: 999px;
-  background: rgba(25,23,19,.12);
+  background:
+    linear-gradient(180deg, rgba(23,185,120,.32), rgba(255,218,0,.48)),
+    repeating-linear-gradient(180deg, transparent 0 9px, rgba(25,23,19,.12) 9px 11px);
+  transform: translateX(-50%);
 }
 
 .delivery-rider {
   position: absolute;
-  left: 82px;
-  bottom: 31px;
-  width: 54px;
-  height: 36px;
+  left: 31px;
+  top: 70px;
+  width: 46px;
+  height: 31px;
   border-radius: 999px 999px 16px 16px;
   background: #191713;
   animation: deliveryRide 2.8s ease-in-out infinite;
@@ -584,10 +588,10 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .delivery-bag {
   position: absolute;
-  right: 8px;
-  bottom: 42px;
-  width: 34px;
-  height: 30px;
+  right: 12px;
+  bottom: 10px;
+  width: 30px;
+  height: 26px;
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 12px 22px rgba(25,23,19,.12);
@@ -607,12 +611,12 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 
 @keyframes deliveryRide {
-  0%, 100% { transform: translateX(-6px) translateY(0); }
-  50% { transform: translateX(8px) translateY(-2px); }
+  0%, 100% { transform: translateY(-8px) rotate(-2deg); }
+  50% { transform: translateY(30px) rotate(2deg); }
 }
 
 @keyframes deliveryBag {
-  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  0%, 100% { transform: translateY(3px) rotate(-2deg); }
   50% { transform: translateY(-3px) rotate(2deg); }
 }
 
@@ -2164,40 +2168,40 @@ button { -webkit-tap-highlight-color: transparent; }
   .marketplace-hero,
   .marketplace-hero-track,
   .marketplace-hero-slide {
-    min-height: 242px;
+    min-height: 172px;
   }
 
   .marketplace-hero-slide {
-    padding: 16px 17px 112px;
+    padding: 16px 17px;
   }
 
   .marketplace-hero-slide:not(.has-cover) {
-    padding-right: 17px;
+    padding-right: 108px;
   }
 
   .marketplace-hero-copy h1 {
-    font-size: 26px;
-    max-width: 250px;
+    font-size: 24px;
+    max-width: 230px;
   }
 
   .marketplace-hero-copy p {
-    max-width: 238px;
+    max-width: 210px;
     font-size: 12px;
   }
 
   .marketplace-delivery-art {
-    right: 10px;
-    bottom: 10px;
-    width: 132px;
-    height: 86px;
-    opacity: .82;
+    right: 12px;
+    top: 24px;
+    width: 82px;
+    height: 124px;
+    opacity: .9;
   }
 
   .delivery-shop {
-    width: 42px;
-    height: 40px;
+    width: 40px;
+    height: 37px;
     border-radius: 14px 14px 11px 11px;
-    font-size: 20px;
+    font-size: 19px;
   }
 
   .delivery-shop::before {
@@ -2205,9 +2209,14 @@ button { -webkit-tap-highlight-color: transparent; }
     height: 17px;
   }
 
+  .delivery-path {
+    top: 47px;
+    height: 61px;
+  }
+
   .delivery-rider {
-    left: 62px;
-    bottom: 25px;
+    left: 22px;
+    top: 62px;
     width: 40px;
     height: 27px;
   }
@@ -2227,10 +2236,10 @@ button { -webkit-tap-highlight-color: transparent; }
   }
 
   .delivery-bag {
-    width: 27px;
-    height: 24px;
-    right: 3px;
-    bottom: 33px;
+    width: 25px;
+    height: 22px;
+    right: 8px;
+    bottom: 5px;
   }
 
   .marketplace-hero-dots {
