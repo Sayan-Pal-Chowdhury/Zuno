@@ -328,6 +328,34 @@ button { -webkit-tap-highlight-color: transparent; }
     linear-gradient(135deg, #ffda00, #fff1bd);
 }
 
+.marketplace-hero-slide:not(.has-cover)::before,
+.marketplace-hero-slide:not(.has-cover)::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.marketplace-hero-slide:not(.has-cover)::before {
+  inset: -36%;
+  background:
+    repeating-conic-gradient(from -18deg at 52% 48%,
+      rgba(255,255,255,.34) 0deg 7deg,
+      transparent 7deg 18deg);
+  opacity: .26;
+  animation: zunoHeroRays 18s linear infinite;
+}
+
+.marketplace-hero-slide:not(.has-cover)::after {
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 78%, rgba(34,197,94,.18), transparent 21%),
+    radial-gradient(circle at 88% 18%, rgba(255,255,255,.46), transparent 17%),
+    radial-gradient(circle at 70% 88%, rgba(255,126,57,.16), transparent 20%),
+    linear-gradient(120deg, transparent 0 42%, rgba(255,255,255,.22) 49%, transparent 57% 100%);
+  transform: translate3d(-2%, 0, 0);
+  animation: zunoHeroGlow 7s ease-in-out infinite alternate;
+}
+
 .marketplace-hero-slide.has-cover {
   align-items: end;
   color: #fff;
@@ -392,6 +420,25 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .marketplace-hero .public-login-actions {
   margin-top: 16px;
+}
+
+@keyframes zunoHeroRays {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes zunoHeroGlow {
+  to {
+    transform: translate3d(3%, -3%, 0) scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketplace-hero-slide:not(.has-cover)::before,
+  .marketplace-hero-slide:not(.has-cover)::after {
+    animation: none;
+  }
 }
 
 .marketplace-hero-slide.has-cover .public-login-btn {
