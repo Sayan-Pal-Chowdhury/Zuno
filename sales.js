@@ -1,4 +1,4 @@
-import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js?v=41";
+import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js?v=42";
 import { db, auth } from "./firebase.js";
 import {
   collection, onSnapshot, query,

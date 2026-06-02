@@ -474,20 +474,34 @@ function renderCreditSuggestions() {
   const phoneList = document.getElementById("creditCustomerPhones");
   if (!nameList || !phoneList) return;
   const entries = [...Object.values(creditMap), ...knownCustomers];
-  nameList.innerHTML = entries
-    .map(c => c.name || c.customer || "")
+  const suggestions = entries
+    .map(c => ({
+      name: c.name || c.customer || "",
+      phone: c.phone || ""
+    }))
+    .filter(c => c.name || c.phone);
+  nameList.innerHTML = suggestions
+    .map(c => c.name)
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b))
     .map(name => `<option value="${escapeHtml(name)}"></option>`)
     .join("");
-  phoneList.innerHTML = entries
-    .map(c => c.phone || "")
+  phoneList.innerHTML = suggestions
+    .map(c => c.phone)
     .filter(Boolean)
     .sort()
     .map(phone => `<option value="${escapeHtml(phone)}"></option>`)
     .join("");
-  attachSuggestionDropdown(document.getElementById("addCreditName"), () => entries.map(c => c.name || c.customer || "").filter(Boolean), applyCreditMatch);
-  attachSuggestionDropdown(document.getElementById("addCreditPhone"), () => entries.map(c => c.phone || "").filter(Boolean), applyCreditMatch);
+  attachSuggestionDropdown(document.getElementById("addCreditName"), () => suggestions.map(c => ({
+    label: c.name ? `${c.name}${c.phone ? ` - ${c.phone}` : ""}` : c.phone,
+    value: c.name || c.phone,
+    searchText: `${c.name} ${c.phone}`.trim()
+  })), applyCreditMatch);
+  attachSuggestionDropdown(document.getElementById("addCreditPhone"), () => suggestions.map(c => ({
+    label: c.phone ? `${c.phone}${c.name ? ` - ${c.name}` : ""}` : c.name,
+    value: c.phone || c.name,
+    searchText: `${c.name} ${c.phone}`.trim()
+  })), applyCreditMatch);
 }
 
 function populateMergeCreditOptions() {

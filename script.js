@@ -6,7 +6,7 @@ import {
   orderBy, where, getDocs, getDoc, setDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js?v=41";
+import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js?v=42";
 import { attachSuggestionDropdown, mergeSuggestions, renderOptions } from "./item-suggestions.js";
 import { calculateSellingLineTotal, getSellingUnitStockQty, normalizeSellingUnit, sellingUnitLabel } from "./unit-pricing.js";
 
@@ -101,19 +101,30 @@ async function loadCustomerSuggestions() {
   const nameInput = document.getElementById("customerName");
   const phoneInput = document.getElementById("phone");
   const applyMatch = value => {
-    const cleanValue = String(value || "").split(" - ")[0].trim();
-    const phoneValue = String(value || "").match(/\b\d{6,}\b/)?.[0] || "";
+    const rawValue = String(value || "").trim();
+    const cleanValue = rawValue.split(" - ")[0].trim();
+    const phoneValue = rawValue.match(/\b\d{6,}\b/)?.[0] || "";
     const match = customerSuggestions.find(customer =>
+      normalizeName(customer.name) === normalizeName(rawValue) ||
       normalizeName(customer.name) === normalizeName(cleanValue) ||
-      customer.phone === String(value || "").trim() ||
-      customer.phone === phoneValue
+      normalizePhone(customer.phone) === normalizePhone(rawValue) ||
+      normalizePhone(customer.phone) === normalizePhone(phoneValue)
     );
     if (!match) return;
     if (nameInput) nameInput.value = match.name || nameInput.value;
     if (phoneInput) phoneInput.value = match.phone || phoneInput.value;
   };
   const customerLabels = () => customerSuggestions
-    .map(customer => customer.name ? `${customer.name}${customer.phone ? ` - ${customer.phone}` : ""}` : customer.phone)
+    .map(customer => {
+      const name = customer.name || "";
+      const phone = customer.phone || "";
+      const label = name ? `${name}${phone ? ` - ${phone}` : ""}` : phone;
+      return {
+        label,
+        value: name || phone,
+        searchText: `${name} ${phone}`.trim()
+      };
+    })
     .filter(Boolean);
   attachSuggestionDropdown(nameInput, customerLabels, applyMatch);
   attachSuggestionDropdown(phoneInput, customerLabels, applyMatch);

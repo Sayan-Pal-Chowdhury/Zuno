@@ -65,8 +65,9 @@ export function attachSuggestionDropdown(input, getSuggestions, onPick = null) {
   const render = () => {
     const term = input.value.trim().toLowerCase();
     const suggestions = (typeof getSuggestions === "function" ? getSuggestions() : getSuggestions || [])
+      .map(normalizeSuggestion)
       .filter(Boolean)
-      .filter(item => !term || item.toLowerCase().includes(term))
+      .filter(item => !term || item.searchText.includes(term))
       .slice(0, 6);
 
     if (suggestions.length === 0 || !term) {
@@ -75,15 +76,21 @@ export function attachSuggestionDropdown(input, getSuggestions, onPick = null) {
     }
 
     position();
-    box.innerHTML = suggestions.map(item => `<button type="button">${escapeHtml(item)}</button>`).join("");
+    box.innerHTML = suggestions.map(item => `
+      <button type="button" data-value="${escapeHtml(item.value)}" data-label="${escapeHtml(item.label)}">
+        ${escapeHtml(item.label)}
+      </button>
+    `).join("");
     box.hidden = false;
     box.querySelectorAll("button").forEach(button => {
       button.addEventListener("pointerdown", event => {
         event.preventDefault();
-        input.value = button.textContent;
+        const value = button.dataset.value || button.dataset.label || button.textContent;
+        const label = button.dataset.label || button.textContent;
+        input.value = value;
         close();
+        if (onPick) onPick(value, label);
         input.dispatchEvent(new Event("change", { bubbles: true }));
-        if (onPick) onPick(button.textContent);
       });
     });
   };
@@ -93,6 +100,18 @@ export function attachSuggestionDropdown(input, getSuggestions, onPick = null) {
   window.addEventListener("scroll", position, true);
   window.addEventListener("resize", position);
   input.addEventListener("blur", () => setTimeout(close, 150));
+}
+
+function normalizeSuggestion(item) {
+  if (!item) return null;
+  if (typeof item === "object") {
+    const label = String(item.label || item.value || "").trim();
+    const value = String(item.value || item.label || "").trim();
+    const searchText = String(item.searchText || `${label} ${value}`).toLowerCase();
+    return label && value ? { label, value, searchText } : null;
+  }
+  const value = String(item || "").trim();
+  return value ? { label: value, value, searchText: value.toLowerCase() } : null;
 }
 
 function escapeHtml(value = "") {
