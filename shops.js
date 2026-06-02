@@ -1,8 +1,5 @@
-import { initShopTopbar } from "./shop-topbar.js?v=2";
+import { initShopTopbar } from "./shop-topbar.js?v=3";
 import { listPublicShops } from "./shop-store.js?v=29";
-import { auth, db } from "./firebase.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { BUSINESS_TYPES, CUSTOMER_CATEGORIES, getBusinessType, getCustomerCategory } from "./marketplace-categories.js";
 import { shouldReplaceAutoImage } from "./marketplace-visuals.js?v=28";
 
@@ -362,65 +359,6 @@ function formatShopType(type = "other") {
 
 function escapeAttr(value = "") {
   return String(value).replace(/['"\\]/g, "");
-}
-
-function initCustomerStrip() {
-  const cached = readCachedCustomer();
-  if (cached) renderCustomerStrip(cached);
-
-  onAuthStateChanged(auth, async user => {
-    if (!user) {
-      localStorage.removeItem("zunoCustomer");
-      hideCustomerStrip();
-      return;
-    }
-    try {
-      const snap = await getDoc(doc(db, "customers", user.uid));
-      if (!snap.exists()) return;
-      const customer = { uid: user.uid, ...snap.data() };
-      localStorage.setItem("zunoCustomer", JSON.stringify(customer));
-      renderCustomerStrip(customer);
-    } catch (error) {
-      console.warn("Customer profile load failed:", error);
-    }
-  });
-}
-
-function readCachedCustomer() {
-  try {
-    return JSON.parse(localStorage.getItem("zunoCustomer") || "null");
-  } catch {
-    return null;
-  }
-}
-
-function renderCustomerStrip(customer) {
-  const strip = document.getElementById("customerStrip");
-  if (!strip) return;
-  strip.hidden = false;
-  strip.innerHTML = `
-    <div>
-      <strong>${escapeHtml(customer.name || "Customer")}</strong>
-      <span>${escapeHtml(customer.phone || customer.email || "Ready to shop")}</span>
-    </div>
-    <div class="customer-strip-actions">
-      <a href="customer-login.html">Update</a>
-      <button type="button" id="customerLogoutBtn">Logout</button>
-    </div>
-  `;
-
-  document.getElementById("customerLogoutBtn")?.addEventListener("click", async () => {
-    await signOut(auth);
-    localStorage.removeItem("zunoCustomer");
-    hideCustomerStrip();
-  });
-}
-
-function hideCustomerStrip() {
-  const strip = document.getElementById("customerStrip");
-  if (!strip) return;
-  strip.hidden = true;
-  strip.innerHTML = "";
 }
 
 function escapeHtml(value = "") {

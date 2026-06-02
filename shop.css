@@ -20,7 +20,7 @@
   --shop-red: #dc2626;
   --shop-radius: 18px;
   --shop-shadow: 0 18px 50px rgba(33, 27, 18, 0.10);
-  --topbar-h: 126px;
+  --topbar-h: 96px;
   --navbar-h: 74px;
 }
 
@@ -51,16 +51,18 @@ button { -webkit-tap-highlight-color: transparent; }
   height: var(--topbar-h);
   z-index: 50;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: calc(18px + env(safe-area-inset-top)) 28px 16px;
+  gap: 10px;
+  padding: calc(12px + env(safe-area-inset-top)) 18px 12px;
   background:
-    radial-gradient(circle at 85% 10%, rgba(255,255,255,.32), transparent 24%),
-    repeating-conic-gradient(from -18deg at 46% 36%, rgba(255,255,255,.12) 0deg 7deg, transparent 7deg 18deg),
-    linear-gradient(180deg, #ffc04f 0%, #ffd46f 100%);
+    radial-gradient(circle at 12% -18%, rgba(255,218,0,.32), transparent 34%),
+    radial-gradient(circle at 92% -6%, rgba(23,185,120,.12), transparent 30%),
+    rgba(255, 248, 237, .96);
   border-bottom: 1px solid rgba(25, 23, 19, 0.07);
-  box-shadow: 0 10px 28px rgba(33, 27, 18, 0.08);
+  box-shadow: 0 8px 22px rgba(33, 27, 18, 0.06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .shop-brand {
@@ -71,15 +73,20 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .shop-brand-copy {
   display: grid;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
 }
 
 .shop-brand-eyebrow {
-  color: rgba(25,23,19,.8);
-  font-size: 17px;
+  width: max-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ffda00;
+  color: #191713;
+  font-size: 12px;
   line-height: 1;
   font-weight: 1000;
+  box-shadow: 0 7px 16px rgba(255,218,0,.22);
 }
 
 .shop-brand strong {
@@ -88,10 +95,11 @@ button { -webkit-tap-highlight-color: transparent; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: clamp(32px, 8.5vw, 46px);
-  line-height: .96;
+  font-size: clamp(24px, 6.2vw, 34px);
+  line-height: 1;
   font-weight: 1000;
-  letter-spacing: -0.055em;
+  letter-spacing: -0.045em;
+  color: var(--shop-ink);
 }
 
 .shop-brand-address {
@@ -103,8 +111,8 @@ button { -webkit-tap-highlight-color: transparent; }
   padding: 0;
   border: 0;
   background: transparent;
-  color: rgba(25,23,19,.74);
-  font-size: 17px;
+  color: rgba(25,23,19,.68);
+  font-size: 14px;
   line-height: 1.15;
   font-weight: 1000;
   text-align: left;
@@ -139,20 +147,21 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .shop-cart-button {
   position: relative;
-  min-width: 52px;
-  height: 52px;
-  border-radius: 18px;
+  min-width: 44px;
+  height: 44px;
+  border-radius: 15px;
   display: grid;
   place-items: center;
-  background: #1d1711;
-  color: #fff;
+  background: #fff;
+  color: var(--shop-ink);
   font-weight: 900;
-  box-shadow: 0 13px 28px rgba(29, 23, 17, 0.24);
+  border: 1px solid rgba(25,23,19,.09);
+  box-shadow: 0 12px 26px rgba(33,27,18,.10);
 }
 
 .cart-mark {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   overflow: hidden;
   text-indent: -999px;
   position: relative;
@@ -202,7 +211,7 @@ button { -webkit-tap-highlight-color: transparent; }
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 9px;
+  gap: 8px;
   min-width: 0;
   flex: 0 0 auto;
 }
@@ -213,27 +222,27 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 
 .shop-profile-btn {
-  width: 54px;
-  height: 54px;
+  width: 46px;
+  height: 46px;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 50%;
   background: rgba(255,255,255,.96);
   color: var(--shop-ink);
-  box-shadow: 0 12px 28px rgba(33,27,18,.16);
+  box-shadow: 0 12px 26px rgba(33,27,18,.10);
   cursor: pointer;
 }
 
 .shop-profile-btn span {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: #f5f0e7;
   color: var(--shop-ink);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 1000;
 }
 
@@ -305,117 +314,6 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .shop-profile-logout {
   color: var(--shop-red) !important;
-}
-
-.shop-session {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.shop-session[hidden] { display: none; }
-
-.shop-login-menu {
-  position: relative;
-  flex: 0 0 auto;
-}
-
-.shop-login-menu[hidden] { display: none; }
-
-.shop-login-btn {
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid var(--shop-border);
-  border-radius: 13px;
-  background: #fff;
-  color: var(--shop-ink);
-  font-size: 13px;
-  font-weight: 1000;
-  cursor: pointer;
-  box-shadow: 0 8px 18px rgba(33, 27, 18, 0.06);
-}
-
-.shop-login-popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 176px;
-  display: grid;
-  gap: 6px;
-  padding: 8px;
-  border: 1px solid var(--shop-border);
-  border-radius: 15px;
-  background: #fff;
-  box-shadow: 0 16px 38px rgba(33, 27, 18, 0.14);
-  z-index: 80;
-}
-
-.shop-login-popover[hidden] { display: none; }
-
-.shop-login-popover a {
-  display: block;
-  padding: 10px 11px;
-  border-radius: 10px;
-  color: var(--shop-ink);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.shop-login-popover a:hover { background: var(--shop-green-soft); }
-
-.shop-session-copy {
-  min-width: 0;
-  text-align: right;
-}
-
-.shop-session-copy strong,
-.shop-session-copy span {
-  display: block;
-  max-width: 108px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.shop-session-copy strong {
-  color: var(--shop-ink);
-  font-size: 13px;
-  font-weight: 1000;
-}
-
-.shop-session-copy span {
-  margin-top: 1px;
-  color: var(--shop-muted);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.shop-logout-btn {
-  min-height: 36px;
-  padding: 0 9px;
-  border: 1px solid var(--shop-border);
-  border-radius: 12px;
-  background: #fff;
-  color: var(--shop-ink);
-  font-size: 12px;
-  font-weight: 1000;
-  cursor: pointer;
-}
-
-.shop-dashboard-btn {
-  min-height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 9px;
-  border: 1px solid rgba(23,185,120,.2);
-  border-radius: 12px;
-  background: var(--shop-green-soft);
-  color: var(--shop-green-dark);
-  font-size: 12px;
-  font-weight: 1000;
-  white-space: nowrap;
 }
 
 .shop-main {
@@ -1865,56 +1763,6 @@ button { -webkit-tap-highlight-color: transparent; }
 .payment-box input[type="radio"],
 .payment-box input[type="checkbox"] {
   width: auto;
-}
-
-.customer-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin: 14px 0;
-  padding: 13px 15px;
-  border-radius: 18px;
-  background: #fff;
-  border: 1px solid rgba(25,23,19,.08);
-  box-shadow: 0 8px 24px rgba(33,27,18,.05);
-}
-
-.customer-strip strong,
-.customer-strip span {
-  display: block;
-}
-
-.customer-strip span {
-  color: var(--shop-muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.customer-strip a {
-  flex: 0 0 auto;
-  color: var(--shop-green);
-  font-weight: 1000;
-  font-size: 13px;
-}
-
-.customer-strip-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.customer-strip button {
-  flex: 0 0 auto;
-  min-height: 34px;
-  padding: 0 11px;
-  border: 1px solid rgba(220,38,38,.16);
-  border-radius: 12px;
-  background: #fff1f1;
-  color: var(--shop-red);
-  font-size: 12px;
-  font-weight: 1000;
-  cursor: pointer;
 }
 
 .fulfillment-note {

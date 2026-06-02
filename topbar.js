@@ -71,6 +71,13 @@ style.textContent = `
     gap: 1px;
   }
 
+  .zuno-topbar-shop-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
   .zuno-topbar-shop-name {
     font-size: 13px;
     font-weight: 600;
@@ -95,6 +102,51 @@ style.textContent = `
     white-space: nowrap;
   }
 
+  .zuno-topbar-refresh,
+  .zuno-topbar-visit {
+    height: 30px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.07);
+    background: #f5f5f3;
+    color: #1a1a18;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    flex: 0 0 auto;
+  }
+
+  .zuno-topbar-refresh {
+    width: 30px;
+    padding: 0;
+    font-size: 15px;
+  }
+
+  .zuno-topbar-visit {
+    padding: 0 10px;
+    color: #0f8f5a;
+    background: #e8f8ef;
+    border-color: rgba(23,185,120,.2);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .zuno-topbar-visit[hidden] { display: none; }
+
+  .zuno-topbar-refresh:hover,
+  .zuno-topbar-visit:hover {
+    background: #ebebeb;
+  }
+
+  .zuno-topbar-refresh:active,
+  .zuno-topbar-visit:active {
+    transform: scale(0.94);
+  }
+
   .zuno-topbar-settings {
     width: 34px;
     height: 34px;
@@ -114,6 +166,28 @@ style.textContent = `
   .zuno-topbar-settings:hover { background: #ebebeb; }
   .zuno-topbar-settings:active { transform: scale(0.94); }
 
+  @media (max-width: 520px) {
+    .zuno-topbar {
+      padding-inline: 12px;
+      gap: 8px;
+    }
+
+    .zuno-topbar-app { font-size: 12px; }
+    .zuno-topbar-right { gap: 7px; }
+
+    .zuno-topbar-shop-name {
+      max-width: 104px;
+      font-size: 12px;
+    }
+
+    .zuno-topbar-date { display: none; }
+
+    .zuno-topbar-visit {
+      padding: 0 8px;
+      font-size: 10px;
+    }
+  }
+
   /* push content below topbar */
   body { padding-top: 0 !important; }
 `;
@@ -131,9 +205,13 @@ topbar.innerHTML = `
     </div>
   </div>
   <div class="zuno-topbar-right">
-    <div class="zuno-topbar-shop">
-      <span class="zuno-topbar-shop-name" id="topbarShopName">Your Shop</span>
-      <span class="zuno-topbar-shop-sub" id="topbarShopSub">Loading...</span>
+    <button class="zuno-topbar-refresh" id="zunoTopbarRefresh" type="button" title="Refresh">↻</button>
+    <div class="zuno-topbar-shop-wrap">
+      <div class="zuno-topbar-shop">
+        <span class="zuno-topbar-shop-name" id="topbarShopName">Your Shop</span>
+        <span class="zuno-topbar-shop-sub" id="topbarShopSub">Loading...</span>
+      </div>
+      <a class="zuno-topbar-visit" id="topbarVisitShop" href="#" hidden>Visit shop</a>
     </div>
     <span class="zuno-topbar-date" id="topbarDate"></span>
     <a href="/settings.html" class="zuno-topbar-settings" title="Settings">⚙️</a>
@@ -142,6 +220,7 @@ topbar.innerHTML = `
 
 /* insert as first child of body */
 document.body.insertBefore(topbar, document.body.firstChild);
+document.getElementById("zunoTopbarRefresh")?.addEventListener("click", () => window.location.reload());
 document.getElementById("topbarDate").textContent =
   new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 
@@ -176,4 +255,17 @@ function applyProfile(p) {
   if (p.shopName) document.getElementById("topbarShopName").textContent = p.shopName;
   if (p.shopType) document.getElementById("topbarShopSub").textContent  = p.shopType;
   else            document.getElementById("topbarShopSub").textContent  = "";
+  applyVisitShopLink(p);
+}
+
+function applyVisitShopLink(p) {
+  const link = document.getElementById("topbarVisitShop");
+  if (!link) return;
+  if (!p.storeId) {
+    link.hidden = true;
+    link.removeAttribute("href");
+    return;
+  }
+  link.hidden = false;
+  link.href = `/shop.html?store=${encodeURIComponent(p.storeId)}`;
 }

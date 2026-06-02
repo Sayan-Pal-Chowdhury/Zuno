@@ -10,8 +10,8 @@ export function initShopTopbar(store, session = null) {
 
   const storeId = store?.storeId || getStoreId();
   const name = store?.name || "Zuno Shops";
-  const eyebrow = store?.name ? `${store.name} in` : "Zuno in";
-  const promise = store?.name ? "Shop now" : "8 minutes";
+  const eyebrow = store?.name ? "Zuno shop" : "Zuno in";
+  const promise = store?.name ? store.name : "8 minutes";
   const address = store?.location ? `HOME - ${store.location}` : getSavedLocationLabel();
 
   container.innerHTML = `

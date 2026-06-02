@@ -1,6 +1,6 @@
 import { clearCart, getCart, getCartTotal, getItemQty, updateQty, getQtyStep, calculateLineTotal } from "./shop-cart.js";
 import { initShopNavbar } from "./shop-navbar.js";
-import { initShopTopbar, updateCartBadge } from "./shop-topbar.js?v=2";
+import { initShopTopbar, updateCartBadge } from "./shop-topbar.js?v=3";
 import { createCustomerOrder, getPlatformPaymentSettings, getShopProfile, getStoreId } from "./shop-store.js";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";

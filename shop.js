@@ -1,6 +1,6 @@
 import { getCartCount, getItemQty, addToCart, updateQty, getQtyStep } from "./shop-cart.js";
 import { initShopNavbar } from "./shop-navbar.js";
-import { initShopTopbar, updateCartBadge } from "./shop-topbar.js?v=2";
+import { initShopTopbar, updateCartBadge } from "./shop-topbar.js?v=3";
 import { getShopProfile, getStoreId, listenFoodMenu, listenInventory } from "./shop-store.js";
 import { findProductImage } from "./product-images.js";
 import { formatDisplayQtyForSellingUnit, getQtyStepForSellingUnit, sellingUnitLabel } from "./unit-pricing.js";
