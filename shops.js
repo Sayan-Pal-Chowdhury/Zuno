@@ -1,4 +1,4 @@
-import { initShopTopbar } from "./shop-topbar.js?v=3";
+import { initShopTopbar } from "./shop-topbar.js?v=7";
 import { listPublicShops } from "./shop-store.js?v=29";
 import { BUSINESS_TYPES, CUSTOMER_CATEGORIES, getBusinessType, getCustomerCategory } from "./marketplace-categories.js";
 import { shouldReplaceAutoImage } from "./marketplace-visuals.js?v=28";
@@ -238,9 +238,17 @@ function renderMarketplaceSlide(slide) {
       ` : `<span class="marketplace-hero-action">${escapeHtml(slide.action)}</span>`}
     </div>
   `;
+  const art = slide.kind === "welcome" ? `
+    <div class="marketplace-delivery-art" aria-hidden="true">
+      <span class="delivery-shop">Z</span>
+      <span class="delivery-path"></span>
+      <span class="delivery-rider"><i></i></span>
+      <span class="delivery-bag"></span>
+    </div>
+  ` : "";
   return slide.kind === "link"
     ? `<a class="marketplace-hero-slide has-cover" href="${escapeHtml(slide.href)}"${style}>${copy}</a>`
-    : `<article class="marketplace-hero-slide ${slide.imageUrl ? "has-cover" : ""}"${style}>${copy}</article>`;
+    : `<article class="marketplace-hero-slide ${slide.imageUrl ? "has-cover" : ""}"${style}>${copy}${art}</article>`;
 }
 
 window.setFeaturedSlide = function(index) {

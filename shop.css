@@ -63,6 +63,13 @@ button { -webkit-tap-highlight-color: transparent; }
   box-shadow: 0 8px 22px rgba(33, 27, 18, 0.06);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  transition: transform .26s ease, box-shadow .22s ease;
+  will-change: transform;
+}
+
+.shop-topbar.is-hidden {
+  transform: translateY(calc(-100% - 6px));
+  box-shadow: none;
 }
 
 .shop-brand {
@@ -117,6 +124,79 @@ button { -webkit-tap-highlight-color: transparent; }
   font-weight: 1000;
   text-align: left;
   cursor: pointer;
+}
+
+.shop-topbar-center {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.7);
+  color: var(--shop-green-dark);
+  font-size: 11px;
+  font-weight: 1000;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px rgba(23,185,120,.13);
+  overflow: hidden;
+}
+
+.topbar-route-shop {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #ffda00;
+  color: #115f3e;
+  font-size: 13px;
+  font-weight: 1000;
+  box-shadow: 0 5px 13px rgba(25,23,19,.12);
+}
+
+.topbar-route-line {
+  position: relative;
+  width: 76px;
+  height: 12px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(23,185,120,.2), rgba(255,218,0,.45)),
+    repeating-linear-gradient(90deg, transparent 0 8px, rgba(25,23,19,.11) 8px 10px);
+}
+
+.topbar-route-rider {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--shop-green);
+  box-shadow: 0 0 0 4px rgba(23,185,120,.13);
+  transform: translate(-2px, -50%);
+  animation: topbarRouteRide 3.2s ease-in-out infinite;
+}
+
+.topbar-route-rider::after {
+  content: "";
+  position: absolute;
+  right: -5px;
+  top: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 3px;
+  background: #fff7cf;
+  box-shadow: 0 2px 5px rgba(25,23,19,.16);
+}
+
+.topbar-route-copy {
+  color: #0f7a50;
+}
+
+@keyframes topbarRouteRide {
+  0%, 100% { transform: translate(-2px, -50%) scale(.94); }
+  50% { transform: translate(62px, -50%) scale(1); }
 }
 
 .shop-logo {
@@ -316,6 +396,26 @@ button { -webkit-tap-highlight-color: transparent; }
   color: var(--shop-red) !important;
 }
 
+.shop-topbar-skeleton {
+  pointer-events: none;
+}
+
+.shop-topbar-skeleton .skeleton-line,
+.shop-topbar-skeleton .skeleton-pill {
+  margin: 0;
+}
+
+.shop-topbar-skeleton .skeleton-line {
+  width: min(58vw, 260px);
+  height: 36px;
+}
+
+.shop-topbar-skeleton .skeleton-pill {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+}
+
 .shop-main {
   width: min(100%, 560px);
   margin: 0 auto;
@@ -324,7 +424,7 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .marketplace-hero {
   position: relative;
-  min-height: 202px;
+  min-height: 224px;
   margin-bottom: 14px;
   border-radius: 22px;
   overflow: hidden;
@@ -334,14 +434,14 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .marketplace-hero-track {
   display: flex;
-  min-height: 202px;
+  min-height: 224px;
   transition: transform .48s ease;
 }
 
 .marketplace-hero-slide {
   position: relative;
   flex: 0 0 100%;
-  min-height: 202px;
+  min-height: 224px;
   display: flex;
   align-items: center;
   padding: 20px 22px;
@@ -349,6 +449,10 @@ button { -webkit-tap-highlight-color: transparent; }
   background:
     radial-gradient(circle at 86% 14%, rgba(255,255,255,.25), transparent 28%),
     linear-gradient(135deg, #ffda00, #fff1bd);
+}
+
+.marketplace-hero-slide:not(.has-cover) {
+  padding-right: 210px;
 }
 
 .marketplace-hero-slide:not(.has-cover)::before,
@@ -391,6 +495,125 @@ button { -webkit-tap-highlight-color: transparent; }
   position: relative;
   z-index: 1;
   max-width: 365px;
+}
+
+.marketplace-delivery-art {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 1;
+  width: 178px;
+  height: 116px;
+  pointer-events: none;
+}
+
+.delivery-shop {
+  position: absolute;
+  left: 4px;
+  bottom: 30px;
+  width: 58px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px 18px 14px 14px;
+  background: rgba(255,255,255,.78);
+  color: #17b978;
+  font-size: 28px;
+  font-weight: 1000;
+  box-shadow: 0 14px 28px rgba(25,23,19,.12);
+}
+
+.delivery-shop::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: -14px;
+  height: 22px;
+  border-radius: 14px 14px 8px 8px;
+  background: repeating-linear-gradient(90deg, #17b978 0 10px, #fff 10px 20px);
+  box-shadow: 0 8px 16px rgba(25,23,19,.08);
+}
+
+.delivery-path {
+  position: absolute;
+  left: 18px;
+  right: 12px;
+  bottom: 20px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(25,23,19,.12);
+}
+
+.delivery-rider {
+  position: absolute;
+  left: 82px;
+  bottom: 31px;
+  width: 54px;
+  height: 36px;
+  border-radius: 999px 999px 16px 16px;
+  background: #191713;
+  animation: deliveryRide 2.8s ease-in-out infinite;
+}
+
+.delivery-rider::before,
+.delivery-rider::after {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  width: 18px;
+  height: 18px;
+  border: 4px solid #191713;
+  border-radius: 50%;
+  background: #fff7cf;
+}
+
+.delivery-rider::before { left: 4px; }
+.delivery-rider::after { right: 3px; }
+
+.delivery-rider i {
+  position: absolute;
+  right: 7px;
+  top: -17px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #17b978;
+  box-shadow: inset 0 -5px 0 rgba(0,0,0,.12);
+}
+
+.delivery-bag {
+  position: absolute;
+  right: 8px;
+  bottom: 42px;
+  width: 34px;
+  height: 30px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 22px rgba(25,23,19,.12);
+  animation: deliveryBag 2.8s ease-in-out infinite;
+}
+
+.delivery-bag::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: -7px;
+  width: 14px;
+  height: 10px;
+  border: 3px solid #17b978;
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+}
+
+@keyframes deliveryRide {
+  0%, 100% { transform: translateX(-6px) translateY(0); }
+  50% { transform: translateX(8px) translateY(-2px); }
+}
+
+@keyframes deliveryBag {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-3px) rotate(2deg); }
 }
 
 .marketplace-hero-copy small {
@@ -459,7 +682,10 @@ button { -webkit-tap-highlight-color: transparent; }
 
 @media (prefers-reduced-motion: reduce) {
   .marketplace-hero-slide:not(.has-cover)::before,
-  .marketplace-hero-slide:not(.has-cover)::after {
+  .marketplace-hero-slide:not(.has-cover)::after,
+  .delivery-rider,
+  .delivery-bag,
+  .topbar-route-rider {
     animation: none;
   }
 }
@@ -1883,7 +2109,42 @@ button { -webkit-tap-highlight-color: transparent; }
 
 @media (max-width: 520px) {
   .shop-topbar {
-    padding-inline: 30px;
+    padding-inline: 16px;
+  }
+
+  .shop-topbar-center {
+    min-height: 28px;
+    padding: 0 7px;
+    gap: 5px;
+    font-size: 10px;
+  }
+
+  .topbar-route-shop {
+    width: 19px;
+    height: 19px;
+    border-radius: 7px;
+    font-size: 11px;
+  }
+
+  .topbar-route-line {
+    width: 54px;
+  }
+
+  .topbar-route-rider {
+    width: 13px;
+    height: 13px;
+  }
+
+  .topbar-route-rider::after {
+    right: -4px;
+    top: 3px;
+    width: 6px;
+    height: 6px;
+  }
+
+  @keyframes topbarRouteRide {
+    0%, 100% { transform: translate(-2px, -50%) scale(.94); }
+    50% { transform: translate(42px, -50%) scale(1); }
   }
 
   .public-hero-stack {
@@ -1903,11 +2164,15 @@ button { -webkit-tap-highlight-color: transparent; }
   .marketplace-hero,
   .marketplace-hero-track,
   .marketplace-hero-slide {
-    min-height: 172px;
+    min-height: 242px;
   }
 
   .marketplace-hero-slide {
-    padding: 16px 17px;
+    padding: 16px 17px 112px;
+  }
+
+  .marketplace-hero-slide:not(.has-cover) {
+    padding-right: 17px;
   }
 
   .marketplace-hero-copy h1 {
@@ -1918,6 +2183,54 @@ button { -webkit-tap-highlight-color: transparent; }
   .marketplace-hero-copy p {
     max-width: 238px;
     font-size: 12px;
+  }
+
+  .marketplace-delivery-art {
+    right: 10px;
+    bottom: 10px;
+    width: 132px;
+    height: 86px;
+    opacity: .82;
+  }
+
+  .delivery-shop {
+    width: 42px;
+    height: 40px;
+    border-radius: 14px 14px 11px 11px;
+    font-size: 20px;
+  }
+
+  .delivery-shop::before {
+    top: -11px;
+    height: 17px;
+  }
+
+  .delivery-rider {
+    left: 62px;
+    bottom: 25px;
+    width: 40px;
+    height: 27px;
+  }
+
+  .delivery-rider::before,
+  .delivery-rider::after {
+    bottom: -8px;
+    width: 14px;
+    height: 14px;
+    border-width: 3px;
+  }
+
+  .delivery-rider i {
+    width: 18px;
+    height: 18px;
+    top: -13px;
+  }
+
+  .delivery-bag {
+    width: 27px;
+    height: 24px;
+    right: 3px;
+    bottom: 33px;
   }
 
   .marketplace-hero-dots {

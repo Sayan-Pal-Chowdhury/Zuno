@@ -23,6 +23,13 @@ export function initShopTopbar(store, session = null) {
           <button class="shop-brand-address" id="shopLocationBtn" type="button">${escapeHtml(address)}</button>
         </span>
       </div>
+      <div class="shop-topbar-center" aria-hidden="true">
+        <span class="topbar-route-shop">Z</span>
+        <span class="topbar-route-line">
+          <span class="topbar-route-rider"></span>
+        </span>
+        <span class="topbar-route-copy">Near you</span>
+      </div>
       <div class="shop-topbar-actions">
         ${storeId ? `
           <a class="shop-cart-button" href="cart.html?store=${storeId}" aria-label="Cart">
@@ -42,6 +49,7 @@ export function initShopTopbar(store, session = null) {
 
   bindProfileMenu();
   bindLocationButton(Boolean(store?.location));
+  bindTopbarAutoHide();
   if (session) renderShopSession(session);
   watchAuthSession();
   updateCartBadge(storeId);
@@ -56,6 +64,7 @@ export function updateCartBadge(storeId = getStoreId()) {
 }
 
 let watchingAuthSession = false;
+let topbarAutoHideBound = false;
 
 function watchAuthSession() {
   if (watchingAuthSession) return;
@@ -198,9 +207,9 @@ function bindLocationButton(isStoreLocation = false) {
     }
 
     navigator.geolocation.getCurrentPosition(
-      position => {
+      async position => {
         const { latitude, longitude, accuracy } = position.coords;
-        const label = `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
+        const label = await getReadableAddress(latitude, longitude) || `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
         saveApproxLocation(label, accuracy);
         button.textContent = getSavedLocationLabel();
       },
@@ -210,12 +219,63 @@ function bindLocationButton(isStoreLocation = false) {
   });
 }
 
+function bindTopbarAutoHide() {
+  if (topbarAutoHideBound) return;
+  topbarAutoHideBound = true;
+
+  let ticking = false;
+  const update = () => {
+    ticking = false;
+    const topbar = document.querySelector(".shop-topbar");
+    if (!topbar) return;
+    const shouldHide = window.scrollY > 80;
+    topbar.classList.toggle("is-hidden", shouldHide);
+  };
+
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(update);
+  }, { passive: true });
+}
+
 function askManualLocation(button) {
   const manual = prompt("Enter your area or address approximately", readJson("zunoApproxLocation")?.label || "");
   if (manual?.trim()) {
     saveApproxLocation(manual.trim());
   }
   button.textContent = getSavedLocationLabel();
+}
+
+async function getReadableAddress(latitude, longitude) {
+  try {
+    const url = new URL("https://nominatim.openstreetmap.org/reverse");
+    url.searchParams.set("format", "jsonv2");
+    url.searchParams.set("lat", String(latitude));
+    url.searchParams.set("lon", String(longitude));
+    url.searchParams.set("zoom", "17");
+    url.searchParams.set("addressdetails", "1");
+    const response = await fetch(url.toString(), {
+      headers: { "Accept": "application/json" }
+    });
+    if (!response.ok) return "";
+    const data = await response.json();
+    return formatReadableAddress(data);
+  } catch (error) {
+    console.warn("Address lookup failed:", error);
+    return "";
+  }
+}
+
+function formatReadableAddress(data = {}) {
+  const address = data.address || {};
+  const parts = [
+    address.house_number && address.road ? `${address.house_number} ${address.road}` : address.road,
+    address.neighbourhood || address.suburb || address.village || address.town || address.city_district,
+    address.city || address.state_district || address.state
+  ].filter(Boolean);
+  const label = parts.join(", ");
+  return label || data.display_name || "";
 }
 
 function saveApproxLocation(label, accuracy = null) {

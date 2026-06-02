@@ -215,7 +215,7 @@ function showZunoBootSplash() {
   if (existingSplash) {
     const alreadySeen = sessionStorage.getItem("zunoBootSplashSeen");
     if (!alreadySeen) sessionStorage.setItem("zunoBootSplashSeen", "shown");
-    scheduleBootSplashHide(existingSplash, alreadySeen ? 120 : 1450);
+    scheduleBootSplashHide(existingSplash, alreadySeen ? 850 : 1450);
   }
 }
 
