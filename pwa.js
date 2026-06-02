@@ -1,5 +1,8 @@
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", async () => {
+  window.addEventListener("load", () => scheduleAfterFirstPaint(registerZunoServiceWorker));
+}
+
+async function registerZunoServiceWorker() {
     const localDevelopment = ["127.0.0.1", "localhost"].includes(window.location.hostname);
     if (localDevelopment) {
       const registrations = await navigator.serviceWorker.getRegistrations().catch(() => []);
@@ -13,7 +16,14 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/service-worker.js", { updateViaCache: "none" }).catch((error) => {
       console.warn("Zuno service worker registration failed:", error);
     });
-  });
+}
+
+function scheduleAfterFirstPaint(callback) {
+  if ("requestIdleCallback" in window) {
+    requestIdleCallback(callback, { timeout: 1800 });
+    return;
+  }
+  setTimeout(callback, 450);
 }
 
 showZunoBootSplash();
@@ -201,7 +211,13 @@ function injectInstallStyles() {
 }
 
 function showZunoBootSplash() {
-  if (document.getElementById("zunoBootSplash")) return;
+  const existingSplash = document.getElementById("zunoBootSplash");
+  if (existingSplash) {
+    const alreadySeen = sessionStorage.getItem("zunoBootSplashSeen");
+    if (!alreadySeen) sessionStorage.setItem("zunoBootSplashSeen", "shown");
+    scheduleBootSplashHide(existingSplash, alreadySeen ? 120 : 1450);
+    return;
+  }
   if (sessionStorage.getItem("zunoBootSplashSeen")) return;
   sessionStorage.setItem("zunoBootSplashSeen", "shown");
 
@@ -280,11 +296,14 @@ function showZunoBootSplash() {
     </div>
   `;
   document.documentElement.appendChild(splash);
+  scheduleBootSplashHide(splash, 1450);
+}
 
+function scheduleBootSplashHide(splash, delay = 1450) {
   const hide = () => {
     splash.classList.add("hide");
     setTimeout(() => splash.remove(), 520);
   };
-  window.addEventListener("load", () => setTimeout(hide, 1450), { once: true });
+  window.addEventListener("load", () => setTimeout(hide, delay), { once: true });
   setTimeout(hide, 3200);
 }
