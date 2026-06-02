@@ -4,10 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shop</title>
-  <style>html, body { background: #fff8ed; }</style>
+  <style>
+    html, body { margin: 0; min-height: 100%; background: #fff8ed; }
+    body { padding-top: 96px; }
+    .shop-topbar { position: fixed; inset: 0 0 auto; z-index: 50; height: 96px; background: #fff8ed; }
+    .shop-main { width: min(100%, 560px); margin: 0 auto; padding: 14px; box-sizing: border-box; }
+    .hero-card { min-height: 186px; border-radius: 30px; background: linear-gradient(135deg, #171512, #56391f); }
+  </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="shop.css?v=38">
+  <link rel="stylesheet" href="shop.css?v=41">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#ffda00">
   <meta name="apple-mobile-web-app-capable" content="yes">

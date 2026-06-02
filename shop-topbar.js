@@ -230,6 +230,7 @@ function bindTopbarAutoHide() {
     if (!topbar) return;
     const shouldHide = window.scrollY > 80;
     topbar.classList.toggle("is-hidden", shouldHide);
+    document.body.classList.toggle("shop-topbar-hidden", shouldHide);
   };
 
   window.addEventListener("scroll", () => {

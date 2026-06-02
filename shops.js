@@ -1,4 +1,4 @@
-import { initShopTopbar } from "./shop-topbar.js?v=7";
+import { initShopTopbar } from "./shop-topbar.js?v=8";
 import { listPublicShops } from "./shop-store.js?v=29";
 import { BUSINESS_TYPES, CUSTOMER_CATEGORIES, getBusinessType, getCustomerCategory } from "./marketplace-categories.js";
 import { shouldReplaceAutoImage } from "./marketplace-visuals.js?v=28";
@@ -172,7 +172,7 @@ function renderMarketplaceHero() {
       kind: "link",
       imageUrl: foodImage,
       eyebrow: "Home food",
-      title: "Order your favourite home food",
+      title: "Order home food",
       copy: "Freshly prepared meals from kitchens near you.",
       action: "Order now",
       href: `shop.html?store=${foodShop.storeId}`

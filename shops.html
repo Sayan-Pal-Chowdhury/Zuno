@@ -4,10 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zuno Shops</title>
-  <style>html, body { background: #fff8ed; }</style>
+  <style>
+    html, body { margin: 0; min-height: 100%; background: #fff8ed; }
+    body { padding-top: 96px; }
+    .shop-topbar { position: fixed; inset: 0 0 auto; z-index: 50; height: 96px; background: #fff8ed; }
+    .shop-main { width: min(100%, 560px); margin: 0 auto; padding: 14px; box-sizing: border-box; }
+    .marketplace-hero { height: 202px; border-radius: 22px; background: linear-gradient(135deg, #ffda00, #fff1bd); }
+    @media (max-width: 520px) { .marketplace-hero { height: 172px; } }
+  </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="shop.css?v=38">
+  <link rel="stylesheet" href="shop.css?v=41">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#ffda00">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -45,7 +52,7 @@
       <div class="marketplace-hero-dots" id="marketplaceHeroDots"></div>
     </section>
 
-    <div class="toolbar">
+    <div class="toolbar shops-search-toolbar">
       <input class="search-input" id="shopSearch" type="search" placeholder="Search shops..." oninput="filterShops()" onsearch="filterShops()">
     </div>
 
@@ -96,7 +103,7 @@
     </section>
   </main>
 
-  <script type="module" src="shops.js?v=34"></script>
+  <script type="module" src="shops.js?v=35"></script>
   <script src="pwa.js?v=78" defer></script>
 </body>
 </html>
