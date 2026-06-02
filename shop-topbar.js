@@ -10,37 +10,38 @@ export function initShopTopbar(store, session = null) {
 
   const storeId = store?.storeId || getStoreId();
   const name = store?.name || "Zuno Shops";
-  const location = store?.location ? `<span>${store.location}</span>` : "";
+  const eyebrow = store?.name ? `${store.name} in` : "Zuno in";
+  const promise = store?.name ? "Shop now" : "8 minutes";
+  const address = store?.location ? `HOME - ${store.location}` : getSavedLocationLabel();
 
   container.innerHTML = `
     <header class="shop-topbar">
-      <a class="shop-brand" href="${storeId ? `shop.html?store=${storeId}` : "shops.html"}">
-        <img class="shop-brand-logo" src="zuno-logo.png" alt="">
-        <span>
-          <strong>${name}</strong>
-          ${location}
+      <div class="shop-brand blinkit-style-brand" aria-label="${escapeAttr(name)}">
+        <span class="shop-brand-copy">
+          <span class="shop-brand-eyebrow">${escapeHtml(eyebrow)}</span>
+          <strong>${escapeHtml(promise)}</strong>
+          <button class="shop-brand-address" id="shopLocationBtn" type="button">${escapeHtml(address)}</button>
         </span>
-      </a>
+      </div>
       <div class="shop-topbar-actions">
-        <div class="shop-login-menu" id="shopLoginMenu">
-          <button class="shop-login-btn" id="shopLoginBtn" type="button">Login</button>
-          <div class="shop-login-popover" id="shopLoginPopover" hidden>
-            <a href="login.html">Vendor Login</a>
-            <a href="customer-login.html">Customer Login</a>
-          </div>
-        </div>
-        <div class="shop-session" id="shopSession" hidden></div>
         ${storeId ? `
           <a class="shop-cart-button" href="cart.html?store=${storeId}" aria-label="Cart">
             <span class="cart-mark">Cart</span>
             <b id="shopCartCount">${getCartCount(storeId)}</b>
           </a>
         ` : ""}
+        <div class="shop-profile-menu" id="shopProfileMenu">
+          <button class="shop-profile-btn" id="shopProfileBtn" type="button" aria-label="Profile menu" aria-expanded="false">
+            <span id="shopProfileInitial">👤</span>
+          </button>
+          <div class="shop-profile-popover" id="shopProfilePopover" hidden></div>
+        </div>
       </div>
     </header>
   `;
 
-  bindLoginMenu();
+  bindProfileMenu();
+  bindLocationButton(Boolean(store?.location));
   if (session) renderShopSession(session);
   watchAuthSession();
   updateCartBadge(storeId);
@@ -117,32 +118,36 @@ function normalizeSession(profile, role, user) {
 }
 
 function renderShopSession(session) {
-  const el = document.getElementById("shopSession");
-  const loginMenu = document.getElementById("shopLoginMenu");
-  const loginPopover = document.getElementById("shopLoginPopover");
-  if (!el) return;
+  const button = document.getElementById("shopProfileBtn");
+  const initial = document.getElementById("shopProfileInitial");
+  const popover = document.getElementById("shopProfilePopover");
+  if (!button || !initial || !popover) return;
+
+  popover.hidden = true;
+  button.setAttribute("aria-expanded", "false");
 
   if (!session) {
-    el.classList.remove("vendor-session", "customer-session");
-    el.hidden = true;
-    el.innerHTML = "";
-    if (loginMenu) loginMenu.hidden = false;
-    if (loginPopover) loginPopover.hidden = true;
+    initial.textContent = "👤";
+    popover.innerHTML = `
+      <div class="shop-profile-card">
+        <strong>Welcome</strong>
+        <span>Login to shop or manage a store</span>
+      </div>
+      <a href="customer-login.html">Customer Login</a>
+      <a href="login.html">Vendor Login</a>
+    `;
     return;
   }
 
-  if (loginMenu) loginMenu.hidden = true;
-  if (loginPopover) loginPopover.hidden = true;
-  el.classList.toggle("vendor-session", session.role === "vendor");
-  el.classList.toggle("customer-session", session.role === "customer");
-  el.hidden = false;
-  el.innerHTML = `
-    <div class="shop-session-copy">
+  initial.textContent = getInitial(session.name);
+  popover.innerHTML = `
+    <div class="shop-profile-card">
       <strong>${escapeHtml(session.name)}</strong>
       <span>${escapeHtml(session.detail || "")}</span>
     </div>
-    ${session.role === "vendor" ? `<a class="shop-dashboard-btn" href="home.html">Dashboard</a>` : ""}
-    <button class="shop-logout-btn" id="shopLogoutBtn" type="button">Logout</button>
+    ${session.role === "vendor" ? `<a href="home.html">Dashboard</a>` : ""}
+    <a href="${session.role === "vendor" ? "settings.html" : "customer-login.html"}">Update profile</a>
+    <button class="shop-profile-logout" id="shopLogoutBtn" type="button">Logout</button>
   `;
 
   document.getElementById("shopLogoutBtn")?.addEventListener("click", async () => {
@@ -153,21 +158,81 @@ function renderShopSession(session) {
   });
 }
 
-function bindLoginMenu() {
-  const button = document.getElementById("shopLoginBtn");
-  const popover = document.getElementById("shopLoginPopover");
+function bindProfileMenu() {
+  const button = document.getElementById("shopProfileBtn");
+  const popover = document.getElementById("shopProfilePopover");
   if (!button || !popover) return;
 
   button.addEventListener("click", event => {
     event.stopPropagation();
     popover.hidden = !popover.hidden;
+    button.setAttribute("aria-expanded", String(!popover.hidden));
   });
 
   document.addEventListener("click", event => {
-    if (!popover.hidden && !event.target.closest(".shop-login-menu")) {
+    if (!popover.hidden && !event.target.closest(".shop-profile-menu")) {
       popover.hidden = true;
+      button.setAttribute("aria-expanded", "false");
     }
   });
+}
+
+function bindLocationButton(isStoreLocation = false) {
+  const button = document.getElementById("shopLocationBtn");
+  if (!button) return;
+
+  button.addEventListener("click", () => {
+    if (isStoreLocation) {
+      const manual = prompt("Set your approximate delivery/local area", readJson("zunoApproxLocation")?.label || "");
+      if (manual?.trim()) {
+        saveApproxLocation(manual.trim());
+        button.textContent = getSavedLocationLabel();
+      }
+      return;
+    }
+
+    button.textContent = "Finding location...";
+    if (!navigator.geolocation) {
+      askManualLocation(button);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const { latitude, longitude, accuracy } = position.coords;
+        const label = `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
+        saveApproxLocation(label, accuracy);
+        button.textContent = getSavedLocationLabel();
+      },
+      () => askManualLocation(button),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 1000 * 60 * 20 }
+    );
+  });
+}
+
+function askManualLocation(button) {
+  const manual = prompt("Enter your area or address approximately", readJson("zunoApproxLocation")?.label || "");
+  if (manual?.trim()) {
+    saveApproxLocation(manual.trim());
+  }
+  button.textContent = getSavedLocationLabel();
+}
+
+function saveApproxLocation(label, accuracy = null) {
+  localStorage.setItem("zunoApproxLocation", JSON.stringify({
+    label,
+    accuracy,
+    updatedAt: Date.now()
+  }));
+}
+
+function getSavedLocationLabel() {
+  const saved = readJson("zunoApproxLocation");
+  return saved?.label ? `HOME - ${saved.label}` : "Select location";
+}
+
+function getInitial(name = "") {
+  return String(name).trim().charAt(0).toUpperCase() || "👤";
 }
 
 function readJson(key) {
@@ -186,4 +251,8 @@ function escapeHtml(value = "") {
     '"': "&quot;",
     "'": "&#039;"
   }[char]));
+}
+
+function escapeAttr(value = "") {
+  return escapeHtml(value).replace(/`/g, "");
 }

@@ -1,7 +1,7 @@
 import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from "./firebase.js";
 import { initShopNavbar } from "./shop-navbar.js";
-import { initShopTopbar } from "./shop-topbar.js";
+import { initShopTopbar } from "./shop-topbar.js?v=2";
 import { getShopProfile, getStoreId } from "./shop-store.js";
 
 let unsubscribe = null;

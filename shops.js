@@ -1,4 +1,4 @@
-import { initShopTopbar } from "./shop-topbar.js";
+import { initShopTopbar } from "./shop-topbar.js?v=2";
 import { listPublicShops } from "./shop-store.js?v=29";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -15,7 +15,6 @@ let shopCardTimer = null;
 let shopCardSlide = 0;
 
 initShopTopbar(null);
-initCustomerStrip();
 renderMarketplaceCategories();
 renderBusinessTypes();
 loadShops();
