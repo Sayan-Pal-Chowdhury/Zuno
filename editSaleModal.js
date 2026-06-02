@@ -3,7 +3,7 @@ import {
   collection, addDoc, doc, updateDoc,
   deleteDoc, getDocs, getDoc, query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale } from "./credit.js?v=40";
+import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale } from "./credit.js?v=41";
 import { calculateSellingLineTotal, normalizeSellingUnit } from "./unit-pricing.js";
 
 /* ---------- STATE ---------- */

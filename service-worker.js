@@ -1,4 +1,4 @@
-const CACHE_NAME = "zuno-pwa-v75";
+const CACHE_NAME = "zuno-pwa-v76";
 
 const APP_SHELL = [
   "/",

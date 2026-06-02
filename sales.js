@@ -1,4 +1,4 @@
-import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js?v=40";
+import { handleCreditFromSale, reverseCreditFromSale, reverseCreditForSale, updateSaleCreditBalance } from "./credit.js?v=41";
 import { db, auth } from "./firebase.js";
 import {
   collection, onSnapshot, query,
@@ -27,18 +27,34 @@ function userDoc(colName, docId) {
 }
 
 function normalizeName(name = "") {
-  return name.trim().toLowerCase().replace(/\s+/g, " ");
+  return String(name)
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(the|mr|mrs|ms|shri|sri|m\/s|ms)\b/g, " ")
+    .replace(/\b(caterer|caterers|catering)\b/g, "cater")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function normalizePhone(phone = "") {
-  return phone.trim();
+  return String(phone).replace(/\D/g, "").slice(-10);
 }
 
 function sameCustomer(record, customer, phone) {
   const recordPhone = normalizePhone(record.phone);
   const wantedPhone = normalizePhone(phone);
   if (recordPhone && wantedPhone && recordPhone === wantedPhone) return true;
-  return normalizeName(record.name || record.customer) === normalizeName(customer);
+  const recordName = normalizeName(record.name || record.customer || record.customerName);
+  const wantedName = normalizeName(customer);
+  if (!recordName || !wantedName) return false;
+  if (recordName === wantedName) return true;
+  const recordWords = recordName.split(" ").filter(word => word.length > 2);
+  const wantedWords = wantedName.split(" ").filter(word => word.length > 2);
+  if (!recordWords.length || !wantedWords.length) return false;
+  const shared = wantedWords.filter(word => recordWords.includes(word)).length;
+  return shared >= Math.min(recordWords.length, wantedWords.length);
 }
 
 async function findCreditCustomer(customer, phone) {

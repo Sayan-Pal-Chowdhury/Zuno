@@ -323,6 +323,35 @@
       border: 1.5px solid var(--border-dark);
     }
 
+    .credit-header-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .btn-merge-credit {
+      background: var(--bg);
+      color: var(--text-secondary);
+      border: 1.5px solid var(--border-dark);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--font);
+    }
+
+    .merge-preview {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
     /* ===== HISTORY TABLE IN MODAL ===== */
     .history-table {
       width: 100%;
@@ -509,7 +538,10 @@ onAuthStateChanged(auth, (user) => {
     <p style="font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">Zuno</p>
     <h1 style="margin:0;border:none;padding:0;font-size:24px;">Credit Tracker</h1>
   </div>
-  <button onclick="openAddCreditModal()" style="background:var(--accent);color:white;border:none;padding:8px 18px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font);">+ Add Credit</button>
+  <div class="credit-header-actions">
+    <button class="btn-merge-credit" onclick="openMergeCreditModal()">Merge Duplicate</button>
+    <button onclick="openAddCreditModal()" style="background:var(--accent);color:white;border:none;padding:8px 18px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font);">+ Add Credit</button>
+  </div>
 </div>
 
 <!-- SUMMARY BAR -->
@@ -562,6 +594,27 @@ onAuthStateChanged(auth, (user) => {
   </div>
 </div>
 
+<!-- MERGE CREDIT MODAL -->
+<div id="mergeCreditModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-title">Merge Duplicate Credit Customers</div>
+    <div class="modal-form-group">
+      <label>Merge this duplicate</label>
+      <select id="mergeSourceCredit"></select>
+    </div>
+    <div class="modal-form-group">
+      <label>Into this customer</label>
+      <select id="mergeTargetCredit"></select>
+    </div>
+    <div class="merge-preview" id="mergeCreditPreview">Choose two different credit customers.</div>
+    <div class="modal-actions">
+      <button class="btn-modal-primary" onclick="mergeCreditCustomers()">Merge</button>
+      <button class="btn-modal-cancel" onclick="closeMergeCreditModal()">Cancel</button>
+    </div>
+    <p id="mergeCreditMsg" style="font-size:13px;color:var(--danger);margin-top:8px;min-height:18px;"></p>
+  </div>
+</div>
+
 <!-- FILTER BAR -->
 <div class="credit-filter-bar">
   <button class="filter-btn status-filter active" onclick="setFilter('all', this)">All</button>
@@ -588,8 +641,8 @@ onAuthStateChanged(auth, (user) => {
 
 <script type="module" src="navbar.js?v=66"></script>
 
-<script type="module" src="credit.js?v=40"></script>
+<script type="module" src="credit.js?v=41"></script>
 
-<script src="pwa.js?v=63" defer></script>
+<script src="pwa.js?v=75" defer></script>
 </body>
 </html>

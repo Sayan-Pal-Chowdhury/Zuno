@@ -11,7 +11,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { handleCreditFromSale, reverseCreditForSale } from "./credit.js?v=40";
+import { handleCreditFromSale, reverseCreditForSale } from "./credit.js?v=41";
 import { calculateSellingLineTotal, normalizeSellingUnit } from "./unit-pricing.js";
 
 const DEFAULT_FORM_CONFIG = {

@@ -30,11 +30,19 @@ function today() {
 }
 
 function normalizeName(name = "") {
-  return name.trim().toLowerCase().replace(/\s+/g, " ");
+  return String(name)
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(the|mr|mrs|ms|shri|sri|m\/s|ms)\b/g, " ")
+    .replace(/\b(caterer|caterers|catering)\b/g, "cater")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function normalizePhone(phone = "") {
-  return phone.trim();
+  return String(phone).replace(/\D/g, "").slice(-10);
 }
 
 function escapeHtml(value = "") {
@@ -51,7 +59,26 @@ function sameCustomer(record, customer, phone) {
   const recordPhone = normalizePhone(record.phone);
   const wantedPhone = normalizePhone(phone);
   if (recordPhone && wantedPhone && recordPhone === wantedPhone) return true;
-  return normalizeName(record.name || record.customer) === normalizeName(customer);
+  const recordName = normalizeName(record.name || record.customer || record.customerName);
+  const wantedName = normalizeName(customer);
+  if (!recordName || !wantedName) return false;
+  if (recordName === wantedName) return true;
+  const recordWords = recordName.split(" ").filter(word => word.length > 2);
+  const wantedWords = wantedName.split(" ").filter(word => word.length > 2);
+  if (!recordWords.length || !wantedWords.length) return false;
+  const shared = wantedWords.filter(word => recordWords.includes(word)).length;
+  return shared >= Math.min(recordWords.length, wantedWords.length);
+}
+
+function creditLabel(c = {}) {
+  const name = c.name || c.customer || "Unnamed";
+  const phone = c.phone ? ` - ${c.phone}` : "";
+  const balance = Math.round(Number(c.balance || 0)).toLocaleString("en-IN");
+  return `${name}${phone} (Due Rs ${balance})`;
+}
+
+function latestDate(...values) {
+  return values.filter(Boolean).sort().pop() || today();
 }
 
 async function findCreditByCustomer(userId, customer, phone) {
@@ -463,14 +490,129 @@ function renderCreditSuggestions() {
   attachSuggestionDropdown(document.getElementById("addCreditPhone"), () => entries.map(c => c.phone || "").filter(Boolean), applyCreditMatch);
 }
 
+function populateMergeCreditOptions() {
+  const source = document.getElementById("mergeSourceCredit");
+  const target = document.getElementById("mergeTargetCredit");
+  if (!source || !target) return;
+  const entries = Object.values(creditMap).sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  const options = entries.map(c => `<option value="${c.id}">${escapeHtml(creditLabel(c))}</option>`).join("");
+  source.innerHTML = `<option value="">Choose duplicate</option>${options}`;
+  target.innerHTML = `<option value="">Choose main customer</option>${options}`;
+  renderMergeCreditPreview();
+}
+
+function renderMergeCreditPreview() {
+  const preview = document.getElementById("mergeCreditPreview");
+  if (!preview) return;
+  const sourceId = document.getElementById("mergeSourceCredit")?.value || "";
+  const targetId = document.getElementById("mergeTargetCredit")?.value || "";
+  const source = creditMap[sourceId];
+  const target = creditMap[targetId];
+  if (!source || !target || sourceId === targetId) {
+    preview.textContent = "Choose two different credit customers.";
+    return;
+  }
+  const totalCredit = Number(target.totalCredit || 0) + Number(source.totalCredit || 0);
+  const totalPaid = Number(target.totalPaid || 0) + Number(source.totalPaid || 0);
+  const balance = Number(target.balance || 0) + Number(source.balance || 0);
+  preview.innerHTML = `
+    <strong>${escapeHtml(source.name || "Duplicate")}</strong> will be merged into <strong>${escapeHtml(target.name || "Main customer")}</strong>.<br>
+    New totals: Credit Rs ${Math.round(totalCredit).toLocaleString("en-IN")},
+    Paid Rs ${Math.round(totalPaid).toLocaleString("en-IN")},
+    Due Rs ${Math.round(balance).toLocaleString("en-IN")}.
+  `;
+}
+
+window.openMergeCreditModal = () => {
+  document.getElementById("mergeCreditMsg").textContent = "";
+  populateMergeCreditOptions();
+  document.getElementById("mergeCreditModal").classList.remove("hidden");
+};
+
+window.closeMergeCreditModal = () => {
+  document.getElementById("mergeCreditModal").classList.add("hidden");
+};
+
+document.getElementById("mergeSourceCredit")?.addEventListener("change", renderMergeCreditPreview);
+document.getElementById("mergeTargetCredit")?.addEventListener("change", renderMergeCreditPreview);
+
+window.mergeCreditCustomers = async () => {
+  const sourceId = document.getElementById("mergeSourceCredit").value;
+  const targetId = document.getElementById("mergeTargetCredit").value;
+  const msg = document.getElementById("mergeCreditMsg");
+  const source = creditMap[sourceId];
+  const target = creditMap[targetId];
+  if (!source || !target || sourceId === targetId) {
+    msg.textContent = "Choose two different credit customers.";
+    return;
+  }
+
+  const ok = window.confirm(`Merge ${source.name || "duplicate"} into ${target.name || "main customer"}? This keeps the main customer and removes the duplicate credit card.`);
+  if (!ok) return;
+
+  msg.textContent = "Merging...";
+  const nextTotalCredit = Number(target.totalCredit || 0) + Number(source.totalCredit || 0);
+  const nextTotalPaid = Number(target.totalPaid || 0) + Number(source.totalPaid || 0);
+  const nextBalance = Number(target.balance || 0) + Number(source.balance || 0);
+  const nextLastActivity = latestDate(target.lastActivityDate, source.lastActivityDate, target.lastOrderDate, source.lastOrderDate);
+
+  const historySnap = await getDocs(query(userCol("creditHistory"), where("creditId", "==", sourceId)));
+  await Promise.all(historySnap.docs.map(historyDoc => updateDoc(userDoc("creditHistory", historyDoc.id), {
+    creditId: targetId,
+    customerName: target.name || source.name || "",
+    mergedFromCreditId: sourceId,
+    mergedFromCustomerName: source.name || ""
+  })));
+
+  const salesSnap = await getDocs(userCol("sales"));
+  const linkedSaleUpdates = [];
+  salesSnap.forEach(saleDoc => {
+    const sale = saleDoc.data();
+    if (sale.paymentMode === "credit" && sameCustomer(sale, source.name, source.phone)) {
+      linkedSaleUpdates.push(updateDoc(userDoc("sales", saleDoc.id), {
+        customer: target.name || source.name || sale.customer || "",
+        phone: target.phone || source.phone || sale.phone || "",
+        mergedFromCustomerName: source.name || "",
+        mergedFromCreditId: sourceId
+      }));
+    }
+  });
+  await Promise.all(linkedSaleUpdates);
+
+  await updateDoc(userDoc("credit", targetId), {
+    totalCredit: nextTotalCredit,
+    totalPaid: nextTotalPaid,
+    balance: nextBalance,
+    phone: target.phone || source.phone || "",
+    lastActivityDate: nextLastActivity,
+    lastOrderNumber: target.lastOrderNumber || source.lastOrderNumber || "",
+    lastOrderDate: target.lastOrderDate || source.lastOrderDate || "",
+    status: nextBalance <= 0 ? "cleared" : "active"
+  });
+
+  await addDoc(userCol("creditHistory"), {
+    creditId: targetId,
+    customerName: target.name || source.name || "",
+    type: "merge",
+    amount: 0,
+    date: today(),
+    note: `Merged duplicate credit customer: ${source.name || sourceId}`,
+    balanceAfter: nextBalance,
+    mergedFromCreditId: sourceId
+  });
+
+  await deleteDoc(userDoc("credit", sourceId));
+  closeMergeCreditModal();
+  showToast(`Merged ${source.name || "duplicate"} into ${target.name || "customer"}`);
+};
+
 function applyCreditMatch() {
   const nameInput = document.getElementById("addCreditName");
   const phoneInput = document.getElementById("addCreditPhone");
   const name = nameInput.value.trim();
   const phone = phoneInput.value.trim();
   const match = [...Object.values(creditMap), ...knownCustomers].find(c =>
-    (phone && normalizePhone(c.phone) === normalizePhone(phone)) ||
-    (name && normalizeName(c.name || c.customer) === normalizeName(name))
+    sameCustomer(c, name, phone)
   );
   if (!match) return;
   nameInput.value = match.name || match.customer || nameInput.value;
@@ -513,8 +655,7 @@ window.saveManualCredit = async () => {
 
   snap.forEach(d => {
     const c = d.data();
-    if (phone && c.phone === phone) existing = { id: d.id, ...c };
-    else if (c.name?.toLowerCase() === name.toLowerCase()) existing = { id: d.id, ...c };
+    if (!existing && sameCustomer(c, name, phone)) existing = { id: d.id, ...c };
   });
 
   if (existing) {
@@ -655,7 +796,7 @@ window.openHistoryModal = async (creditId) => {
     snap.forEach(d => {
       const h = d.data();
       const typeClass = h.type === "credit" ? "type-credit" : "type-payment";
-      const typeLabel = h.type === "credit" ? "− Credit" : "+ Payment";
+      const typeLabel = h.type === "credit" ? "− Credit" : h.type === "merge" ? "Merge" : "+ Payment";
       rows += `
         <tr>
           <td>${h.date || ""}</td>
