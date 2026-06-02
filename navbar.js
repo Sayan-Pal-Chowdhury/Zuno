@@ -26,7 +26,7 @@ function isActive(page) {
 const style = document.createElement("style");
 style.textContent = `
   /* ===== BODY PADDING ===== */
-  body { padding-bottom: 108px !important; }
+  body { padding-bottom: 116px !important; }
 
   @media (max-width: 600px) {
     input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
@@ -39,23 +39,24 @@ style.textContent = `
   /* ===== BOTTOM BAR ===== */
   .zuno-nav {
     position: fixed;
-    bottom: 10px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
     left: 50%;
     right: auto;
-    width: min(92vw, 600px);
-    height: 70px;
+    width: min(90vw, 570px);
+    height: 76px;
     transform: translateX(-50%) translateY(var(--zuno-nav-keyboard-offset, 0px));
-    background: rgba(255,255,255,0.92);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(0,0,0,0.07);
-    border-radius: 26px;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(26px);
+    -webkit-backdrop-filter: blur(26px);
+    border: 1px solid rgba(25,23,19,0.08);
+    border-radius: 38px;
     display: flex;
     align-items: center;
     justify-content: space-around;
-    padding: 0 8px calc(env(safe-area-inset-bottom) / 2);
+    gap: 3px;
+    padding: 7px 10px;
     z-index: 900;
-    box-shadow: 0 12px 34px rgba(13, 38, 25, 0.12);
+    box-shadow: 0 18px 44px rgba(25, 23, 19, 0.13);
     transition: transform 0.18s ease, opacity 0.18s ease;
   }
 
@@ -69,39 +70,48 @@ style.textContent = `
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    justify-content: center;
+    gap: 4px;
     text-decoration: none;
-    padding: 8px 8px;
-    border-radius: 16px;
+    padding: 7px 8px;
+    border-radius: 30px;
     transition: background 0.2s, transform 0.15s;
     cursor: pointer;
     border: none;
     background: none;
-    min-width: 48px;
+    min-width: 0;
+    flex: 1 1 0;
+    height: 58px;
     position: relative;
   }
 
-  .zuno-nav-item:hover { background: rgba(52,201,138,0.08); }
+  .zuno-nav-item:hover { background: rgba(25,23,19,0.04); }
   .zuno-nav-item:active { transform: scale(0.92); }
 
   .zuno-nav-icon {
-    font-size: 20px;
+    font-size: 22px;
     line-height: 1;
     transition: transform 0.2s;
   }
 
   .zuno-nav-label {
-    font-size: 9px;
-    font-weight: 500;
-    color: #aaa;
+    font-size: 10px;
+    font-weight: 800;
+    color: #8d8981;
     letter-spacing: 0.02em;
     font-family: 'DM Sans', sans-serif;
     white-space: nowrap;
   }
 
+  .zuno-nav-item.active {
+    background: linear-gradient(180deg, #fff8df, #f3f0e7);
+    color: #161411;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.92), 0 8px 18px rgba(25,23,19,.08);
+  }
+
   .zuno-nav-item.active .zuno-nav-label {
-    color: #34c98a;
-    font-weight: 700;
+    color: #161411;
+    font-weight: 1000;
   }
 
   .zuno-nav-item.active .zuno-nav-icon {
@@ -111,9 +121,9 @@ style.textContent = `
   .zuno-nav-item.active::after {
     content: '';
     position: absolute;
-    bottom: 4px;
-    width: 4px;
-    height: 4px;
+    bottom: 5px;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
     background: #34c98a;
   }
@@ -123,18 +133,20 @@ style.textContent = `
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    justify-content: center;
+    gap: 4px;
     text-decoration: none;
     cursor: pointer;
     border: none;
     background: none;
     padding: 0;
-    min-width: 52px;
+    min-width: 58px;
+    flex: 0 0 58px;
   }
 
   .zuno-nav-add-circle {
-    width: 56px;
-    height: 56px;
+    width: 58px;
+    height: 58px;
     border-radius: 50%;
     background: linear-gradient(135deg, #34c98a, #2aa572);
     display: flex;
@@ -142,7 +154,7 @@ style.textContent = `
     justify-content: center;
     box-shadow: 0 10px 28px rgba(52,201,138,0.38);
     transition: transform 0.2s, box-shadow 0.2s;
-    margin-top: -18px;
+    margin-top: -24px;
   }
 
   .zuno-nav-add:hover .zuno-nav-add-circle {
@@ -159,8 +171,8 @@ style.textContent = `
   }
 
   .zuno-nav-add-label {
-    font-size: 9px;
-    font-weight: 600;
+    font-size: 10px;
+    font-weight: 1000;
     color: #34c98a;
     letter-spacing: 0.02em;
     font-family: 'DM Sans', sans-serif;
@@ -394,7 +406,7 @@ style.textContent = `
   .zuno-btn-logout  { background: #c0392b; color: white; }
 
   @media (min-width: 600px) {
-    .zuno-nav { width: min(600px, 72vw); }
+    .zuno-nav { width: min(570px, 72vw); }
     .zuno-drawer { max-width: 480px; }
   }
 `;
