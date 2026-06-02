@@ -7,7 +7,47 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    body.auth-checking .login-card { visibility: hidden; }
+    body.auth-checking .shell {
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .auth-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      place-items: center;
+      padding: 22px;
+      background:
+        radial-gradient(circle at 12% -8%, rgba(255,218,0,.34), transparent 34%),
+        radial-gradient(circle at 90% 105%, rgba(23,185,120,.15), transparent 34%),
+        #fff8ed;
+    }
+    body.auth-checking .auth-loader { display: grid; }
+    .auth-loader-card {
+      width: min(100%, 320px);
+      padding: 24px;
+      border: 1px solid rgba(25,23,19,.12);
+      border-radius: 24px;
+      background: rgba(255,255,255,.9);
+      box-shadow: 0 22px 70px rgba(33,27,18,.12);
+      display: grid;
+      justify-items: center;
+      gap: 12px;
+      text-align: center;
+      font-weight: 900;
+    }
+    .auth-loader-card img {
+      width: 62px;
+      height: 62px;
+      border-radius: 18px;
+      background: #ffda00;
+    }
+    .auth-loader-card span {
+      color: #81786c;
+      font-size: 13px;
+      font-weight: 800;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #fff8ed;
@@ -297,6 +337,13 @@
   <link rel="apple-touch-icon" href="zuno-icon-192.png">
 </head>
 <body class="auth-checking">
+  <div class="auth-loader" aria-live="polite">
+    <div class="auth-loader-card">
+      <img src="zuno-logo.png" alt="">
+      <strong>Opening your shop</strong>
+      <span>Checking your saved login...</span>
+    </div>
+  </div>
   <main class="shell">
     <section class="intro">
       <div class="brand"><img src="zuno-logo.png" alt="">Zuno</div>
@@ -358,7 +405,7 @@
     </section>
   </main>
 
-  <script type="module" src="auth.js"></script>
-  <script src="pwa.js?v=76" defer></script>
+  <script type="module" src="auth.js?v=43"></script>
+  <script src="pwa.js?v=77" defer></script>
 </body>
 </html>

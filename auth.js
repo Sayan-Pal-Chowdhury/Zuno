@@ -123,7 +123,7 @@ async function verifyOtp() {
 
 async function signInWithGoogle() {
   if (window.location.hostname === PRIMARY_HOST) {
-    window.location.href = `https://${FIREBASE_AUTH_HOST}/login.html?google=start`;
+    window.location.replace(`https://${FIREBASE_AUTH_HOST}/login.html?google=start`);
     return;
   }
 
