@@ -626,6 +626,8 @@ button { -webkit-tap-highlight-color: transparent; }
   width: min(360px, calc(100vw - 32px));
   display: grid;
   gap: 5px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 7px;
   border: 1px solid var(--shop-border);
   border-radius: 16px;

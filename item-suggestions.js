@@ -58,9 +58,23 @@ export function attachSuggestionDropdown(input, getSuggestions, onPick = null) {
   const close = () => { box.hidden = true; };
   const position = () => {
     const rect = input.getBoundingClientRect();
-    box.style.left = `${Math.max(12, rect.left)}px`;
-    box.style.top = `${Math.min(window.innerHeight - 80, rect.bottom + 6)}px`;
-    box.style.width = `${Math.min(rect.width || 280, window.innerWidth - 24)}px`;
+    const margin = 12;
+    const gap = 6;
+    const width = Math.min(Math.max(rect.width || 280, 180), window.innerWidth - margin * 2);
+    const left = Math.min(Math.max(margin, rect.left), window.innerWidth - width - margin);
+    const spaceBelow = window.innerHeight - rect.bottom - margin;
+    const spaceAbove = rect.top - margin;
+    const preferredHeight = Math.min(260, Math.max(120, box.scrollHeight || 180));
+    const openAbove = spaceBelow < 120 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(96, Math.min(preferredHeight, openAbove ? spaceAbove - gap : spaceBelow - gap));
+    const top = openAbove
+      ? Math.max(margin, rect.top - gap - maxHeight)
+      : Math.min(rect.bottom + gap, window.innerHeight - margin - maxHeight);
+
+    box.style.left = `${left}px`;
+    box.style.top = `${top}px`;
+    box.style.width = `${width}px`;
+    box.style.maxHeight = `${maxHeight}px`;
   };
   const render = () => {
     const term = input.value.trim().toLowerCase();
@@ -75,13 +89,13 @@ export function attachSuggestionDropdown(input, getSuggestions, onPick = null) {
       return;
     }
 
-    position();
     box.innerHTML = suggestions.map(item => `
       <button type="button" data-value="${escapeHtml(item.value)}" data-label="${escapeHtml(item.label)}">
         ${escapeHtml(item.label)}
       </button>
     `).join("");
     box.hidden = false;
+    position();
     box.querySelectorAll("button").forEach(button => {
       button.addEventListener("pointerdown", event => {
         event.preventDefault();

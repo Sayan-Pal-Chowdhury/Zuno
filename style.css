@@ -463,6 +463,8 @@ tbody tr:hover { background: #fafaf8; }
   width: min(280px, calc(100vw - 32px));
   display: grid;
   gap: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 6px;
   border: 1px solid var(--border-dark);
   border-radius: 12px;
