@@ -215,16 +215,17 @@ function showZunoBootSplash() {
   if (existingSplash) {
     const alreadySeen = sessionStorage.getItem("zunoBootSplashSeen");
     if (!alreadySeen) sessionStorage.setItem("zunoBootSplashSeen", "shown");
-    scheduleBootSplashHide(existingSplash, alreadySeen ? 420 : 900);
+    scheduleBootSplashHide(existingSplash, alreadySeen ? 600 : 1100);
   }
 }
 
-function scheduleBootSplashHide(splash, delay = 900) {
+function scheduleBootSplashHide(splash, delay = 1100) {
   const hide = () => {
+    document.documentElement.style.background = "#fff8ed";
     document.body.classList.add("zuno-app-ready");
     splash.classList.add("hide");
     setTimeout(() => splash.remove(), 520);
   };
   window.addEventListener("load", () => setTimeout(hide, delay), { once: true });
-  setTimeout(hide, 1800);
+  setTimeout(hide, 2200);
 }
