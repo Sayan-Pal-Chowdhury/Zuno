@@ -215,15 +215,15 @@ function showZunoBootSplash() {
   if (existingSplash) {
     const alreadySeen = sessionStorage.getItem("zunoBootSplashSeen");
     if (!alreadySeen) sessionStorage.setItem("zunoBootSplashSeen", "shown");
-    scheduleBootSplashHide(existingSplash, alreadySeen ? 850 : 1450);
+    scheduleBootSplashHide(existingSplash, alreadySeen ? 420 : 900);
   }
 }
 
-function scheduleBootSplashHide(splash, delay = 1450) {
+function scheduleBootSplashHide(splash, delay = 900) {
   const hide = () => {
     splash.classList.add("hide");
     setTimeout(() => splash.remove(), 520);
   };
   window.addEventListener("load", () => setTimeout(hide, delay), { once: true });
-  setTimeout(hide, 3200);
+  setTimeout(hide, 1800);
 }

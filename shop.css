@@ -490,8 +490,8 @@ button { -webkit-tap-highlight-color: transparent; }
   align-items: end;
   color: #fff;
   background:
-    linear-gradient(90deg, rgba(18,15,11,.86), rgba(18,15,11,.54) 50%, rgba(18,15,11,.18)),
-    linear-gradient(0deg, rgba(18,15,11,.84), rgba(18,15,11,.16) 72%),
+    linear-gradient(90deg, rgba(18,15,11,.66), rgba(18,15,11,.34) 48%, rgba(18,15,11,.06)),
+    linear-gradient(0deg, rgba(18,15,11,.68), rgba(18,15,11,.08) 72%),
     var(--marketplace-hero-cover) center / cover no-repeat;
 }
 
