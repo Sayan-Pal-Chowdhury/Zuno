@@ -221,6 +221,7 @@ function showZunoBootSplash() {
 
 function scheduleBootSplashHide(splash, delay = 900) {
   const hide = () => {
+    document.body.classList.add("zuno-app-ready");
     splash.classList.add("hide");
     setTimeout(() => splash.remove(), 520);
   };

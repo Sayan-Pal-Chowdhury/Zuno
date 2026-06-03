@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zuno Shops</title>
   <style>
-    html, body { margin: 0; min-height: 100%; background: #fff8ed; }
-    body { padding-top: 96px; }
+    html { margin: 0; min-height: 100%; background: #ffda00; }
+    body { margin: 0; min-height: 100%; padding-top: 96px; background: #ffda00; }
+    body.zuno-app-ready { background: #fff8ed; }
     .shop-topbar { position: fixed; inset: 0 0 auto; z-index: 50; height: 96px; background: #fff8ed; }
     .shop-main { width: min(100%, 560px); margin: 0 auto; padding: 14px; box-sizing: border-box; }
     .marketplace-hero { height: 202px; border-radius: 22px; background: linear-gradient(135deg, #ffda00, #fff1bd); }
@@ -14,10 +15,12 @@
     #zunoBootSplash { position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; background: #ffda00; transition: opacity .28s ease, visibility .28s ease; }
     #zunoBootSplash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
     .zuno-boot-mark { display: grid; place-items: center; gap: 12px; color: #191713; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-weight: 900; text-align: center; }
-    .zuno-boot-logo { width: 92px; height: 92px; border-radius: 28px; background: #fff; display: grid; place-items: center; box-shadow: 0 20px 54px rgba(25,23,19,.18); }
+    .zuno-boot-logo { width: 92px; height: 92px; border-radius: 28px; background: #fff; display: grid; place-items: center; box-shadow: 0 20px 54px rgba(25,23,19,.18); animation: zunoBootPulse .9s ease-in-out infinite alternate; }
     .zuno-boot-logo img { width: 74px; height: 74px; object-fit: contain; }
     .zuno-boot-name { font-size: 28px; line-height: 1; }
-    .zuno-boot-copy { color: rgba(25,23,19,.72); font-size: 14px; font-weight: 800; }
+    .zuno-boot-copy { color: rgba(25,23,19,.72); font-size: 14px; font-weight: 800; animation: zunoBootCopy .9s ease-in-out infinite alternate; }
+    @keyframes zunoBootPulse { from { transform: scale(.96); } to { transform: scale(1.035); } }
+    @keyframes zunoBootCopy { from { opacity: .62; } to { opacity: 1; } }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -118,6 +121,6 @@
   </main>
 
   <script type="module" src="shops.js?v=35"></script>
-  <script src="pwa.js?v=79" defer></script>
+  <script src="pwa.js?v=80" defer></script>
 </body>
 </html>
