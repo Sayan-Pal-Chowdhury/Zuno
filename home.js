@@ -66,6 +66,7 @@ const BUILTIN_PAYMENT_ALIASES = {
   cast: "cash",
   cas: "cash",
   csh: "cash",
+  paid: "cash",
   nogod: "cash",
   nagad: "cash",
   upi: "upi",
@@ -81,6 +82,8 @@ const BUILTIN_PAYMENT_ALIASES = {
 
 const BUILTIN_STATUS_ALIASES = {
   delivered: "delivered",
+  deliverd: "delivered",
+  delivred: "delivered",
   deliver: "delivered",
   done: "delivered",
   complete: "delivered",
@@ -318,8 +321,13 @@ function normalize(value = "") {
 }
 
 function expandCompactQuantities(text, catalog) {
-  const ignored = new Set(["kg", "g", "gm", "rs", "cash", "upi", "credit", "pending", "delivered", "deliver"]);
-  return text.replace(/\b(\d+(?:\.\d+)?)([a-z][a-z0-9_-]*)\b/g, (token, qty, word) => {
+  const ignored = new Set(["st", "nd", "rd", "th", "kg", "g", "gm", "rs", "cash", "upi", "credit", "pending", "delivered", "deliver"]);
+  const withUnit = text.replace(/\b(\d+(?:\.\d+)?)(kg|g|piece)([a-z][a-z0-9_-]*)\b/g, (token, qty, unit, word) => {
+    const canonical = BUILTIN_PRODUCT_ALIASES[word] || learnedAliases[word] || word;
+    const known = findCatalogMatches(canonical, catalog).length > 0;
+    return known ? `${qty}${unit} ${word}` : token;
+  });
+  return withUnit.replace(/\b(\d+(?:\.\d+)?)([a-z][a-z0-9_-]*)\b/g, (token, qty, word) => {
     if (ignored.has(word)) return token;
     const canonical = BUILTIN_PRODUCT_ALIASES[word] || learnedAliases[word] || word;
     const known = findCatalogMatches(canonical, catalog).length > 0;
@@ -327,6 +335,15 @@ function expandCompactQuantities(text, catalog) {
     const unit = shopProfile.foodMenuEnabled === true ? "piece" : "g";
     return `${qty}${unit} ${word}`;
   });
+}
+
+function stripDatePhrases(text) {
+  return text
+    .replace(/\b\d+(?:st|nd|rd|th)?\s+sale\s+on\s+\d+(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{4})?\b/g, " ")
+    .replace(/\b\d+(?:st|nd|rd|th)?\s+sale\s+on\s+\d+(?:st|nd|rd|th)?\b/g, " ")
+    .replace(/\bon\s+\d+(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{4})?\b/g, " ")
+    .replace(/\b\d+(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{4})?\b/g, " ")
+    .replace(/\bon\s+\d+(?:st|nd|rd|th)?\b/g, " ");
 }
 
 function escapeHtml(value = "") {
@@ -778,7 +795,21 @@ function rebuildFoodPricing() {
 }
 
 function saleCatalog() {
-  return shopProfile.foodMenuEnabled === true ? foodMenuPrices : productCosts;
+  if (shopProfile.foodMenuEnabled === true) return foodMenuPrices;
+  const catalog = { ...productCosts };
+  Object.values(inventoryMap).forEach(item => {
+    const key = normalize(item.product);
+    if (!key || catalog[key]) return;
+    catalog[key] = {
+      name: item.product,
+      cost: Number(item.weightedAvgCost || 0),
+      hasCost: Number(item.weightedAvgCost || 0) > 0,
+      sellingPrice: Number(item.sellingPrice || 0),
+      unit: item.unit || "kg",
+      sellingUnit: normalizeSellingUnit(item.sellingUnit || "", item.unit || "kg")
+    };
+  });
+  return catalog;
 }
 
 function renderOverview() {
@@ -1308,7 +1339,7 @@ function renderAiSaleDraft(original, data) {
     original,
     aiAssisted: true,
     aiRaw: data,
-    date: today(),
+    date: data.date || extractSaleDate(normalize(original)) || today(),
     customer: data.customer || "",
     phone: data.phone || "",
     items,
@@ -1546,6 +1577,40 @@ function extractPayment(text) {
   return null;
 }
 
+function extractSaleDate(text) {
+  const months = {
+    jan: 1, january: 1,
+    feb: 2, february: 2,
+    mar: 3, march: 3,
+    apr: 4, april: 4,
+    may: 5,
+    jun: 6, june: 6,
+    jul: 7, july: 7,
+    aug: 8, august: 8,
+    sep: 9, sept: 9, september: 9,
+    oct: 10, october: 10,
+    nov: 11, november: 11,
+    dec: 12, december: 12
+  };
+  const full = text.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?\b/);
+  const now = new Date();
+  let day = 0;
+  let month = 0;
+  let year = now.getFullYear();
+  if (full) {
+    day = Number(full[1]);
+    month = months[full[2]];
+    year = full[3] ? Number(full[3]) : year;
+  } else {
+    const short = text.match(/\b(?:on|date|sale\s+on)\s+(\d{1,2})(?:st|nd|rd|th)?\b/) || text.match(/^\s*\d+(?:st|nd|rd|th)?\s+sale\s+on\s+(\d{1,2})(?:st|nd|rd|th)?\b/);
+    if (!short) return "";
+    day = Number(short[1]);
+    month = now.getMonth() + 1;
+  }
+  if (!day || !month || day > 31) return "";
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function extractAmountPaid(text) {
   const labelled = text.match(/\b(?:paid|pay|advance|given|diyechi|diya)\s*(?:rs\s*)?(\d+(?:\.\d+)?)/)
     || text.match(/\b(?:rs\s*)?(\d+(?:\.\d+)?)\s*(?:paid|advance|given)\b/);
@@ -1592,11 +1657,17 @@ function extractCustomer(text, mentions) {
     candidate = candidate.replace(new RegExp(`\\b${regexEscape(mention.alias)}\\b`, "g"), " ");
   });
   candidate = candidate
+    .replace(/\b\d+(?:st|nd|rd|th)?\s+sale\s+on\s+\d+(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{4})?\b/g, " ")
+    .replace(/\b\d+(?:st|nd|rd|th)?\s+sale\s+on\s+\d+(?:st|nd|rd|th)?\b/g, " ")
+    .replace(/\bon\s+\d+(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{4})?\b/g, " ")
+    .replace(/\b\d+(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{4})?\b/g, " ")
+    .replace(/\bon\s+\d+(?:st|nd|rd|th)?\b/g, " ")
     .replace(/\b(add|new|sale|sold|for|to|customer|inventory|stock)\b/g, " ")
     .replace(/\b\d+(?:\.\d+)?\s*(kg|g|piece)?\b/g, " ")
     .replace(/\b(ekta|akta|one)\b/g, " ")
-    .replace(/\b(cash|upi|credit|baki|udhar|delivered|deliver|pending|done|complete|completed|diyechi|diya|given)\b/g, " ")
+    .replace(/\b(cash|paid|upi|credit|baki|udhar|delivered|deliver|deliverd|delivred|pending|done|complete|completed|diyechi|diya|given)\b/g, " ")
     .replace(/@?\s*(?:rs\s*)?\d+(?:\.\d+)?/g, " ")
+    .replace(/[@/-]+/g, " ")
     .replace(/\b\d{10}\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -1623,9 +1694,63 @@ function priceData(afterText, qty, unit, product) {
   return { missingPrice: true };
 }
 
+function extractSaleTotalAmount(text) {
+  const explicit = text.match(/\b(?:total|amount|bill|for)\s*(?:rs\s*)?(\d+(?:\.\d+)?)\b/);
+  if (explicit) return Number(explicit[1]);
+  const slash = text.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*\/-(?=\s|$)/);
+  if (slash) return Number(slash[1]);
+  const beforePaid = text.match(/\b(\d+(?:\.\d+)?)\s*(?:rs)?\s+(?:paid|cash|upi|credit|delivered|deliverd|delivred)\b/);
+  if (beforePaid) return Number(beforePaid[1]);
+  return 0;
+}
+
+function quantityInSellingUnit(item, product) {
+  const sellingUnit = normalizeSellingUnit(product?.sellingUnit || item.sellingUnit || item.unit, item.unit);
+  const line = calculateSellingLineTotal({ qty: item.qty, unit: item.unit, price: 1, sellingUnit });
+  return line > 0 ? line : Number(item.qty || 0);
+}
+
+function expectedLineTotal(item, product) {
+  const rate = Number(product?.sellingPrice || item.sellingPrice || 0);
+  if (rate <= 0) return 0;
+  return calculateSellingLineTotal({
+    qty: item.qty,
+    unit: item.unit,
+    price: rate,
+    sellingUnit: product?.sellingUnit || item.sellingUnit || item.unit
+  });
+}
+
+function applyTotalAmountToItems(items, mentions, totalAmount, force = false) {
+  const total = Number(totalAmount || 0);
+  if (!items.length || total <= 0) return false;
+  const alreadyPriced = items.some(item => Number(item.price || 0) > 0 && Number(item.sellingPrice || 0) > 0);
+  if (alreadyPriced && !force) return false;
+  const weights = items.map((item, index) => {
+    const product = mentions[index]?.product || getSalePricing(item.product);
+    return expectedLineTotal(item, product) || quantityInSellingUnit(item, product) || 1;
+  });
+  const weightTotal = weights.reduce((sum, value) => sum + Number(value || 0), 0);
+  if (weightTotal <= 0) return false;
+  let allocated = 0;
+  items.forEach((item, index) => {
+    const product = mentions[index]?.product || getSalePricing(item.product);
+    const price = index === items.length - 1
+      ? Math.round((total - allocated) * 100) / 100
+      : Math.round((total * weights[index] / weightTotal) * 100) / 100;
+    allocated += price;
+    const qtyForRate = quantityInSellingUnit(item, product);
+    item.price = price;
+    item.sellingPrice = qtyForRate > 0 ? Math.round((price / qtyForRate) * 100) / 100 : 0;
+  });
+  return true;
+}
+
 async function handleSaleCommand(original) {
   const catalog = saleCatalog();
-  const text = expandCompactQuantities(normalize(original), catalog);
+  const normalizedOriginal = normalize(original);
+  const saleDate = extractSaleDate(normalizedOriginal) || today();
+  const text = expandCompactQuantities(stripDatePhrases(normalizedOriginal), catalog);
   const mentions = findMentions(text, catalog);
   if (!mentions.length) {
     const looseMatch = findLooseProductRequest(text, catalog);
@@ -1664,6 +1789,8 @@ async function handleSaleCommand(original) {
   const missing = [];
   const missingPrices = [];
   const ambiguities = [];
+  const saleTotalAmount = extractSaleTotalAmount(text);
+  const hasExplicitRate = /(?:@|rate\s*|at\s+|price\s*)(?:rs\s*)?\d+(?:\.\d+)?/.test(text);
   const items = mentions.map((mention, index) => {
     const previousEnd = index ? mentions[index - 1].end : 0;
     const quantity = quantityBefore(text, mention.index, previousEnd, shopProfile.foodMenuEnabled === true);
@@ -1691,6 +1818,12 @@ async function handleSaleCommand(original) {
     return item;
   }).filter(Boolean);
 
+  if (saleTotalAmount > 0 && !hasExplicitRate && items.length > 1) {
+    applyTotalAmountToItems(items, mentions, saleTotalAmount, true);
+    missingPrices.length = 0;
+    ambiguities.length = 0;
+  }
+
   const customer = extractCustomer(text, mentions);
   const strayQuantity = findStrayQuantity(text, mentions);
   if (strayQuantity) missing.push(`product name for ${strayQuantity}`);
@@ -1709,7 +1842,7 @@ async function handleSaleCommand(original) {
   const draft = {
     kind: "sale",
     original,
-    date: today(),
+    date: saleDate,
     customer: customer.customer,
     phone: customer.phone,
     items,
@@ -1764,7 +1897,7 @@ function inferNewSaleProduct(text) {
   if (!quantity) return null;
   const isNumeric = /^\d/.test(quantity[1]);
   const rawName = isNumeric ? quantity[3] : quantity[2];
-  if (!rawName || ["cash", "upi", "credit", "baki", "pending", "delivered"].includes(rawName)) return null;
+  if (!rawName || ["st", "nd", "rd", "th", "cash", "upi", "credit", "baki", "pending", "delivered"].includes(rawName)) return null;
   const canonical = BUILTIN_PRODUCT_ALIASES[rawName] || rawName;
   return {
     name: titleCase(canonical),
@@ -1784,7 +1917,7 @@ function inferUnknownSaleProduct(text, mentions) {
       const rawName = match[pattern.nameIndex];
       const productIndex = match.index + match[0].lastIndexOf(rawName);
       const isKnown = mentions.some(mention => productIndex >= mention.index && productIndex < mention.end);
-      if (!isKnown && !["cash", "upi", "credit", "baki", "pending", "delivered"].includes(rawName)) {
+      if (!isKnown && !["st", "nd", "rd", "th", "cash", "upi", "credit", "baki", "pending", "delivered"].includes(rawName)) {
         const canonical = BUILTIN_PRODUCT_ALIASES[rawName] || rawName;
         return {
           name: titleCase(canonical),

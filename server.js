@@ -217,10 +217,10 @@ alu/aloo = potato
 pyaj/piyaj/peyaj = onion
 ada/adrak = ginger
 
-Rules: intent is add_sale/add_inventory/query/unknown. Prefer add_sale when quantities and products are present. Match products to known products. Units only kg,g,piece. paymentMode only cash,upi,credit,"". deliveryStatus only delivered,pending,"". If a product number is ambiguous, put it in price and set needsClarification true. For partial credit, amountPaid is paid amount.
+Rules: intent is add_sale/add_inventory/query/unknown. Prefer add_sale when quantities and products are present. Match products to known products. Units only kg,g,piece. paymentMode only cash,upi,credit,"". paid/paid delivered means cash delivered unless credit/upi is said. deliveryStatus only delivered,pending,"". Parse dates like 5th june 2026, 5 june, on 5th into YYYY-MM-DD. If no date is said, date is "". If one total bill amount is given for multiple items, split item prices reasonably using known selling prices/quantities so sum equals totalAmount. If a product number is ambiguous, put it in price and set needsClarification true. For partial credit, amountPaid is paid amount.
 
 JSON keys exactly:
-{"intent":"add_sale","customer":"","phone":"","paymentMode":"","deliveryStatus":"","amountPaid":0,"items":[{"product":"","qty":0,"unit":"kg","sellingPrice":0,"sellingUnit":"kg","price":0,"needsClarification":false,"clarification":""}],"confidence":0}
+{"intent":"add_sale","date":"","customer":"","phone":"","paymentMode":"","deliveryStatus":"","amountPaid":0,"totalAmount":0,"items":[{"product":"","qty":0,"unit":"kg","sellingPrice":0,"sellingUnit":"kg","price":0,"needsClarification":false,"clarification":""}],"confidence":0}
 `;
 
     const response = await ai.models.generateContent({
