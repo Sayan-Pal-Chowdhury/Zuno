@@ -287,6 +287,44 @@
   font-family: var(--font-mono);
 }
 
+/* ===== PRODUCT PROFIT SUMMARY ===== */
+#productProfitSection {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.product-profit-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.product-profit-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.product-profit-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.product-profit-value {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* ===== FINISHED / FADED CARD ===== */
 .stock-card.finished {
   opacity: 0.55;

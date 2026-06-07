@@ -140,6 +140,7 @@ function loadSales() {
       }
     });
     renderStockCards();
+    renderProductProfitSummary();
     renderAlerts();
   });
 }
@@ -169,6 +170,7 @@ function loadInventory() {
     });
     ensureInventoryImages();
     renderStockCards();
+    renderProductProfitSummary();
     renderAlerts();
     scheduleInventoryReconcile();
   });
@@ -442,6 +444,38 @@ function calculateProfit(key, item) {
     cogs:         Math.round(cogs         * 100) / 100,
     profit:       Math.round(profit       * 100) / 100
   };
+}
+
+function formatMoney(value) {
+  const rounded = Math.round(Number(value || 0));
+  return `₹${Math.abs(rounded).toLocaleString("en-IN")}`;
+}
+
+function renderProductProfitSummary() {
+  const list = document.getElementById("productProfitList");
+  if (!list) return;
+
+  const rows = Object.values(inventoryMap)
+    .map(item => ({ item, profitData: calculateProfit(normalizeProduct(item.product), item) }))
+    .filter(row => row.profitData)
+    .sort((a, b) => a.item.product.localeCompare(b.item.product));
+
+  if (!rows.length) {
+    list.innerHTML = `<p class="empty-msg">No product profit yet</p>`;
+    return;
+  }
+
+  list.innerHTML = rows.map(({ item, profitData }) => {
+    const profit = Number(profitData.profit || 0);
+    const color = profit >= 0 ? "var(--accent)" : "var(--danger)";
+    const sign = profit >= 0 ? "+" : "-";
+    return `
+      <div class="product-profit-card">
+        <div class="product-profit-name">${item.product}</div>
+        <div class="product-profit-value" style="color:${color}">${sign}${formatMoney(profit)}</div>
+      </div>
+    `;
+  }).join("");
 }
 
 function calculateSaleItemProfit(item, costPerUnit, baseUnit) {
