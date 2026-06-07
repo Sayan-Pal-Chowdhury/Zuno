@@ -18,6 +18,8 @@ let historyDocs    = [];
 let editingHistoryId = null;
 let hiddenProducts = [];
 let productSuggestions = COMMON_ITEM_NAMES;
+let reconcileTimer = null;
+let isReconcilingInventory = false;
 
 function normalizeProduct(value = "") {
   return String(value).trim().toLowerCase();
@@ -42,7 +44,31 @@ function convertQty(qty, fromUnit, toUnit) {
 }
 
 function isPurchaseEntry(entry = {}) {
-  return entry.type === "in" && (entry.purchaseCost !== undefined || /stock added|inventory purchase/i.test(entry.note || ""));
+  return entry.type === "in" && !isSaleRestoreEntry(entry) && (entry.purchaseCost !== undefined || /stock added|inventory purchase|restored from deletion/i.test(entry.note || ""));
+}
+
+function isSaleRestoreEntry(entry = {}) {
+  return entry.type === "in" && /sale deleted|reopened order/i.test(entry.note || "");
+}
+
+function isStockInEntry(entry = {}) {
+  return isPurchaseEntry(entry) || isSaleRestoreEntry(entry);
+}
+
+function sameInventoryValue(a, b) {
+  const numA = Number(a || 0);
+  const numB = Number(b || 0);
+  if (Number.isFinite(numA) && Number.isFinite(numB)) return Math.abs(numA - numB) < 0.0001;
+  return String(a || "") === String(b || "");
+}
+
+function inventoryNeedsUpdate(existing = {}, update = {}) {
+  return Object.keys(update).some(key => !sameInventoryValue(existing[key], update[key]));
+}
+
+function scheduleInventoryReconcile() {
+  clearTimeout(reconcileTimer);
+  reconcileTimer = setTimeout(reconcileInventoryFromHistory, 500);
 }
 
 function unitIsCompatible(existingUnit, incomingUnit) {
@@ -144,6 +170,7 @@ function loadInventory() {
     ensureInventoryImages();
     renderStockCards();
     renderAlerts();
+    scheduleInventoryReconcile();
   });
 }
 
@@ -210,6 +237,7 @@ function loadHistory() {
           </tr>
         `;
       });
+      scheduleInventoryReconcile();
     }
   );
 }
@@ -640,22 +668,26 @@ async function rebuildProductFromHistory(productName) {
   const key = normalizeProduct(productName);
   if (!key) return;
   const purchases = historyDocs.filter(entry => isPurchaseEntry(entry) && normalizeProduct(entry.product) === key);
+  const stockIns = historyDocs.filter(entry => isStockInEntry(entry) && normalizeProduct(entry.product) === key);
   const existing = inventoryMap[key];
-  if (!purchases.length) {
+  if (!stockIns.length) {
     if (existing) await updateDoc(userDoc("inventory", existing.id), { qty: 0, totalInvested: 0, totalQtyBought: 0, weightedAvgCost: 0 });
     return;
   }
-  const storageUnit = chooseStorageUnit(...purchases.map(entry => entry.unit), existing?.unit);
+  const storageUnit = chooseStorageUnit(...stockIns.map(entry => entry.unit), existing?.unit);
   const totalQtyBought = purchases.reduce((sum, entry) => sum + convertQty(entry.qty, entry.unit, storageUnit), 0);
   const totalInvested = purchases.reduce((sum, entry) => sum + Number(entry.purchaseCost || 0), 0);
+  const restoredQty = historyDocs
+    .filter(entry => isSaleRestoreEntry(entry) && normalizeProduct(entry.product) === key)
+    .reduce((sum, entry) => sum + convertQty(entry.qty, entry.unit, storageUnit), 0);
   const soldQty = historyDocs
     .filter(entry => entry.type === "out" && normalizeProduct(entry.product) === key)
     .reduce((sum, entry) => sum + convertQty(entry.qty, entry.unit, storageUnit), 0);
   const sorted = [...purchases].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
-  const latest = sorted[sorted.length - 1];
+  const latest = sorted[sorted.length - 1] || stockIns[stockIns.length - 1] || existing || {};
   const update = {
     product: latest.product,
-    qty: Math.max(0, totalQtyBought - soldQty),
+    qty: Math.max(0, totalQtyBought + restoredQty - soldQty),
     unit: storageUnit,
     alertThreshold: convertQty(Number(latest.alertThreshold || existing?.alertThreshold || 0), latest.unit || storageUnit, storageUnit),
     weightedAvgCost: totalQtyBought > 0 ? totalInvested / totalQtyBought : 0,
@@ -667,12 +699,35 @@ async function rebuildProductFromHistory(productName) {
     lastPurchaseDate: latest.date || ""
   };
   if (existing) {
-    await updateDoc(userDoc("inventory", existing.id), update);
+    if (inventoryNeedsUpdate(existing, update)) {
+      await updateDoc(userDoc("inventory", existing.id), update);
+    }
   } else {
     await addDoc(userCol("inventory"), update);
   }
   if (update.weightedAvgCost > 0 || update.sellingPrice > 0) {
     await updateProductCost(latest.product, update.weightedAvgCost > 0 ? update.weightedAvgCost : null, storageUnit, update.sellingPrice, update.sellingUnit);
+  }
+}
+
+async function reconcileInventoryFromHistory() {
+  if (isReconcilingInventory || !currentUserId || !historyDocs.length) return;
+  isReconcilingInventory = true;
+  try {
+    const productNames = new Set();
+    historyDocs.forEach(entry => {
+      if (isStockInEntry(entry) || entry.type === "out") {
+        const product = String(entry.product || "").trim();
+        if (product) productNames.add(product);
+      }
+    });
+    for (const productName of productNames) {
+      await rebuildProductFromHistory(productName);
+    }
+  } catch (error) {
+    console.warn("Inventory reconciliation failed:", error);
+  } finally {
+    isReconcilingInventory = false;
   }
 }
 
