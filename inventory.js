@@ -444,6 +444,42 @@ function calculateProfit(key, item) {
   };
 }
 
+function calculateSaleItemProfit(item, costPerUnit, baseUnit) {
+  let finalQty = Number(item.qty || 0);
+  if (item.unit === "g" && baseUnit === "kg") finalQty /= 1000;
+  if (item.unit === "kg" && baseUnit === "g") finalQty *= 1000;
+  return Math.round((Number(item.price || 0) - (Number(costPerUnit || 0) * finalQty)) * 100) / 100;
+}
+
+async function recalculateSaleProfitsForProduct(productName, costPerUnit, unit) {
+  const key = normalizeProduct(productName);
+  if (!key || !costPerUnit) return;
+  const snap = await getDocs(userCol("sales"));
+  for (const saleDoc of snap.docs) {
+    const sale = saleDoc.data();
+    if (sale.deliveryStatus !== "delivered" || !Array.isArray(sale.items)) continue;
+    let changed = false;
+    const updatedItems = sale.items.map(item => {
+      if (normalizeProduct(item.product) !== key) return item;
+      changed = true;
+      return {
+        ...item,
+        profit: calculateSaleItemProfit(item, costPerUnit, unit),
+        hasCost: true,
+        costPrice: Math.round(costPerUnit * 100) / 100
+      };
+    });
+    if (!changed) continue;
+    const totalProfit = updatedItems.reduce((sum, item) => (
+      sum + (item.profit === null ? 0 : Number(item.profit || 0))
+    ), 0);
+    await updateDoc(userDoc("sales", saleDoc.id), {
+      items: updatedItems,
+      totalProfit: Math.round(totalProfit * 100) / 100
+    });
+  }
+}
+
 /* ---------- RENDER STOCK CARDS ---------- */
 function renderStockCards() {
   const grid    = document.getElementById("stockCards");
@@ -667,21 +703,29 @@ async function reconcilePurchaseFinance(oldEntry, newEntry) {
 async function rebuildProductFromHistory(productName) {
   const key = normalizeProduct(productName);
   if (!key) return;
-  const purchases = historyDocs.filter(entry => isPurchaseEntry(entry) && normalizeProduct(entry.product) === key);
-  const stockIns = historyDocs.filter(entry => isStockInEntry(entry) && normalizeProduct(entry.product) === key);
+  const productHistory = historyDocs.filter(entry => normalizeProduct(entry.product) === key);
+  const lastDeleteIndex = productHistory.findIndex(entry => entry.type === "deleted");
+  const activeHistory = lastDeleteIndex >= 0 ? productHistory.slice(0, lastDeleteIndex) : productHistory;
+  const purchases = activeHistory.filter(entry => isPurchaseEntry(entry));
+  const stockIns = activeHistory.filter(entry => isStockInEntry(entry));
   const existing = inventoryMap[key];
   if (!stockIns.length) {
-    if (existing) await updateDoc(userDoc("inventory", existing.id), { qty: 0, totalInvested: 0, totalQtyBought: 0, weightedAvgCost: 0 });
+    if (existing) {
+      const resetUpdate = { qty: 0, totalInvested: 0, totalQtyBought: 0, weightedAvgCost: 0 };
+      if (inventoryNeedsUpdate(existing, resetUpdate)) {
+        await updateDoc(userDoc("inventory", existing.id), resetUpdate);
+      }
+    }
     return;
   }
   const storageUnit = chooseStorageUnit(...stockIns.map(entry => entry.unit), existing?.unit);
   const totalQtyBought = purchases.reduce((sum, entry) => sum + convertQty(entry.qty, entry.unit, storageUnit), 0);
   const totalInvested = purchases.reduce((sum, entry) => sum + Number(entry.purchaseCost || 0), 0);
-  const restoredQty = historyDocs
-    .filter(entry => isSaleRestoreEntry(entry) && normalizeProduct(entry.product) === key)
+  const restoredQty = activeHistory
+    .filter(entry => isSaleRestoreEntry(entry))
     .reduce((sum, entry) => sum + convertQty(entry.qty, entry.unit, storageUnit), 0);
-  const soldQty = historyDocs
-    .filter(entry => entry.type === "out" && normalizeProduct(entry.product) === key)
+  const soldQty = activeHistory
+    .filter(entry => entry.type === "out")
     .reduce((sum, entry) => sum + convertQty(entry.qty, entry.unit, storageUnit), 0);
   const sorted = [...purchases].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
   const latest = sorted[sorted.length - 1] || stockIns[stockIns.length - 1] || existing || {};
@@ -698,6 +742,7 @@ async function rebuildProductFromHistory(productName) {
     firstPurchaseDate: sorted[0].date || "",
     lastPurchaseDate: latest.date || ""
   };
+  const costChanged = !existing || !sameInventoryValue(existing.weightedAvgCost, update.weightedAvgCost);
   if (existing) {
     if (inventoryNeedsUpdate(existing, update)) {
       await updateDoc(userDoc("inventory", existing.id), update);
@@ -707,6 +752,9 @@ async function rebuildProductFromHistory(productName) {
   }
   if (update.weightedAvgCost > 0 || update.sellingPrice > 0) {
     await updateProductCost(latest.product, update.weightedAvgCost > 0 ? update.weightedAvgCost : null, storageUnit, update.sellingPrice, update.sellingUnit);
+  }
+  if (costChanged && update.weightedAvgCost > 0) {
+    await recalculateSaleProfitsForProduct(latest.product, update.weightedAvgCost, storageUnit);
   }
 }
 
