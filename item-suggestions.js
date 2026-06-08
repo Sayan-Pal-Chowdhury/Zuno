@@ -53,23 +53,34 @@ export function attachSuggestionDropdown(input, getSuggestions, onPick = null) {
   const box = document.createElement("div");
   box.className = "zuno-suggestion-box";
   box.hidden = true;
-  input.insertAdjacentElement("afterend", box);
+  document.body.appendChild(box);
+  let renderedSuggestions = [];
 
   const close = () => { box.hidden = true; };
   const position = () => {
+    if (box.hidden) return;
     const rect = input.getBoundingClientRect();
+    const viewport = window.visualViewport || null;
+    const viewportTop = viewport ? viewport.offsetTop : 0;
+    const viewportLeft = viewport ? viewport.offsetLeft : 0;
+    const viewportHeight = viewport ? viewport.height : window.innerHeight;
+    const viewportWidth = viewport ? viewport.width : window.innerWidth;
+    const viewportBottom = viewportTop + viewportHeight;
+    const viewportRight = viewportLeft + viewportWidth;
     const margin = 12;
     const gap = 6;
-    const width = Math.min(Math.max(rect.width || 280, 180), window.innerWidth - margin * 2);
-    const left = Math.min(Math.max(margin, rect.left), window.innerWidth - width - margin);
-    const spaceBelow = window.innerHeight - rect.bottom - margin;
-    const spaceAbove = rect.top - margin;
-    const preferredHeight = Math.min(260, Math.max(120, box.scrollHeight || 180));
-    const openAbove = spaceBelow < 120 && spaceAbove > spaceBelow;
-    const maxHeight = Math.max(96, Math.min(preferredHeight, openAbove ? spaceAbove - gap : spaceBelow - gap));
+    const maxWidth = viewportWidth - margin * 2;
+    const width = Math.min(Math.max(rect.width || 280, 180), maxWidth);
+    const left = Math.min(Math.max(viewportLeft + margin, rect.left), viewportRight - width - margin);
+    const spaceBelow = Math.max(0, viewportBottom - rect.bottom - margin);
+    const spaceAbove = Math.max(0, rect.top - viewportTop - margin);
+    const preferredHeight = Math.min(220, Math.max(92, box.scrollHeight || 160));
+    const openAbove = spaceBelow < 72 && spaceAbove > spaceBelow;
+    const available = Math.max(44, (openAbove ? spaceAbove : spaceBelow) - gap);
+    const maxHeight = Math.min(preferredHeight, available);
     const top = openAbove
-      ? Math.max(margin, rect.top - gap - maxHeight)
-      : Math.min(rect.bottom + gap, window.innerHeight - margin - maxHeight);
+      ? Math.max(viewportTop + margin, rect.top - gap - maxHeight)
+      : rect.bottom + gap;
 
     box.style.left = `${left}px`;
     box.style.top = `${top}px`;
@@ -78,19 +89,19 @@ export function attachSuggestionDropdown(input, getSuggestions, onPick = null) {
   };
   const render = () => {
     const term = input.value.trim().toLowerCase();
-    const suggestions = (typeof getSuggestions === "function" ? getSuggestions() : getSuggestions || [])
+    renderedSuggestions = (typeof getSuggestions === "function" ? getSuggestions() : getSuggestions || [])
       .map(normalizeSuggestion)
       .filter(Boolean)
       .filter(item => !term || item.searchText.includes(term))
       .slice(0, 6);
 
-    if (suggestions.length === 0 || !term) {
+    if (renderedSuggestions.length === 0 || !term) {
       close();
       return;
     }
 
-    box.innerHTML = suggestions.map(item => `
-      <button type="button" data-value="${escapeHtml(item.value)}" data-label="${escapeHtml(item.label)}">
+    box.innerHTML = renderedSuggestions.map((item, index) => `
+      <button type="button" data-index="${index}" data-value="${escapeHtml(item.value)}" data-label="${escapeHtml(item.label)}">
         ${escapeHtml(item.label)}
       </button>
     `).join("");
@@ -99,11 +110,13 @@ export function attachSuggestionDropdown(input, getSuggestions, onPick = null) {
     box.querySelectorAll("button").forEach(button => {
       button.addEventListener("pointerdown", event => {
         event.preventDefault();
+        event.stopPropagation();
+        const item = renderedSuggestions[Number(button.dataset.index)] || null;
         const value = button.dataset.value || button.dataset.label || button.textContent;
         const label = button.dataset.label || button.textContent;
         input.value = value;
         close();
-        if (onPick) onPick(value, label);
+        if (onPick) onPick(value, label, item);
         input.dispatchEvent(new Event("change", { bubbles: true }));
       });
     });
@@ -113,6 +126,8 @@ export function attachSuggestionDropdown(input, getSuggestions, onPick = null) {
   input.addEventListener("focus", render);
   window.addEventListener("scroll", position, true);
   window.addEventListener("resize", position);
+  window.visualViewport?.addEventListener("scroll", position);
+  window.visualViewport?.addEventListener("resize", position);
   input.addEventListener("blur", () => setTimeout(close, 150));
 }
 
@@ -122,7 +137,7 @@ function normalizeSuggestion(item) {
     const label = String(item.label || item.value || "").trim();
     const value = String(item.value || item.label || "").trim();
     const searchText = String(item.searchText || `${label} ${value}`).toLowerCase();
-    return label && value ? { label, value, searchText } : null;
+    return label && value ? { ...item, label, value, searchText } : null;
   }
   const value = String(item || "").trim();
   return value ? { label: value, value, searchText: value.toLowerCase() } : null;

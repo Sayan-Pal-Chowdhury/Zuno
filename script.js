@@ -100,19 +100,27 @@ async function loadCustomerSuggestions() {
 
   const nameInput = document.getElementById("customerName");
   const phoneInput = document.getElementById("phone");
-  const applyMatch = value => {
+  const applyCustomer = match => {
+    if (!match) return;
+    if (nameInput) nameInput.value = match.name || "";
+    if (phoneInput) phoneInput.value = match.phone || "";
+  };
+  const applyMatch = (value, label, item) => {
+    if (item?.name || item?.phone) {
+      applyCustomer(item);
+      return;
+    }
     const rawValue = String(value || "").trim();
     const cleanValue = rawValue.split(" - ")[0].trim();
     const phoneValue = rawValue.match(/\b\d{6,}\b/)?.[0] || "";
     const match = customerSuggestions.find(customer =>
       normalizeName(customer.name) === normalizeName(rawValue) ||
+      normalizeName(customer.name) === normalizeName(label) ||
       normalizeName(customer.name) === normalizeName(cleanValue) ||
       normalizePhone(customer.phone) === normalizePhone(rawValue) ||
       normalizePhone(customer.phone) === normalizePhone(phoneValue)
     );
-    if (!match) return;
-    if (nameInput) nameInput.value = match.name || nameInput.value;
-    if (phoneInput) phoneInput.value = match.phone || phoneInput.value;
+    applyCustomer(match);
   };
   const customerLabels = () => customerSuggestions
     .map(customer => {
@@ -122,7 +130,9 @@ async function loadCustomerSuggestions() {
       return {
         label,
         value: name || phone,
-        searchText: `${name} ${phone}`.trim()
+        searchText: `${name} ${phone}`.trim(),
+        name,
+        phone
       };
     })
     .filter(Boolean);
