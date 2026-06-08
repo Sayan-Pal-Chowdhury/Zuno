@@ -372,10 +372,10 @@ window.saveEditSale = async () => {
       await deductInventory(items, data.date);
       if (_editOriginal?.customerOrderId) await markCustomerOrderDelivered(_editOriginal.customerOrderId, data);
     } else if (wasDelivered && !isNowDelivered) {
-      await revertInventory(_editOriginal.items);
+      await revertInventory(_editOriginal.items, _editOriginal.date || data.date);
       if (_editOriginal?.customerOrderId) await markCustomerOrderReopened(_editOriginal.customerOrderId, _editOriginal);
     } else if (wasDelivered && isNowDelivered) {
-      await revertInventory(_editOriginal.items);
+      await revertInventory(_editOriginal.items, _editOriginal.date || data.date);
       await deductInventory(items, data.date);
     }
 
@@ -427,7 +427,7 @@ export async function deleteSaleById(id) {
   if (saleSnap.exists()) {
     const s = saleSnap.data();
     if (s.deliveryStatus === "delivered" && Array.isArray(s.items)) {
-      await revertInventory(s.items);
+      await revertInventory(s.items, s.date);
     }
     if (s.paymentMode === "credit") {
       await reverseCreditForSale({
@@ -492,7 +492,7 @@ async function deductInventory(items, saleDate = new Date().toISOString().split(
 }
 
 /* ---------- REVERT INVENTORY ---------- */
-async function revertInventory(items) {
+async function revertInventory(items, saleDate = new Date().toISOString().split("T")[0]) {
   for (const item of items) {
     const key  = item.product.toLowerCase();
     const snap = await getDocs(userCol("inventory"));
@@ -509,7 +509,7 @@ async function revertInventory(items) {
     await updateDoc(userDoc("inventory", found.id), { qty: Number(found.qty) + qty });
     await addDoc(userCol("inventoryHistory"), {
       product: item.product, qty, unit: found.unit,
-      date: new Date().toISOString().split("T")[0],
+      date: saleDate || new Date().toISOString().split("T")[0],
       type: "in", note: "Restored — sale deleted"
     });
   }

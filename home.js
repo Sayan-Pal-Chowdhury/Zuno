@@ -1081,7 +1081,7 @@ async function updateLinkedSaleStatus(saleId, newStatus) {
       await updateDoc(saleRef, { creditApplied: true, initialCreditPayment: initialPaymentAmount });
     }
   } else if (wasDelivered && !isNowDelivered) {
-    await revertInventory(saleData.items || []);
+    await revertInventory(saleData.items || [], saleData.date);
     if (saleData.customerOrderId) await markCustomerOrderReopened(saleData.customerOrderId, saleData);
     if (saleData.paymentMode === "credit") {
       await reverseCreditForSale({
@@ -1685,7 +1685,7 @@ function extractCustomer(text, mentions) {
     .replace(/\b(add|new|sale|sold|for|to|customer|inventory|stock)\b/g, " ")
     .replace(/\b\d+(?:\.\d+)?\s*(kg|g|piece)?\b/g, " ")
     .replace(/\b(ekta|akta|one)\b/g, " ")
-    .replace(/\b(cash|paid|upi|credit|baki|udhar|delivered|deliver|deliverd|delivred|pending|done|complete|completed|diyechi|diya|given)\b/g, " ")
+    .replace(/\b(cash|paid|upi|credit|baki|udhar|total|amount|bill|full|partial|partly|part|delivered|deliver|deliverd|delivred|pending|done|complete|completed|diyechi|diya|given)\b/g, " ")
     .replace(/@?\s*(?:rs\s*)?\d+(?:\.\d+)?/g, " ")
     .replace(/[@/-]+/g, " ")
     .replace(/\b\d{10}\b/g, " ")
@@ -1741,7 +1741,7 @@ function expectedLineTotal(item, product) {
   });
 }
 
-function applyTotalAmountToItems(items, mentions, totalAmount, force = false) {
+function applyTotalAmountToItems(items, mentions = [], totalAmount, force = false) {
   const total = Number(totalAmount || 0);
   if (!items.length || total <= 0) return false;
   const alreadyPriced = items.some(item => Number(item.price || 0) > 0 && Number(item.sellingPrice || 0) > 0);
@@ -2134,9 +2134,17 @@ function renderPriceQuestion(draft, ambiguities) {
     }
   });
   bubble.querySelector('[data-choice="total"]').addEventListener("click", () => {
-    ambiguity.item.price = ambiguity.value;
+    if (draft.items.length > 1) {
+      applyTotalAmountToItems(draft.items, [], ambiguity.value, true);
+    } else {
+      ambiguity.item.price = ambiguity.value;
+      const product = getSalePricing(ambiguity.item.product);
+      const qtyForRate = quantityInSellingUnit(ambiguity.item, product);
+      ambiguity.item.sellingPrice = qtyForRate > 0 ? Math.round((ambiguity.value / qtyForRate) * 100) / 100 : 0;
+      ambiguity.item.sellingUnit = normalizeSellingUnit(product?.sellingUnit || ambiguity.item.sellingUnit || ambiguity.item.unit, ambiguity.item.unit);
+    }
     bubble.remove();
-    if (remaining.length) {
+    if (remaining.length && draft.items.length <= 1) {
       renderPriceQuestion(draft, remaining);
     } else {
       renderSalePreview(draft);
@@ -2858,7 +2866,7 @@ async function deductInventory(items, saleDate = today()) {
   }
 }
 
-async function revertInventory(items) {
+async function revertInventory(items, saleDate = today()) {
   for (const item of items) {
     if (item.source === "food-menu") continue;
     const snap = await getDocs(userCol("inventory"));
@@ -2879,7 +2887,7 @@ async function revertInventory(items) {
       product: item.product,
       qty,
       unit: existing.unit || item.unit,
-      date: today(),
+      date: saleDate || today(),
       type: "in",
       note: "Restored from reopened order"
     });

@@ -363,7 +363,7 @@ window.updateStatus = async (id, newStatus) => {
       await updateDoc(saleRef, { creditApplied: true, initialCreditPayment: initialPaymentAmount });
     }
   } else if (wasDelivered && !isNowDelivered) {
-    await revertInventory(saleData.items);
+    await revertInventory(saleData.items, saleData.date);
     if (saleData.customerOrderId) await markCustomerOrderReopened(saleData.customerOrderId, saleData);
     if (saleData.paymentMode === "credit") {
       await reverseCreditForSale({
@@ -530,7 +530,7 @@ async function deductInventory(items, saleDate = new Date().toISOString().split(
 }
 
 /* ---------- REVERT INVENTORY ---------- */
-async function revertInventory(items) {
+async function revertInventory(items, saleDate = new Date().toISOString().split("T")[0]) {
   for (const item of items) {
     if (item.source === "food-menu") continue;
     const key  = item.product.toLowerCase();
@@ -546,7 +546,7 @@ async function revertInventory(items) {
     await updateDoc(userDoc("inventory", found.id), { qty: Number(found.qty) + qty });
     await addDoc(userCol("inventoryHistory"), {
       product: item.product, qty, unit: found.unit,
-      date: new Date().toISOString().split("T")[0], type: "in", note: "Restored — sale deleted"
+      date: saleDate || new Date().toISOString().split("T")[0], type: "in", note: "Restored — sale deleted"
     });
   }
 }

@@ -516,9 +516,9 @@ document.getElementById("mainBtn").onclick = async () => {
     if (!wasDelivered && isNowDelivered) {
       await deductInventory(items, date);
     } else if (wasDelivered && !isNowDelivered) {
-      await revertInventory(editOriginalData.items);
+      await revertInventory(editOriginalData.items, editOriginalData.date || date);
     } else if (wasDelivered && isNowDelivered) {
-      await revertInventory(editOriginalData.items);
+      await revertInventory(editOriginalData.items, editOriginalData.date || date);
       await deductInventory(items, date);
     }
 
@@ -597,7 +597,7 @@ async function deductInventory(items, saleDate = new Date().toISOString().split(
 }
 
 /* ---------- REVERT INVENTORY ---------- */
-async function revertInventory(items) {
+async function revertInventory(items, saleDate = new Date().toISOString().split("T")[0]) {
   for (const item of items) {
     if (item.source === "food-menu") continue;
     const key  = item.product.toLowerCase();
@@ -622,7 +622,7 @@ async function revertInventory(items) {
       product: item.product,
       qty:     revertQty,
       unit:    found.unit,
-      date:    new Date().toISOString().split("T")[0],
+      date:    saleDate || new Date().toISOString().split("T")[0],
       type:    "in",
       note:    "Restored — sale deleted"
     });
@@ -1257,7 +1257,7 @@ window.updateStatus = async (id, newStatus) => {
         await updateDoc(saleRef, { creditApplied: true, initialCreditPayment: initialPaymentAmount });
       }
   } else if (wasDelivered && !isNowDelivered) {
-    await revertInventory(saleData.items);
+    await revertInventory(saleData.items, saleData.date);
     if (saleData.customerOrderId) await markCustomerOrderReopened(saleData.customerOrderId, saleData);
     if (saleData.paymentMode === "credit") {
       await reverseCreditForSale({
@@ -1377,7 +1377,7 @@ window.deleteSale = async (id) => {
     const saleData = saleSnap.data();
 
     if (saleData.deliveryStatus === "delivered" && Array.isArray(saleData.items)) {
-      await revertInventory(saleData.items);
+      await revertInventory(saleData.items, saleData.date);
     }
 
     // reverse credit if was credit sale
