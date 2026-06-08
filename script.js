@@ -514,12 +514,12 @@ document.getElementById("mainBtn").onclick = async () => {
     await updateDoc(userDoc("sales", editId), data);
 
     if (!wasDelivered && isNowDelivered) {
-      await deductInventory(items);
+      await deductInventory(items, date);
     } else if (wasDelivered && !isNowDelivered) {
       await revertInventory(editOriginalData.items);
     } else if (wasDelivered && isNowDelivered) {
       await revertInventory(editOriginalData.items);
-      await deductInventory(items);
+      await deductInventory(items, date);
     }
 
     // apply new credit if credit sale
@@ -544,7 +544,7 @@ document.getElementById("mainBtn").onclick = async () => {
     const saleRef = await addDoc(userCol("sales"), data);
 
     if (data.deliveryStatus === "delivered") {
-      await deductInventory(items);
+      await deductInventory(items, date);
     }
 
     // auto-create credit entry
@@ -565,7 +565,7 @@ document.getElementById("mainBtn").onclick = async () => {
 };
 
 /* ---------- DEDUCT INVENTORY ---------- */
-async function deductInventory(items) {
+async function deductInventory(items, saleDate = new Date().toISOString().split("T")[0]) {
   for (const item of items) {
     if (item.source === "food-menu") continue;
     const key  = item.product.toLowerCase();
@@ -589,7 +589,7 @@ async function deductInventory(items) {
       product: item.product,
       qty:     item.qty,
       unit:    item.unit,
-      date:    new Date().toISOString().split("T")[0],
+      date:    saleDate || new Date().toISOString().split("T")[0],
       type:    "out",
       note:    "Auto-deducted from sale"
     });
@@ -1182,7 +1182,7 @@ window.completeCustomerOrder = async (orderId) => {
     customerOrderId: orderId
   });
 
-  await deductInventory(items);
+  await deductInventory(items, date);
   await updateDoc(orderRef, {
     status: "delivered",
     paymentStatus: paymentMode === "cash" ? "cod_collected" : order.paymentStatus,
@@ -1240,7 +1240,7 @@ window.updateStatus = async (id, newStatus) => {
   await updateDoc(saleRef, { deliveryStatus: newStatus });
 
     if (!wasDelivered && isNowDelivered) {
-      await deductInventory(saleData.items);
+      await deductInventory(saleData.items, saleData.date);
       if (saleData.customerOrderId) await markCustomerOrderDelivered(saleData.customerOrderId, saleData);
       if (saleData.paymentMode === "credit" && saleData.creditApplied !== true && Number(saleData.totalAmount || 0) > 0) {
         const initialPaymentAmount = Number(saleData.amountPaid || 0);

@@ -295,6 +295,14 @@ function money(value) {
   return `Rs ${Math.round(Number(value || 0)).toLocaleString("en-IN")}`;
 }
 
+function moneyRate(value) {
+  const amount = Number(value || 0);
+  const formatted = Number.isInteger(amount)
+    ? amount.toLocaleString("en-IN")
+    : amount.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  return `Rs ${formatted}`;
+}
+
 function getDayPart() {
   const hour = new Date().getHours();
   if (hour < 12) return "morning";
@@ -321,11 +329,11 @@ function normalize(value = "") {
 }
 
 function expandCompactQuantities(text, catalog) {
-  const ignored = new Set(["st", "nd", "rd", "th", "kg", "g", "gm", "rs", "cash", "upi", "credit", "pending", "delivered", "deliver"]);
+  const ignored = new Set(["st", "nd", "rd", "th", "kg", "g", "gm", "piece", "rs", "cash", "upi", "credit", "pending", "delivered", "deliver"]);
   const withUnit = text.replace(/\b(\d+(?:\.\d+)?)(kg|g|piece)([a-z][a-z0-9_-]*)\b/g, (token, qty, unit, word) => {
     const canonical = BUILTIN_PRODUCT_ALIASES[word] || learnedAliases[word] || word;
     const known = findCatalogMatches(canonical, catalog).length > 0;
-    return known ? `${qty}${unit} ${word}` : token;
+    return known ? `${qty}${normalizeUnit(unit)} ${word}` : token;
   });
   return withUnit.replace(/\b(\d+(?:\.\d+)?)([a-z][a-z0-9_-]*)\b/g, (token, qty, word) => {
     if (ignored.has(word)) return token;
@@ -458,12 +466,13 @@ function renderStoredChats() {
   chatThread.querySelectorAll(".bubble[data-history]").forEach(node => node.remove());
   const welcome = chatThread.querySelector(".bubble.assistant:not([data-history])");
   const recent = chatHistory.slice(-visibleHistoryCount);
+  const firstLiveBubble = chatThread.querySelector(".bubble:not([data-history])");
   recent.forEach(entry => {
     const bubble = document.createElement("article");
     bubble.className = `bubble ${entry.role} ${entry.extraClass || ""}`.trim();
     bubble.dataset.history = "1";
     bubble.innerHTML = entry.html;
-    chatThread.appendChild(bubble);
+    chatThread.insertBefore(bubble, firstLiveBubble);
   });
   if (loadOlderBtn) loadOlderBtn.hidden = chatHistory.length <= visibleHistoryCount;
   scrollChat();
@@ -482,6 +491,16 @@ function scrollChat() {
   chatThread.scrollTop = chatThread.scrollHeight;
 }
 
+function keepBubbleVisible(bubble) {
+  if (!bubble) return;
+  [0, 120, 320].forEach(delay => {
+    setTimeout(() => {
+      bubble.scrollIntoView({ block: "end", inline: "nearest" });
+      scrollChat();
+    }, delay);
+  });
+}
+
 function appendBubble(role, html, extraClass = "", options = {}) {
   const bubble = document.createElement("article");
   bubble.className = `bubble ${role} ${extraClass}`.trim();
@@ -490,6 +509,7 @@ function appendBubble(role, html, extraClass = "", options = {}) {
   const shouldPersist = options.persist !== false && !html.includes("<button") && !html.includes("preview-card");
   if (shouldPersist) rememberChat(role, html, extraClass);
   scrollChat();
+  keepBubbleVisible(bubble);
   return bubble;
 }
 
@@ -984,7 +1004,7 @@ async function completeCustomerOrder(orderId) {
     customerOrderId: orderId
   });
 
-  await deductInventory(items);
+  await deductInventory(items, date);
   await updateDoc(orderRef, {
     status: "delivered",
     paymentStatus: paymentMode === "cash" ? "cod_collected" : order.paymentStatus,
@@ -1044,7 +1064,7 @@ async function updateLinkedSaleStatus(saleId, newStatus) {
   await updateDoc(saleRef, { deliveryStatus: newStatus });
 
   if (!wasDelivered && isNowDelivered) {
-    await deductInventory(saleData.items || []);
+    await deductInventory(saleData.items || [], saleData.date);
     if (saleData.customerOrderId) await markCustomerOrderDelivered(saleData.customerOrderId, saleData);
     if (saleData.paymentMode === "credit" && saleData.creditApplied !== true && Number(saleData.totalAmount || 0) > 0) {
       const initialPaymentAmount = Number(saleData.amountPaid || 0);
@@ -1742,6 +1762,7 @@ function applyTotalAmountToItems(items, mentions, totalAmount, force = false) {
     const qtyForRate = quantityInSellingUnit(item, product);
     item.price = price;
     item.sellingPrice = qtyForRate > 0 ? Math.round((price / qtyForRate) * 100) / 100 : 0;
+    item.sellingUnit = normalizeSellingUnit(product?.sellingUnit || item.sellingUnit || item.unit, item.unit);
   });
   return true;
 }
@@ -1818,7 +1839,7 @@ async function handleSaleCommand(original) {
     return item;
   }).filter(Boolean);
 
-  if (saleTotalAmount > 0 && !hasExplicitRate && items.length > 1) {
+  if (saleTotalAmount > 0 && !hasExplicitRate && items.length >= 1) {
     applyTotalAmountToItems(items, mentions, saleTotalAmount, true);
     missingPrices.length = 0;
     ambiguities.length = 0;
@@ -2169,7 +2190,7 @@ function renderSalePreview(draft) {
       <div class="preview-title">Sale found</div>
       ${draft.customer ? `<div class="preview-line"><span>Customer</span><strong>${escapeHtml(draft.customer)}${draft.phone ? ` - ${escapeHtml(draft.phone)}` : ""}</strong></div>` : ""}
       <div class="preview-items">
-        ${draft.items.map(item => `<div class="preview-line"><span>${escapeHtml(item.product)} - ${item.qty} ${escapeHtml(item.unit)}${item.sellingPrice ? ` x ${money(item.sellingPrice)}` : ""}</span><strong>${money(item.price)}</strong></div>`).join("")}
+        ${draft.items.map(item => `<div class="preview-line"><span>${escapeHtml(item.product)} - ${item.qty} ${escapeHtml(item.unit)}${item.sellingPrice ? ` x ${moneyRate(item.sellingPrice)}` : ""}</span><strong>${money(item.price)}</strong></div>`).join("")}
       </div>
       <div class="preview-line"><span>Total</span><strong>${money(total)}</strong></div>
       <div class="preview-line"><span>Payment</span><strong>${escapeHtml(draft.paymentMode.toUpperCase())}${draft.paymentMode === "credit" ? ` - Due ${money(due)}` : ""}</strong></div>
@@ -2214,7 +2235,7 @@ function renderSaleEditForm(draft, bubble) {
       </div>
       <div class="edit-items">
         ${draft.items.map((item, index) => `
-          <div class="edit-item" data-edit-item="${index}">
+          <div class="edit-item" data-edit-item="${index}" data-edit-selling-unit="${escapeHtml(item.sellingUnit || item.unit)}">
             <input class="optional-info-input" data-edit-product value="${escapeHtml(item.product)}" aria-label="Product">
             <input class="optional-info-input" data-edit-qty type="number" min="0" step="any" value="${Number(item.qty || 0)}" aria-label="Quantity">
             <select class="optional-info-input" data-edit-unit aria-label="Unit">
@@ -2234,6 +2255,35 @@ function renderSaleEditForm(draft, bubble) {
       </div>
     </div>
   `;
+  bubble.querySelectorAll("[data-edit-item]").forEach(row => {
+    const qtyInput = row.querySelector("[data-edit-qty]");
+    const unitInput = row.querySelector("[data-edit-unit]");
+    const rateInput = row.querySelector("[data-edit-rate]");
+    const totalInput = row.querySelector("[data-edit-total]");
+    const updateTotalFromRate = () => {
+      const qty = Number(qtyInput.value || 0);
+      const unit = normalizeUnit(unitInput.value);
+      const sellingUnit = normalizeSellingUnit(row.dataset.editSellingUnit || unit, unit);
+      const rate = Number(rateInput.value || 0);
+      if (qty > 0 && rate > 0) {
+        totalInput.value = Math.round(calculateSellingLineTotal({ qty, unit, price: rate, sellingUnit }) * 100) / 100;
+      }
+    };
+    const updateRateFromTotal = () => {
+      const qty = Number(qtyInput.value || 0);
+      const total = Number(totalInput.value || 0);
+      if (qty > 0 && total > 0) {
+        const unit = normalizeUnit(unitInput.value);
+        const sellingUnit = normalizeSellingUnit(row.dataset.editSellingUnit || unit, unit);
+        const qtyInRateUnit = calculateSellingLineTotal({ qty, unit, price: 1, sellingUnit });
+        rateInput.value = Math.round((total / (qtyInRateUnit || qty)) * 100) / 100;
+      }
+    };
+    qtyInput.addEventListener("input", updateTotalFromRate);
+    unitInput.addEventListener("change", updateTotalFromRate);
+    rateInput.addEventListener("input", updateTotalFromRate);
+    totalInput.addEventListener("input", updateRateFromTotal);
+  });
   bubble.querySelector("[data-apply-edit]").addEventListener("click", () => {
     const paymentMode = bubble.querySelector("[data-edit-payment]").value;
     const amountPaid = paymentMode === "credit" ? Number(bubble.querySelector("[data-edit-paid]").value || 0) : 0;
@@ -2248,6 +2298,7 @@ function renderSaleEditForm(draft, bubble) {
       const product = row.querySelector("[data-edit-product]").value.trim();
       const qty = Number(row.querySelector("[data-edit-qty]").value || 0);
       const unit = normalizeUnit(row.querySelector("[data-edit-unit]").value);
+      const sellingUnit = normalizeSellingUnit(row.dataset.editSellingUnit || unit, unit);
       const sellingPrice = Number(row.querySelector("[data-edit-rate]").value || 0);
       const total = Number(row.querySelector("[data-edit-total]").value || 0);
       return {
@@ -2255,7 +2306,8 @@ function renderSaleEditForm(draft, bubble) {
         qty,
         unit,
         sellingPrice,
-        price: total > 0 ? total : calculateSellingLineTotal({ qty, unit, price: sellingPrice, sellingUnit: unit })
+        sellingUnit,
+        price: total > 0 ? total : calculateSellingLineTotal({ qty, unit, price: sellingPrice, sellingUnit })
       };
     }).filter(item => item.product && item.qty > 0);
     renderSalePreview(draft);
@@ -2330,7 +2382,7 @@ function handleInventoryCommand(original) {
   if (!productName) {
     const start = quantityMatch.index + quantityMatch[0].length;
     productName = text.slice(start)
-      .split(/\b(?:bought|purchase|cost|sell|selling|vendor|paid|at)\b|@/)[0]
+      .split(/\b(?:bought|purchase|cost|sell|selling|vendor|paid|payment|fully|done|for|at)\b|@/)[0]
       .replace(/\b(for|rs)\b/g, "")
       .trim();
     if (BUILTIN_PRODUCT_ALIASES[productName] && productCosts[BUILTIN_PRODUCT_ALIASES[productName]]) {
@@ -2344,7 +2396,8 @@ function handleInventoryCommand(original) {
     appendAssistant("Which product are you adding to inventory?");
     return;
   }
-  const purchaseMatch = text.match(/\b(?:bought\s*(?:for)?|purchase|cost)\s*(?:rs\s*)?(\d+(?:\.\d+)?)/);
+  const purchaseMatch = text.match(/\b(?:bought\s*(?:for)?|purchase|cost|for)\s*(?:rs\s*)?(\d+(?:\.\d+)?)(?:\s*\/-)?/)
+    || text.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*\/-(?=\s|$)/);
   const sellingMatch = text.match(/\b(?:sell|selling)(?:\s*(?:at|price))?\s*@?\s*(?:rs\s*)?(\d+(?:\.\d+)?)/);
   const vendorMatch = text.match(/\b(?:from|vendor)\s+(.+?)(?=\s+(?:phone|mobile|paid|pay|sell|selling|bought|purchase|cost|note)\b|$)/);
   const vendorPhoneMatch = text.match(/\b(?:phone|mobile)\s*(\d{10})\b/);
@@ -2355,7 +2408,7 @@ function handleInventoryCommand(original) {
     product: productName,
     qty: Number(quantityMatch[1]),
     unit: normalizeUnit(quantityMatch[2]),
-    date: today(),
+    date: extractSaleDate(text) || today(),
     purchaseCost: purchaseMatch ? Number(purchaseMatch[1]) : 0,
     sellingPrice: sellingMatch ? Number(sellingMatch[1]) : 0,
     sellingUnit: normalizeUnit(quantityMatch[2]),
@@ -2363,7 +2416,11 @@ function handleInventoryCommand(original) {
     note: "",
     vendorName: vendorMatch ? titleCase(vendorMatch[1].trim()) : "",
     vendorPhone: vendorPhoneMatch ? vendorPhoneMatch[1] : "",
-    vendorAmountPaid: vendorPaymentMatch ? Number(vendorPaymentMatch[1]) : 0
+    vendorAmountPaid: vendorPaymentMatch
+      ? Number(vendorPaymentMatch[1])
+      : /\b(payment\s+)?(fully|full|complete|completed|done)\b/.test(text)
+        ? (purchaseMatch ? Number(purchaseMatch[1]) : 0)
+        : 0
   };
   if (draft.vendorName && !draft.purchaseCost) {
     pendingFollowup = { type: "inventory-purchase", draft };
@@ -2576,7 +2633,7 @@ async function saveSaleDraft(draft, bubble) {
     };
     const saleRef = await addDoc(userCol("sales"), sale);
     if (sale.deliveryStatus === "delivered") {
-      await deductInventory(items);
+      await deductInventory(items, sale.date);
       if (sale.paymentMode === "credit" && sale.originalCreditAmount > 0) {
         await handleCreditFromSale({
           userId: currentUserId,
@@ -2775,7 +2832,7 @@ async function getNextOrderNumber() {
   return `ORD-${String(numbers.length ? Math.max(...numbers) + 1 : 1).padStart(3, "0")}`;
 }
 
-async function deductInventory(items) {
+async function deductInventory(items, saleDate = today()) {
   for (const item of items) {
     if (item.source === "food-menu") continue;
     const snap = await getDocs(userCol("inventory"));
@@ -2794,7 +2851,7 @@ async function deductInventory(items) {
       product: item.product,
       qty: item.qty,
       unit: item.unit,
-      date: today(),
+      date: saleDate || today(),
       type: "out",
       note: "Auto-deducted from sale"
     });

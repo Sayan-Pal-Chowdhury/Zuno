@@ -346,7 +346,7 @@ window.updateStatus = async (id, newStatus) => {
   // import deduct/revert from editSaleModal indirectly via re-save isn't needed
   // status change inventory handled by editSaleModal pattern
   if (!wasDelivered && isNowDelivered) {
-    await deductInventory(saleData.items);
+    await deductInventory(saleData.items, saleData.date);
     if (saleData.customerOrderId) await markCustomerOrderDelivered(saleData.customerOrderId, saleData);
     if (saleData.paymentMode === "credit" && saleData.creditApplied !== true && Number(saleData.totalAmount || 0) > 0) {
       const initialPaymentAmount = Number(saleData.amountPaid || 0);
@@ -508,7 +508,7 @@ window.saveSaleCreditEdit = async () => {
 };
 
 /* ---------- DEDUCT INVENTORY ---------- */
-async function deductInventory(items) {
+async function deductInventory(items, saleDate = new Date().toISOString().split("T")[0]) {
   for (const item of items) {
     if (item.source === "food-menu") continue;
     const key  = item.product.toLowerCase();
@@ -524,7 +524,7 @@ async function deductInventory(items) {
     await updateDoc(userDoc("inventory", found.id), { qty: Math.max(0, Number(found.qty) - qty) });
     await addDoc(userCol("inventoryHistory"), {
       product: item.product, qty: item.qty, unit: item.unit,
-      date: new Date().toISOString().split("T")[0], type: "out", note: "Auto-deducted from sale"
+      date: saleDate || new Date().toISOString().split("T")[0], type: "out", note: "Auto-deducted from sale"
     });
   }
 }

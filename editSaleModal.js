@@ -369,14 +369,14 @@ window.saveEditSale = async () => {
     await updateDoc(userDoc("sales", _editId), data);
 
     if (!wasDelivered && isNowDelivered) {
-      await deductInventory(items);
+      await deductInventory(items, data.date);
       if (_editOriginal?.customerOrderId) await markCustomerOrderDelivered(_editOriginal.customerOrderId, data);
     } else if (wasDelivered && !isNowDelivered) {
       await revertInventory(_editOriginal.items);
       if (_editOriginal?.customerOrderId) await markCustomerOrderReopened(_editOriginal.customerOrderId, _editOriginal);
     } else if (wasDelivered && isNowDelivered) {
       await revertInventory(_editOriginal.items);
-      await deductInventory(items);
+      await deductInventory(items, data.date);
     }
 
     if (paymentMode === "credit" && data.originalCreditAmount > 0 && data.deliveryStatus === "delivered") {
@@ -395,7 +395,7 @@ window.saveEditSale = async () => {
     const saleRef = await addDoc(userCol("sales"), data);
 
     if (deliveryStatus === "delivered") {
-      await deductInventory(items);
+      await deductInventory(items, data.date);
     }
 
     if (paymentMode === "credit" && data.originalCreditAmount > 0 && deliveryStatus === "delivered") {
@@ -468,7 +468,7 @@ async function markCustomerOrderReopened(orderId, saleData) {
 }
 
 /* ---------- DEDUCT INVENTORY ---------- */
-async function deductInventory(items) {
+async function deductInventory(items, saleDate = new Date().toISOString().split("T")[0]) {
   for (const item of items) {
     const key  = item.product.toLowerCase();
     const snap = await getDocs(userCol("inventory"));
@@ -485,7 +485,7 @@ async function deductInventory(items) {
     await updateDoc(userDoc("inventory", found.id), { qty: Math.max(0, Number(found.qty) - qty) });
     await addDoc(userCol("inventoryHistory"), {
       product: item.product, qty: item.qty, unit: item.unit,
-      date: new Date().toISOString().split("T")[0],
+      date: saleDate || new Date().toISOString().split("T")[0],
       type: "out", note: "Auto-deducted from sale"
     });
   }
