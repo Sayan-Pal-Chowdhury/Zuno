@@ -66,6 +66,12 @@ function inventoryNeedsUpdate(existing = {}, update = {}) {
   return Object.keys(update).some(key => !sameInventoryValue(existing[key], update[key]));
 }
 
+function payableVendorName(product, vendorName, purchaseCost, vendorAmountPaid) {
+  const name = String(vendorName || "").trim();
+  if (name) return name;
+  return Number(vendorAmountPaid || 0) < Number(purchaseCost || 0) ? String(product || "").trim() : "";
+}
+
 function historyTimestamp(entry = {}) {
   const raw = entry.createdAt || entry.editedAt;
   if (raw?.toMillis) return raw.toMillis();
@@ -371,7 +377,8 @@ window.addStock = async () => {
 
   let cashAdjustmentId = "";
   let vendorPaymentId = "";
-  if (!vendorName && purchaseCost > 0) {
+  const financeVendorName = payableVendorName(product, vendorName, purchaseCost, vendorAmountPaid);
+  if (!financeVendorName && purchaseCost > 0) {
     const cashRef = await addDoc(userCol("cashAdjustments"), {
       type: "inventory_purchase",
       amount: purchaseCost,
@@ -381,9 +388,9 @@ window.addStock = async () => {
     });
     cashAdjustmentId = cashRef.id;
   }
-  if (vendorName && purchaseCost > 0) {
+  if (financeVendorName && purchaseCost > 0) {
     const vendorRef = await addDoc(userCol("vendorPayments"), {
-      vendorName,
+      vendorName: financeVendorName,
       vendorPhone: vendorPhone || "",
       product,
       totalCost: purchaseCost,
@@ -728,10 +735,11 @@ async function reconcilePurchaseFinance(oldEntry, newEntry) {
   const oldVendor = await findPurchaseFinanceDoc(oldEntry, "vendorPayments");
   let cashAdjustmentId = "";
   let vendorPaymentId = "";
-  if (newEntry.vendorName && newEntry.purchaseCost > 0) {
+  const financeVendorName = payableVendorName(newEntry.product, newEntry.vendorName, newEntry.purchaseCost, newEntry.vendorAmountPaid);
+  if (financeVendorName && newEntry.purchaseCost > 0) {
     if (oldCash) await deleteDoc(userDoc("cashAdjustments", oldCash.id));
     const vendorData = {
-      vendorName: newEntry.vendorName,
+      vendorName: financeVendorName,
       vendorPhone: newEntry.vendorPhone || "",
       product: newEntry.product,
       totalCost: newEntry.purchaseCost,
@@ -775,7 +783,10 @@ async function rebuildProductFromHistory(productName) {
     historyDocs.filter(entry => normalizeProduct(entry.product) === key)
   );
   const lastDeleteIndex = productHistory.map(entry => entry.type).lastIndexOf("deleted");
-  const activeHistory = lastDeleteIndex >= 0 ? productHistory.slice(lastDeleteIndex + 1) : productHistory;
+  const lastDelete = lastDeleteIndex >= 0 ? productHistory[lastDeleteIndex] : null;
+  const activeHistory = lastDelete
+    ? productHistory.filter(entry => entry.type !== "deleted" && String(entry.date || "") > String(lastDelete.date || ""))
+    : productHistory.filter(entry => entry.type !== "deleted");
   const purchases = activeHistory.filter(entry => isPurchaseEntry(entry));
   const stockIns = activeHistory.filter(entry => isStockInEntry(entry));
   const existing = inventoryMap[key];

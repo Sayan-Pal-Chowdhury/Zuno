@@ -328,6 +328,12 @@ function normalize(value = "") {
     .trim();
 }
 
+function payableVendorName(product, vendorName, purchaseCost, vendorAmountPaid) {
+  const name = String(vendorName || "").trim();
+  if (name) return name;
+  return Number(vendorAmountPaid || 0) < Number(purchaseCost || 0) ? String(product || "").trim() : "";
+}
+
 function expandCompactQuantities(text, catalog) {
   const ignored = new Set(["st", "nd", "rd", "th", "kg", "g", "gm", "piece", "rs", "cash", "upi", "credit", "pending", "delivered", "deliver"]);
   const withUnit = text.replace(/\b(\d+(?:\.\d+)?)(kg|g|piece)([a-z][a-z0-9_-]*)\b/g, (token, qty, unit, word) => {
@@ -2747,7 +2753,8 @@ async function saveInventoryDraft(draft, bubble) {
 
     let cashAdjustmentId = "";
     let vendorPaymentId = "";
-    if (!draft.vendorName && draft.purchaseCost > 0) {
+    const financeVendorName = payableVendorName(draft.product, draft.vendorName, draft.purchaseCost, draft.vendorAmountPaid);
+    if (!financeVendorName && draft.purchaseCost > 0) {
       const cashRef = await addDoc(userCol("cashAdjustments"), {
         type: "inventory_purchase",
         amount: draft.purchaseCost,
@@ -2757,9 +2764,9 @@ async function saveInventoryDraft(draft, bubble) {
       });
       cashAdjustmentId = cashRef.id;
     }
-    if (draft.vendorName && draft.purchaseCost > 0) {
+    if (financeVendorName && draft.purchaseCost > 0) {
       const vendorRef = await addDoc(userCol("vendorPayments"), {
-        vendorName: draft.vendorName,
+        vendorName: financeVendorName,
         vendorPhone: draft.vendorPhone || "",
         product: draft.product,
         totalCost: draft.purchaseCost,
