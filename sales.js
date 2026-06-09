@@ -524,7 +524,7 @@ async function deductInventory(items, saleDate = new Date().toISOString().split(
     await updateDoc(userDoc("inventory", found.id), { qty: Math.max(0, Number(found.qty) - qty) });
     await addDoc(userCol("inventoryHistory"), {
       product: item.product, qty: item.qty, unit: item.unit,
-      date: saleDate || new Date().toISOString().split("T")[0], type: "out", note: "Auto-deducted from sale"
+      date: saleDate || new Date().toISOString().split("T")[0], type: "out", note: "Auto-deducted from sale", createdAt: serverTimestamp()
     });
   }
 }
@@ -546,7 +546,7 @@ async function revertInventory(items, saleDate = new Date().toISOString().split(
     await updateDoc(userDoc("inventory", found.id), { qty: Number(found.qty) + qty });
     await addDoc(userCol("inventoryHistory"), {
       product: item.product, qty, unit: found.unit,
-      date: saleDate || new Date().toISOString().split("T")[0], type: "in", note: "Restored — sale deleted"
+      date: saleDate || new Date().toISOString().split("T")[0], type: "in", note: "Restored — sale deleted", createdAt: serverTimestamp()
     });
   }
 }

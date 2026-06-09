@@ -2725,6 +2725,26 @@ async function saveInventoryDraft(draft, bubble) {
         await updateProductCost(draft.product, costPerUnit > 0 ? costPerUnit : null, storageUnit, draft.sellingPrice, draft.sellingUnit);
       }
     }
+    const historyRef = await addDoc(userCol("inventoryHistory"), {
+      product: draft.product,
+      qty: draft.qty,
+      unit: draft.unit,
+      date: draft.date,
+      type: "in",
+      costPerUnit: draft.purchaseCost > 0 ? draft.purchaseCost / draft.qty : 0,
+      purchaseCost: draft.purchaseCost,
+      sellingPrice: draft.sellingPrice,
+      sellingUnit: draft.sellingUnit,
+      alertThreshold: draft.alertThreshold,
+      vendorName: draft.vendorName,
+      vendorPhone: draft.vendorPhone,
+      vendorAmountPaid: draft.vendorAmountPaid,
+      cashAdjustmentId: "",
+      vendorPaymentId: "",
+      note: "Stock added from chat",
+      createdAt: serverTimestamp()
+    });
+
     let cashAdjustmentId = "";
     let vendorPaymentId = "";
     if (!draft.vendorName && draft.purchaseCost > 0) {
@@ -2750,25 +2770,12 @@ async function saveInventoryDraft(draft, bubble) {
       });
       vendorPaymentId = vendorRef.id;
     }
-    await addDoc(userCol("inventoryHistory"), {
-      product: draft.product,
-      qty: draft.qty,
-      unit: draft.unit,
-      date: draft.date,
-      type: "in",
-      costPerUnit: draft.purchaseCost > 0 ? draft.purchaseCost / draft.qty : 0,
-      purchaseCost: draft.purchaseCost,
-      sellingPrice: draft.sellingPrice,
-      sellingUnit: draft.sellingUnit,
-      alertThreshold: draft.alertThreshold,
-      vendorName: draft.vendorName,
-      vendorPhone: draft.vendorPhone,
-      vendorAmountPaid: draft.vendorAmountPaid,
-      cashAdjustmentId,
-      vendorPaymentId,
-      note: "Stock added from chat",
-      createdAt: serverTimestamp()
-    });
+    if (cashAdjustmentId || vendorPaymentId) {
+      await updateDoc(userDoc("inventoryHistory", historyRef.id), {
+        cashAdjustmentId,
+        vendorPaymentId
+      });
+    }
     bubble.classList.add("saved");
     bubble.innerHTML = `<p>Added ${escapeHtml(draft.product)} - ${draft.qty} ${escapeHtml(draft.unit)} to inventory.</p>`;
     showToast("Inventory updated.");
@@ -2861,7 +2868,8 @@ async function deductInventory(items, saleDate = today()) {
       unit: item.unit,
       date: saleDate || today(),
       type: "out",
-      note: "Auto-deducted from sale"
+      note: "Auto-deducted from sale",
+      createdAt: serverTimestamp()
     });
   }
 }
@@ -2889,7 +2897,8 @@ async function revertInventory(items, saleDate = today()) {
       unit: existing.unit || item.unit,
       date: saleDate || today(),
       type: "in",
-      note: "Restored from reopened order"
+      note: "Restored from reopened order",
+      createdAt: serverTimestamp()
     });
   }
 }

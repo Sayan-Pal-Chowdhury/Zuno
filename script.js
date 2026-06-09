@@ -591,7 +591,8 @@ async function deductInventory(items, saleDate = new Date().toISOString().split(
       unit:    item.unit,
       date:    saleDate || new Date().toISOString().split("T")[0],
       type:    "out",
-      note:    "Auto-deducted from sale"
+      note:    "Auto-deducted from sale",
+      createdAt: serverTimestamp()
     });
   }
 }
@@ -624,6 +625,7 @@ async function revertInventory(items, saleDate = new Date().toISOString().split(
       unit:    found.unit,
       date:    saleDate || new Date().toISOString().split("T")[0],
       type:    "in",
+      createdAt: serverTimestamp(),
       note:    "Restored — sale deleted"
     });
   }

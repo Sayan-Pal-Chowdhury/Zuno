@@ -66,6 +66,33 @@ function inventoryNeedsUpdate(existing = {}, update = {}) {
   return Object.keys(update).some(key => !sameInventoryValue(existing[key], update[key]));
 }
 
+function historyTimestamp(entry = {}) {
+  const raw = entry.createdAt || entry.editedAt;
+  if (raw?.toMillis) return raw.toMillis();
+  if (Number.isFinite(raw?.seconds)) {
+    return raw.seconds * 1000 + Math.floor((raw.nanoseconds || 0) / 1000000);
+  }
+  if (Number.isFinite(raw)) return Number(raw);
+  return 0;
+}
+
+function historyTypeRank(entry = {}) {
+  if (entry.type === "in") return 1;
+  if (entry.type === "out") return 2;
+  if (entry.type === "deleted") return 3;
+  return 4;
+}
+
+function sortHistoryChronologically(entries = []) {
+  return [...entries].sort((a, b) => {
+    const dateCompare = String(a.date || "").localeCompare(String(b.date || ""));
+    if (dateCompare) return dateCompare;
+    const timeCompare = historyTimestamp(a) - historyTimestamp(b);
+    if (timeCompare) return timeCompare;
+    return historyTypeRank(a) - historyTypeRank(b);
+  });
+}
+
 function scheduleInventoryReconcile() {
   clearTimeout(reconcileTimer);
   reconcileTimer = setTimeout(reconcileInventoryFromHistory, 500);
@@ -325,6 +352,23 @@ window.addStock = async () => {
     }
   }
 
+  const historyRef = await addDoc(userCol("inventoryHistory"), {
+    product, qty, unit, date,
+    type: "in",
+    costPerUnit,
+    purchaseCost,
+    sellingPrice,
+    sellingUnit,
+    alertThreshold,
+    vendorName,
+    vendorPhone,
+    vendorAmountPaid,
+    cashAdjustmentId: "",
+    vendorPaymentId: "",
+    note: note || "Stock added",
+    createdAt: serverTimestamp()
+  });
+
   let cashAdjustmentId = "";
   let vendorPaymentId = "";
   if (!vendorName && purchaseCost > 0) {
@@ -350,22 +394,12 @@ window.addStock = async () => {
     });
     vendorPaymentId = vendorRef.id;
   }
-  await addDoc(userCol("inventoryHistory"), {
-    product, qty, unit, date,
-    type: "in",
-    costPerUnit,
-    purchaseCost,
-    sellingPrice,
-    sellingUnit,
-    alertThreshold,
-    vendorName,
-    vendorPhone,
-    vendorAmountPaid,
-    cashAdjustmentId,
-    vendorPaymentId,
-    note: note || "Stock added",
-    createdAt: serverTimestamp()
-  });
+  if (cashAdjustmentId || vendorPaymentId) {
+    await updateDoc(userDoc("inventoryHistory", historyRef.id), {
+      cashAdjustmentId,
+      vendorPaymentId
+    });
+  }
 
   document.getElementById("stockProduct").value      = "";
   document.getElementById("stockQty").value          = "";
@@ -737,9 +771,11 @@ async function reconcilePurchaseFinance(oldEntry, newEntry) {
 async function rebuildProductFromHistory(productName) {
   const key = normalizeProduct(productName);
   if (!key) return;
-  const productHistory = historyDocs.filter(entry => normalizeProduct(entry.product) === key);
-  const lastDeleteIndex = productHistory.findIndex(entry => entry.type === "deleted");
-  const activeHistory = lastDeleteIndex >= 0 ? productHistory.slice(0, lastDeleteIndex) : productHistory;
+  const productHistory = sortHistoryChronologically(
+    historyDocs.filter(entry => normalizeProduct(entry.product) === key)
+  );
+  const lastDeleteIndex = productHistory.map(entry => entry.type).lastIndexOf("deleted");
+  const activeHistory = lastDeleteIndex >= 0 ? productHistory.slice(lastDeleteIndex + 1) : productHistory;
   const purchases = activeHistory.filter(entry => isPurchaseEntry(entry));
   const stockIns = activeHistory.filter(entry => isStockInEntry(entry));
   const existing = inventoryMap[key];
@@ -761,7 +797,7 @@ async function rebuildProductFromHistory(productName) {
   const soldQty = activeHistory
     .filter(entry => entry.type === "out")
     .reduce((sum, entry) => sum + convertQty(entry.qty, entry.unit, storageUnit), 0);
-  const sorted = [...purchases].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+  const sorted = sortHistoryChronologically(purchases);
   const latest = sorted[sorted.length - 1] || stockIns[stockIns.length - 1] || existing || {};
   const update = {
     product: latest.product,
@@ -798,7 +834,7 @@ async function reconcileInventoryFromHistory() {
   try {
     const productNames = new Set();
     historyDocs.forEach(entry => {
-      if (isStockInEntry(entry) || entry.type === "out") {
+      if (isStockInEntry(entry) || entry.type === "out" || entry.type === "deleted") {
         const product = String(entry.product || "").trim();
         if (product) productNames.add(product);
       }
@@ -891,7 +927,8 @@ window.deleteStock = async (key) => {
     totalInvested:     item.totalInvested,
     firstPurchaseDate: item.firstPurchaseDate,
     lastPurchaseDate:  item.lastPurchaseDate,
-    note:              "Stock deleted"
+    note:              "Stock deleted",
+    createdAt:         serverTimestamp()
   });
 
   await deleteDoc(userDoc("inventory", item.id));
@@ -943,7 +980,8 @@ window.restoreStock = async (historyId) => {
     date:        new Date().toISOString().split("T")[0],
     type:        "in",
     costPerUnit: entry.weightedAvgCost || 0,
-    note:        "Restored from deletion"
+    note:        "Restored from deletion",
+    createdAt:   serverTimestamp()
   });
 
   showMsg(`${entry.product} restored!`);
