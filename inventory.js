@@ -55,6 +55,10 @@ function isStockInEntry(entry = {}) {
   return isPurchaseEntry(entry) || isSaleRestoreEntry(entry);
 }
 
+function isManualRepairEntry(entry = {}) {
+  return entry.manualRepair === true || /manual repair|stock correction|repair after delete/i.test(entry.note || "");
+}
+
 function sameInventoryValue(a, b) {
   const numA = Number(a || 0);
   const numB = Number(b || 0);
@@ -784,9 +788,29 @@ async function rebuildProductFromHistory(productName) {
   );
   const lastDeleteIndex = productHistory.map(entry => entry.type).lastIndexOf("deleted");
   const lastDelete = lastDeleteIndex >= 0 ? productHistory[lastDeleteIndex] : null;
-  const activeHistory = lastDelete
-    ? productHistory.filter(entry => entry.type !== "deleted" && String(entry.date || "") > String(lastDelete.date || ""))
-    : productHistory.filter(entry => entry.type !== "deleted");
+  let activeHistory = productHistory.filter(entry => entry.type !== "deleted");
+  if (lastDelete) {
+    const laterHistory = activeHistory.filter(entry => String(entry.date || "") > String(lastDelete.date || ""));
+    const repairPurchases = activeHistory.filter(entry =>
+      isPurchaseEntry(entry)
+      && isManualRepairEntry(entry)
+      && historyTimestamp(entry) > historyTimestamp(lastDelete)
+    );
+    const repairStartDate = repairPurchases
+      .map(entry => String(entry.date || ""))
+      .filter(Boolean)
+      .sort()[0];
+    const repairedMovement = repairStartDate
+      ? activeHistory.filter(entry =>
+        !isPurchaseEntry(entry)
+        && (entry.type === "out" || isSaleRestoreEntry(entry))
+        && String(entry.date || "") >= repairStartDate
+      )
+      : [];
+    activeHistory = Array.from(
+      new Map([...laterHistory, ...repairPurchases, ...repairedMovement].map((entry, index) => [entry.id || `${entry.type}-${entry.date}-${index}`, entry])).values()
+    );
+  }
   const purchases = activeHistory.filter(entry => isPurchaseEntry(entry));
   const stockIns = activeHistory.filter(entry => isStockInEntry(entry));
   const existing = inventoryMap[key];
