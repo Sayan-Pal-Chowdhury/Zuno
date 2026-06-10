@@ -791,15 +791,27 @@ async function rebuildProductFromHistory(productName) {
   let activeHistory = productHistory.filter(entry => entry.type !== "deleted");
   if (lastDelete) {
     const laterHistory = activeHistory.filter(entry => String(entry.date || "") > String(lastDelete.date || ""));
-    const repairPurchases = activeHistory.filter(entry =>
+    const allRepairPurchases = activeHistory.filter(entry =>
       isPurchaseEntry(entry)
       && isManualRepairEntry(entry)
-      && historyTimestamp(entry) > historyTimestamp(lastDelete)
     );
-    const repairStartDate = repairPurchases
+    const repairPurchases = allRepairPurchases.filter(repair => !activeHistory.some(entry =>
+      entry !== repair
+      && isPurchaseEntry(entry)
+      && !isManualRepairEntry(entry)
+      && normalizeProduct(entry.product) === normalizeProduct(repair.product)
+      && String(entry.date || "") === String(repair.date || "")
+      && String(entry.unit || "") === String(repair.unit || "")
+      && sameInventoryValue(entry.qty, repair.qty)
+      && sameInventoryValue(entry.purchaseCost, repair.purchaseCost)
+    ));
+    const repairStartDate = allRepairPurchases
       .map(entry => String(entry.date || ""))
       .filter(Boolean)
       .sort()[0];
+    const safeLaterHistory = repairStartDate
+      ? laterHistory.filter(entry => String(entry.date || "") >= repairStartDate && !(isPurchaseEntry(entry) && isManualRepairEntry(entry)))
+      : laterHistory.filter(entry => !(isPurchaseEntry(entry) && isManualRepairEntry(entry)));
     const repairedMovement = repairStartDate
       ? activeHistory.filter(entry =>
         !isPurchaseEntry(entry)
@@ -808,7 +820,7 @@ async function rebuildProductFromHistory(productName) {
       )
       : [];
     activeHistory = Array.from(
-      new Map([...laterHistory, ...repairPurchases, ...repairedMovement].map((entry, index) => [entry.id || `${entry.type}-${entry.date}-${index}`, entry])).values()
+      new Map([...safeLaterHistory, ...repairPurchases, ...repairedMovement].map((entry, index) => [entry.id || `${entry.type}-${entry.date}-${index}`, entry])).values()
     );
   }
   const purchases = activeHistory.filter(entry => isPurchaseEntry(entry));
