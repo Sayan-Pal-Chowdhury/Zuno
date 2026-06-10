@@ -1595,6 +1595,7 @@ function quantityBefore(text, start, previousEnd, menuMode) {
 }
 
 function extractPayment(text) {
+  if (/\b(?:due|baki|udhar)\b/.test(text)) return "credit";
   const aliases = { ...BUILTIN_PAYMENT_ALIASES, ...learnedPaymentAliases };
   const found = Object.entries(aliases)
     .sort((a, b) => b[0].length - a[0].length)
@@ -1644,6 +1645,12 @@ function extractAmountPaid(text) {
   const partial = text.match(/\b(?:partial|partly|part)\s*(?:credit)?\s*(?:paid)?\s*(?:rs\s*)?(\d+(?:\.\d+)?)/)
     || text.match(/\bcredit\s+(?:partial\s*)?(?:paid\s*)?(?:rs\s*)?(\d+(?:\.\d+)?)/);
   return partial ? Number(partial[1]) : 0;
+}
+
+function extractDueAmount(text) {
+  const due = text.match(/\b(?:due|baki|udhar)\s*(?:rs\s*)?(\d+(?:\.\d+)?)/)
+    || text.match(/\b(?:rs\s*)?(\d+(?:\.\d+)?)\s*(?:due|baki|udhar)\b/);
+  return due ? Number(due[1]) : 0;
 }
 
 function extractStatus(text) {
@@ -1723,6 +1730,8 @@ function priceData(afterText, qty, unit, product) {
 function extractSaleTotalAmount(text) {
   const explicit = text.match(/\b(?:total|amount|bill|for)\s*(?:rs\s*)?(\d+(?:\.\d+)?)\b/);
   if (explicit) return Number(explicit[1]);
+  const beforeDue = text.match(/\b(?:paid|pay)?\s*(?:rs\s*)?(\d+(?:\.\d+)?)\s*(?:\/-)?\s+(?:due|baki|udhar)\b/);
+  if (beforeDue) return Number(beforeDue[1]);
   const slash = text.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*\/-(?=\s|$)/);
   if (slash) return Number(slash[1]);
   const beforePaid = text.match(/\b(\d+(?:\.\d+)?)\s*(?:rs)?\s+(?:paid|cash|upi|credit|delivered|deliverd|delivred)\b/);
@@ -1863,8 +1872,11 @@ async function handleSaleCommand(original) {
   }
   const deliveryStatus = extractStatus(text) || saleDefaults.deliveryStatus;
   if (formConfig.deliveryStatus !== false && !deliveryStatus) missing.push("status (pending or delivered)");
-  const partialCredit = paymentMode === "credit" && /\b(partial|partly|part|advance|paid|pay)\b/.test(text);
-  const amountPaid = paymentMode === "credit" ? extractAmountPaid(text) : 0;
+  const dueAmount = extractDueAmount(text);
+  const partialCredit = paymentMode === "credit" && (dueAmount > 0 || /\b(partial|partly|part|advance|paid|pay)\b/.test(text));
+  const amountPaid = paymentMode === "credit"
+    ? (dueAmount > 0 && saleTotalAmount > 0 ? Math.max(0, saleTotalAmount - dueAmount) : extractAmountPaid(text))
+    : 0;
   if (partialCredit && amountPaid <= 0) missing.push("paid amount for partial credit");
   const draft = {
     kind: "sale",
