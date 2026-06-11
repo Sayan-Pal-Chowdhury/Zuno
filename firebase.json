@@ -11,6 +11,7 @@
       ".git/**",
       "**/node_modules/**",
       "firebase-debug.log",
+      "New Text Document.txt",
       "package-lock.json",
       "package.json",
       "server.js"

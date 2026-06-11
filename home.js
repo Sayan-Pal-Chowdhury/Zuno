@@ -1785,7 +1785,7 @@ function applyTotalAmountToItems(items, mentions = [], totalAmount, force = fals
 async function handleSaleCommand(original) {
   const catalog = saleCatalog();
   const normalizedOriginal = normalize(original);
-  const saleDate = extractSaleDate(normalizedOriginal) || today();
+  const saleDate = extractSaleDate(normalizedOriginal) || overviewDate.value || today();
   const text = expandCompactQuantities(stripDatePhrases(normalizedOriginal), catalog);
   const mentions = findMentions(text, catalog);
   if (!mentions.length) {
@@ -2214,6 +2214,7 @@ function renderSalePreview(draft) {
   const bubble = appendBubble("assistant", `
     <div class="preview-card">
       <div class="preview-title">Sale found</div>
+      <div class="preview-line"><span>Date</span><strong>${escapeHtml(draft.date || today())}</strong></div>
       ${draft.customer ? `<div class="preview-line"><span>Customer</span><strong>${escapeHtml(draft.customer)}${draft.phone ? ` - ${escapeHtml(draft.phone)}` : ""}</strong></div>` : ""}
       <div class="preview-items">
         ${draft.items.map(item => `<div class="preview-line"><span>${escapeHtml(item.product)} - ${item.qty} ${escapeHtml(item.unit)}${item.sellingPrice ? ` x ${moneyRate(item.sellingPrice)}` : ""}</span><strong>${money(item.price)}</strong></div>`).join("")}
