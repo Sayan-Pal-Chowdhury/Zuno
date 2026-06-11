@@ -202,7 +202,7 @@ chatForm.addEventListener("submit", onChatSubmit);
 overviewDate.addEventListener("change", renderOverview);
 document.getElementById("previousDateBtn").addEventListener("click", () => changeSummaryDate(-1));
 document.getElementById("nextDateBtn").addEventListener("click", () => changeSummaryDate(1));
-loadOlderBtn?.addEventListener("click", loadOlderChats);
+loadOlderBtn?.addEventListener("click", () => loadOlderChats(false));
 resetChatBtn?.addEventListener("click", resetChatFlow);
 voiceChatBtn?.addEventListener("click", event => {
   event.preventDefault();
@@ -245,12 +245,7 @@ chatForm.addEventListener("pointerdown", event => {
   }
   if (event.target !== resetChatBtn && event.target !== voiceChatBtn) collapseHero();
 });
-chatThread.addEventListener("scroll", () => {
-  collapseHero();
-  if (chatThread.scrollTop < 20 && chatHistory.length > visibleHistoryCount) {
-    loadOlderChats(false);
-  }
-});
+chatThread.addEventListener("scroll", collapseHero);
 document.querySelectorAll("[data-prompt]").forEach(button => {
   button.addEventListener("click", () => {
     collapseHero();
@@ -468,7 +463,7 @@ function loadChatHistory() {
   if (loadOlderBtn) loadOlderBtn.hidden = chatHistory.length === 0;
 }
 
-function renderStoredChats() {
+function renderStoredChats({ scrollToBottom = true } = {}) {
   chatThread.querySelectorAll(".bubble[data-history]").forEach(node => node.remove());
   const welcome = chatThread.querySelector(".bubble.assistant:not([data-history])");
   const recent = chatHistory.slice(-visibleHistoryCount);
@@ -481,13 +476,13 @@ function renderStoredChats() {
     chatThread.insertBefore(bubble, firstLiveBubble);
   });
   if (loadOlderBtn) loadOlderBtn.hidden = chatHistory.length <= visibleHistoryCount;
-  scrollChat();
+  if (scrollToBottom) scrollChat();
 }
 
-function loadOlderChats(shouldScroll = true) {
+function loadOlderChats(shouldScroll = false) {
   const previousHeight = chatThread.scrollHeight;
   visibleHistoryCount = Math.min(chatHistory.length, Math.max(visibleHistoryCount, 0) + 30);
-  renderStoredChats();
+  renderStoredChats({ scrollToBottom: shouldScroll });
   if (!shouldScroll) {
     chatThread.scrollTop = chatThread.scrollHeight - previousHeight + 20;
   }
@@ -495,6 +490,12 @@ function loadOlderChats(shouldScroll = true) {
 
 function scrollChat() {
   chatThread.scrollTop = chatThread.scrollHeight;
+}
+
+function keepComposerReady() {
+  scrollChat();
+  const shell = chatForm.closest(".chat-shell");
+  shell?.scrollIntoView({ block: "end", inline: "nearest" });
 }
 
 function keepBubbleVisible(bubble) {
@@ -551,8 +552,7 @@ function handleChatFocus() {
   syncKeyboardOffset();
   [80, 220, 420].forEach(delay => setTimeout(syncKeyboardOffset, delay));
   setTimeout(() => {
-    scrollChat();
-    chatInput.scrollIntoView({ block: "nearest", inline: "nearest" });
+    keepComposerReady();
   }, 260);
 }
 
@@ -2357,6 +2357,7 @@ function renderSaleEditForm(draft, bubble) {
         price: total > 0 ? total : calculateSellingLineTotal({ qty, unit, price: sellingPrice, sellingUnit })
       };
     }).filter(item => item.product && item.qty > 0);
+    bubble.remove();
     renderSalePreview(draft);
   });
   bubble.querySelector("[data-cancel-edit]").addEventListener("click", () => renderSalePreview(draft));

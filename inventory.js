@@ -500,23 +500,37 @@ function renderProductProfitSummary() {
   const list = document.getElementById("productProfitList");
   if (!list) return;
 
-  const rows = Object.values(inventoryMap)
-    .map(item => ({ item, profitData: calculateProfit(normalizeProduct(item.product), item) }))
-    .filter(row => row.profitData)
-    .sort((a, b) => a.item.product.localeCompare(b.item.product));
+  const profitMap = {};
+  salesData.forEach(sale => {
+    sale.items.forEach(item => {
+      const key = normalizeProduct(item.product);
+      if (!key) return;
+      if (!profitMap[key]) {
+        profitMap[key] = { product: item.product, profit: 0, hasProfit: false };
+      }
+      if (item.profit !== null && item.profit !== undefined) {
+        profitMap[key].profit += Number(item.profit || 0);
+        profitMap[key].hasProfit = true;
+      }
+    });
+  });
+
+  const rows = Object.values(profitMap)
+    .filter(row => row.hasProfit)
+    .sort((a, b) => a.product.localeCompare(b.product));
 
   if (!rows.length) {
     list.innerHTML = `<p class="empty-msg">No product profit yet</p>`;
     return;
   }
 
-  list.innerHTML = rows.map(({ item, profitData }) => {
-    const profit = Number(profitData.profit || 0);
+  list.innerHTML = rows.map(row => {
+    const profit = Math.round(Number(row.profit || 0) * 100) / 100;
     const color = profit >= 0 ? "var(--accent)" : "var(--danger)";
     const sign = profit >= 0 ? "+" : "-";
     return `
       <div class="product-profit-card">
-        <div class="product-profit-name">${item.product}</div>
+        <div class="product-profit-name">${row.product}</div>
         <div class="product-profit-value" style="color:${color}">${sign}${formatMoney(profit)}</div>
       </div>
     `;
