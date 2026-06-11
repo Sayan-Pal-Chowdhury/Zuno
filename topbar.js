@@ -61,7 +61,8 @@ style.textContent = `
   .zuno-topbar-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
+    min-width: 0;
   }
 
   .zuno-topbar-shop {
@@ -69,13 +70,19 @@ style.textContent = `
     flex-direction: column;
     align-items: flex-end;
     gap: 1px;
+    min-width: 0;
   }
 
   .zuno-topbar-shop-wrap {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
+    max-width: min(48vw, 260px);
+    padding: 4px 7px 4px 9px;
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 14px;
+    background: rgba(248,248,244,0.78);
   }
 
   .zuno-topbar-shop-name {
@@ -83,7 +90,7 @@ style.textContent = `
     font-weight: 600;
     color: #1a1a18;
     font-family: 'DM Sans', sans-serif;
-    max-width: 160px;
+    max-width: 118px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -96,16 +103,18 @@ style.textContent = `
   }
 
   .zuno-topbar-date {
-    font-size: 11px;
+    font-size: 10px;
     color: #8a8a8a;
     font-family: 'DM Sans', sans-serif;
     white-space: nowrap;
+    padding-left: 6px;
+    border-left: 1px solid rgba(0,0,0,0.08);
   }
 
   .zuno-topbar-refresh,
   .zuno-topbar-visit {
-    height: 30px;
-    border-radius: 10px;
+    height: 28px;
+    border-radius: 999px;
     border: 1px solid rgba(0,0,0,0.07);
     background: #f5f5f3;
     color: #1a1a18;
@@ -121,17 +130,18 @@ style.textContent = `
   }
 
   .zuno-topbar-refresh {
-    width: 30px;
+    width: 28px;
     padding: 0;
     font-size: 15px;
   }
 
   .zuno-topbar-visit {
-    padding: 0 10px;
+    height: 24px;
+    padding: 0 8px;
     color: #0f8f5a;
     background: #e8f8ef;
     border-color: rgba(23,185,120,.2);
-    font-size: 11px;
+    font-size: 10px;
     white-space: nowrap;
   }
 
@@ -148,15 +158,15 @@ style.textContent = `
   }
 
   .zuno-topbar-settings {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
     background: #f5f5f3;
     border: 1px solid rgba(0,0,0,0.07);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 15px;
     cursor: pointer;
     text-decoration: none;
     transition: background 0.15s, transform 0.1s;
@@ -173,17 +183,26 @@ style.textContent = `
     }
 
     .zuno-topbar-app { font-size: 12px; }
-    .zuno-topbar-right { gap: 7px; }
+    .zuno-topbar-right { gap: 5px; }
+
+    .zuno-topbar-shop-wrap {
+      max-width: 48vw;
+      padding-inline: 7px;
+    }
 
     .zuno-topbar-shop-name {
-      max-width: 104px;
+      max-width: 82px;
       font-size: 12px;
     }
 
-    .zuno-topbar-date { display: none; }
+    .zuno-topbar-date {
+      max-width: 52px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     .zuno-topbar-visit {
-      padding: 0 8px;
+      padding: 0 7px;
       font-size: 10px;
     }
   }
@@ -211,9 +230,9 @@ topbar.innerHTML = `
         <span class="zuno-topbar-shop-name" id="topbarShopName">Your Shop</span>
         <span class="zuno-topbar-shop-sub" id="topbarShopSub">Loading...</span>
       </div>
-      <a class="zuno-topbar-visit" id="topbarVisitShop" href="#" hidden>Visit shop</a>
+      <span class="zuno-topbar-date" id="topbarDate"></span>
+      <a class="zuno-topbar-visit" id="topbarVisitShop" href="#" hidden>Shop</a>
     </div>
-    <span class="zuno-topbar-date" id="topbarDate"></span>
     <a href="/settings.html" class="zuno-topbar-settings" title="Settings">⚙️</a>
   </div>
 `;
