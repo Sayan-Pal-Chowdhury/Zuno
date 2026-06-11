@@ -8,7 +8,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/f
 import {
   initEditSaleModal, openEditSaleModal,
   openAddSaleModal, deleteSaleById, updateProductCosts
-} from "./editSaleModal.js?v=40";
+} from "./editSaleModal.js?v=41";
 
 /* ---------- STATE ---------- */
 let currentUserId = null;

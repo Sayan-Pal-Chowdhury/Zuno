@@ -149,13 +149,22 @@ export function openEditSaleModal(id, saleData) {
   // credit fields
   if (saleData.paymentMode === "credit") {
     document.getElementById("esd_creditBox").style.display = "flex";
-    document.getElementById("esd_creditType").value = saleData.creditType || "full";
-    if (saleData.creditType === "partial") {
-      document.getElementById("esd_amountPaidRow").style.display = "flex";
-      document.getElementById("esd_amountPaid").value = saleData.amountPaid || "";
-    }
+    const amountPaid = Number(saleData.amountPaid || 0);
+    const creditType = saleData.creditType || (amountPaid > 0 ? "partial" : "full");
+    document.getElementById("esd_creditType").value = creditType;
+    document.querySelectorAll('input[name="esd_creditType"]').forEach(input => {
+      input.checked = input.value === creditType;
+    });
+    document.getElementById("esd_amountPaidRow").style.display = creditType === "partial" ? "flex" : "none";
+    document.getElementById("esd_amountPaid").value = creditType === "partial" ? amountPaid || "" : "";
   } else {
     document.getElementById("esd_creditBox").style.display = "none";
+    document.getElementById("esd_creditType").value = "full";
+    document.getElementById("esd_amountPaidRow").style.display = "none";
+    document.getElementById("esd_amountPaid").value = "";
+    document.querySelectorAll('input[name="esd_creditType"]').forEach(input => {
+      input.checked = input.value === "full";
+    });
   }
 
   // items
@@ -210,7 +219,16 @@ window.closeEditSaleModal = () => {
 /* ---------- TOGGLE CREDIT BOX ---------- */
 window.esdToggleCreditBox = () => {
   const pm = document.getElementById("esd_paymentMode").value;
-  document.getElementById("esd_creditBox").style.display = pm === "credit" ? "flex" : "none";
+  const isCredit = pm === "credit";
+  document.getElementById("esd_creditBox").style.display = isCredit ? "flex" : "none";
+  if (!isCredit) {
+    document.getElementById("esd_creditType").value = "full";
+    document.getElementById("esd_amountPaidRow").style.display = "none";
+    document.getElementById("esd_amountPaid").value = "";
+    document.querySelectorAll('input[name="esd_creditType"]').forEach(input => {
+      input.checked = input.value === "full";
+    });
+  }
 };
 
 /* ---------- CREATE ITEM ROW ---------- */
@@ -286,9 +304,11 @@ window.saveEditSale = async () => {
   const orderNumber    = document.getElementById("esd_orderNumber").value;
   const paymentMode    = document.getElementById("esd_paymentMode").value;
   const deliveryStatus = document.getElementById("esd_deliveryStatus").value;
-  const creditType     = document.getElementById("esd_creditType").value;
+  const selectedCreditType = document.getElementById("esd_creditType").value;
+  const enteredAmountPaid = Number(document.getElementById("esd_amountPaid").value) || 0;
+  const creditType = paymentMode === "credit" && (selectedCreditType === "partial" || enteredAmountPaid > 0) ? "partial" : "full";
   const amountPaid     = paymentMode === "credit" && creditType === "partial"
-    ? Number(document.getElementById("esd_amountPaid").value) || 0
+    ? enteredAmountPaid
     : 0;
 
   if (!date || !customer) {

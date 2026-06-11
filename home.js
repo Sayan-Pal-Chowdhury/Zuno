@@ -2258,7 +2258,7 @@ function renderSaleEditForm(draft, bubble) {
             <option value="delivered"${draft.deliveryStatus === "delivered" ? " selected" : ""}>Delivered</option>
           </select>
         </label>
-        <label>Paid now <input class="optional-info-input" data-edit-paid type="number" min="0" value="${Number(draft.amountPaid || 0)}"></label>
+        <label data-credit-paid-row style="${draft.paymentMode === "credit" ? "" : "display:none;"}">Credit paid now <input class="optional-info-input" data-edit-paid type="number" min="0" value="${Number(draft.amountPaid || 0)}"></label>
       </div>
       <div class="edit-items">
         ${draft.items.map((item, index) => `
@@ -2276,12 +2276,28 @@ function renderSaleEditForm(draft, bubble) {
         `).join("")}
       </div>
       <p class="edit-help">Rows are Product, Qty, Unit, Rate, Total. If Total is filled, it is used directly.</p>
+      <p class="edit-help" data-credit-due-help style="${draft.paymentMode === "credit" ? "" : "display:none;"}"></p>
       <div class="preview-actions">
         <button class="confirm-action" data-apply-edit>Apply Edit</button>
         <button class="minor-action" data-cancel-edit>Cancel</button>
       </div>
     </div>
   `;
+  const paymentInput = bubble.querySelector("[data-edit-payment]");
+  const paidRow = bubble.querySelector("[data-credit-paid-row]");
+  const paidInput = bubble.querySelector("[data-edit-paid]");
+  const dueHelp = bubble.querySelector("[data-credit-due-help]");
+  const updateCreditEditHelp = () => {
+    const isCredit = paymentInput.value === "credit";
+    paidRow.style.display = isCredit ? "" : "none";
+    dueHelp.style.display = isCredit ? "" : "none";
+    if (!isCredit) return;
+    const total = Array.from(bubble.querySelectorAll("[data-edit-total]")).reduce((sum, input) => sum + Number(input.value || 0), 0);
+    const paid = Number(paidInput.value || 0);
+    dueHelp.textContent = `Credit due will be ${money(Math.max(0, total - paid))}. Set paid now to 0 for full credit.`;
+  };
+  paymentInput.addEventListener("change", updateCreditEditHelp);
+  paidInput.addEventListener("input", updateCreditEditHelp);
   bubble.querySelectorAll("[data-edit-item]").forEach(row => {
     const qtyInput = row.querySelector("[data-edit-qty]");
     const unitInput = row.querySelector("[data-edit-unit]");
@@ -2309,8 +2325,12 @@ function renderSaleEditForm(draft, bubble) {
     qtyInput.addEventListener("input", updateTotalFromRate);
     unitInput.addEventListener("change", updateTotalFromRate);
     rateInput.addEventListener("input", updateTotalFromRate);
-    totalInput.addEventListener("input", updateRateFromTotal);
+    totalInput.addEventListener("input", () => {
+      updateRateFromTotal();
+      updateCreditEditHelp();
+    });
   });
+  updateCreditEditHelp();
   bubble.querySelector("[data-apply-edit]").addEventListener("click", () => {
     const paymentMode = bubble.querySelector("[data-edit-payment]").value;
     const amountPaid = paymentMode === "credit" ? Number(bubble.querySelector("[data-edit-paid]").value || 0) : 0;

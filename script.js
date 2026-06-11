@@ -1,4 +1,4 @@
-import { initEditSaleModal, openEditSaleModal, updateProductCosts } from "./editSaleModal.js?v=40";
+import { initEditSaleModal, openEditSaleModal, updateProductCosts } from "./editSaleModal.js?v=41";
 import { db, auth } from "./firebase.js";
 import {
   collection, addDoc, onSnapshot,
