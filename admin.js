@@ -55,6 +55,9 @@ document.querySelectorAll(".tab").forEach(button => {
 });
 document.getElementById("scanImagesBtn").onclick = scanMissingImages;
 document.getElementById("adminImageSaveBtn").onclick = updateProductImageEverywhere;
+document.getElementById("adminImageSearchBtn").onclick = searchProductImage;
+document.getElementById("adminImageUrl").addEventListener("input", updateImagePreview);
+document.getElementById("adminImageFile").addEventListener("change", updateImagePreview);
 document.getElementById("savePaymentSettingsBtn").onclick = savePaymentSettings;
 document.getElementById("refreshSettlementsBtn").onclick = loadAdminData;
 
@@ -548,8 +551,36 @@ async function savePaymentSettings() {
 
 window.prepareImageProduct = product => {
   document.getElementById("adminImageProduct").value = product;
+  document.getElementById("adminImageUrl").value = "";
+  document.getElementById("adminImageFile").value = "";
+  updateImagePreview();
   document.getElementById("adminImageProduct").focus();
 };
+
+function searchProductImage() {
+  const product = document.getElementById("adminImageProduct").value.trim();
+  const query = product ? `${product} product photo` : "product photo";
+  window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, "_blank", "noopener");
+}
+
+async function updateImagePreview() {
+  const url = document.getElementById("adminImageUrl").value.trim();
+  const file = document.getElementById("adminImageFile").files[0];
+  const preview = document.getElementById("adminImagePreview");
+  const img = document.getElementById("adminImagePreviewImg");
+  if (url) {
+    img.src = url;
+    preview.classList.add("active");
+    return;
+  }
+  if (file) {
+    img.src = await fileToDataUrl(file);
+    preview.classList.add("active");
+    return;
+  }
+  img.removeAttribute("src");
+  preview.classList.remove("active");
+}
 
 async function scanMissingImages() {
   const [inventorySnap, productsSnap, foodItemsSnap] = await Promise.all([
@@ -587,15 +618,18 @@ async function scanMissingImages() {
 
 async function updateProductImageEverywhere() {
   const product = document.getElementById("adminImageProduct").value.trim();
+  const url = document.getElementById("adminImageUrl").value.trim();
   const file = document.getElementById("adminImageFile").files[0];
+  const mode = document.getElementById("adminImageMode").value;
   const msg = document.getElementById("adminImageMsg");
-  if (!product || !file) {
-    msg.textContent = "Choose product name and image file.";
+  if (!product || (!url && !file)) {
+    msg.textContent = "Choose product name and image URL or image file.";
     return;
   }
+  if (mode === "all" && !confirm(`Apply this image to all unlocked matching records for ${product}? Shopkeeper-owned images will still be skipped.`)) return;
 
   msg.textContent = "Preparing image...";
-  const imageUrl = await fileToDataUrl(file);
+  const imageUrl = url || await fileToDataUrl(file);
   const [inventorySnap, productsSnap, foodItemsSnap] = await Promise.all([
     getDocs(collectionGroup(db, "inventory")),
     getDocs(collectionGroup(db, "products")),
@@ -603,17 +637,35 @@ async function updateProductImageEverywhere() {
   ]);
 
   const updates = [];
+  let skippedLocked = 0;
+  const shouldUpdateRecord = data => {
+    if (!sameProduct(data.product || data.name, product)) return false;
+    if (isShopOwnedImage(data)) {
+      skippedLocked++;
+      return false;
+    }
+    if (mode === "default") return false;
+    if (mode === "missing") return !data.imageUrl || isDefaultImage(data.imageUrl);
+    return true;
+  };
+  const imageFields = {
+    imageUrl,
+    imageSource: "admin",
+    imageLocked: false,
+    imageUpdatedAt: serverTimestamp(),
+    imageUpdatedBy: auth.currentUser?.email || "admin"
+  };
   inventorySnap.forEach(item => {
     const data = item.data();
-    if (sameProduct(data.product || data.name, product)) updates.push(updateDoc(item.ref, { imageUrl, imageUpdatedAt: serverTimestamp() }));
+    if (shouldUpdateRecord(data)) updates.push(updateDoc(item.ref, imageFields));
   });
   productsSnap.forEach(item => {
     const data = item.data();
-    if (sameProduct(data.name || data.product, product)) updates.push(updateDoc(item.ref, { imageUrl, imageUpdatedAt: serverTimestamp() }));
+    if (shouldUpdateRecord(data)) updates.push(updateDoc(item.ref, imageFields));
   });
   foodItemsSnap.forEach(item => {
     const data = item.data();
-    if (sameProduct(data.name || data.product, product)) updates.push(updateDoc(item.ref, { imageUrl, imageUpdatedAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+    if (shouldUpdateRecord(data)) updates.push(updateDoc(item.ref, { ...imageFields, updatedAt: serverTimestamp() }));
   });
 
   await Promise.all([
@@ -621,12 +673,15 @@ async function updateProductImageEverywhere() {
     setDoc(doc(db, "platformSettings", `itemImage_${imageLibraryId(product)}`), {
       name: product,
       imageUrl,
+      imageSource: "admin-default",
       updatedAt: serverTimestamp(),
       updatedBy: auth.currentUser?.email || "admin"
     }, { merge: true })
   ]);
-  msg.textContent = `Saved default image and updated ${updates.length} matching records for ${product}.`;
+  msg.textContent = `Saved default image and updated ${updates.length} matching records for ${product}.${skippedLocked ? ` Skipped ${skippedLocked} shop-owned image(s).` : ""}`;
+  document.getElementById("adminImageUrl").value = "";
   document.getElementById("adminImageFile").value = "";
+  updateImagePreview();
   await scanMissingImages();
 }
 
@@ -708,6 +763,10 @@ function sameProduct(a = "", b = "") {
 
 function isDefaultImage(url = "") {
   return !url || String(url).startsWith("data:image/svg+xml") || /wikimedia|wikipedia|commons\.|thumbnail/i.test(String(url));
+}
+
+function isShopOwnedImage(data = {}) {
+  return data.imageLocked === true || data.imageSource === "shop";
 }
 
 function fileToDataUrl(file) {

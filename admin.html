@@ -190,7 +190,7 @@
     }
     .image-tool-row {
       display: grid;
-      grid-template-columns: 1fr 1fr auto;
+      grid-template-columns: 1fr 1fr 1fr auto;
       gap: 10px;
       align-items: end;
     }
@@ -203,12 +203,31 @@
       text-transform: uppercase;
       letter-spacing: .05em;
     }
-    .image-tool-row input {
+    .image-tool-row input,
+    .image-tool-row select {
       height: 38px;
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 0 12px;
       font: inherit;
+    }
+    .image-preview {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+    }
+    .image-preview.active { display: flex; }
+    .image-preview img {
+      width: 82px;
+      height: 62px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
     }
     .empty { padding: 32px 16px; color: var(--muted); text-align: center; }
     .skeleton-row {
@@ -423,12 +442,33 @@
           <label>Product or dish name
             <input id="adminImageProduct" placeholder="e.g. Shahi chicken">
           </label>
+          <label>Image URL
+            <input id="adminImageUrl" placeholder="Paste selected image URL">
+          </label>
           <label>Image file
             <input type="file" id="adminImageFile" accept="image/*">
           </label>
-          <button class="good" id="adminImageSaveBtn">Update everywhere</button>
+          <label>Save mode
+            <select id="adminImageMode">
+              <option value="missing">Missing/unlocked only</option>
+              <option value="default">Default only</option>
+              <option value="all">All unlocked matching</option>
+            </select>
+          </label>
         </div>
-        <div class="row-sub" id="adminImageMsg">Upload one clean item image. It updates matching products and food dishes, then becomes the default image for the same item name.</div>
+        <div class="image-tool-row" style="grid-template-columns:auto auto 1fr;">
+          <button class="blue" id="adminImageSearchBtn">Search image</button>
+          <button class="good" id="adminImageSaveBtn">Save image</button>
+          <div class="row-sub">Shopkeeper-owned images are protected and will not be overwritten by admin.</div>
+        </div>
+        <div class="image-preview" id="adminImagePreview">
+          <img id="adminImagePreviewImg" alt="">
+          <div>
+            <div class="row-title">Selected image preview</div>
+            <div class="row-sub">Check this before saving.</div>
+          </div>
+        </div>
+        <div class="row-sub" id="adminImageMsg">Search, paste an image URL or upload one clean file. Save mode controls where it applies.</div>
       </div>
       <div class="list" id="adminImagesList">
         <div class="empty">Scan to find products or food dishes with missing/default images.</div>
@@ -436,6 +476,6 @@
     </section>
   </main>
 
-  <script type="module" src="admin.js?v=25"></script>
+  <script type="module" src="admin.js?v=26"></script>
 </body>
 </html>
