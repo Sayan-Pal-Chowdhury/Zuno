@@ -137,8 +137,8 @@
 </div>
 
 <!-- CURRENT STOCK -->
-<h2 onclick="toggleSection('currentStockSection')">▼ Current Stock</h2>
-<div id="currentStockSection">
+<h2 onclick="toggleSection('currentStockSection', this)">▸ Current Stock</h2>
+<div id="currentStockSection" class="hidden">
   <div id="stockCards" class="stock-grid">
     <div class="stock-card skeleton-stock-card">
       <div class="skeleton-line wide"></div>
@@ -165,16 +165,16 @@
 </div>
 
 <!-- PRODUCT PROFIT SUMMARY -->
-<h2 onclick="toggleSection('productProfitSection')">▼ Product Profit</h2>
-<div id="productProfitSection">
+<h2 onclick="toggleSection('productProfitSection', this)">▸ Product Profit</h2>
+<div id="productProfitSection" class="hidden">
   <div id="productProfitList" class="product-profit-list">
     <p class="empty-msg">No product profit yet</p>
   </div>
 </div>
 
 <!-- FINISHED / ARCHIVED STOCK -->
-<h2 onclick="toggleSection('finishedStockSection')">▼ Finished Products</h2>
-<div id="finishedStockSection">
+<h2 onclick="toggleSection('finishedStockSection', this)">▸ Finished Products</h2>
+<div id="finishedStockSection" class="hidden">
   <div id="finishedCards" class="stock-grid">
     <p class="empty-msg" id="finishedEmpty">No finished products</p>
   </div>
@@ -183,8 +183,8 @@
 
 
 <!-- STOCK HISTORY -->
-<h2 onclick="toggleSection('historySection')">▼ Stock History</h2>
-<div id="historySection">
+<h2 onclick="toggleSection('historySection', this)">▸ Stock History</h2>
+<div id="historySection" class="hidden">
   <table>
     <thead>
       <tr>
@@ -201,7 +201,7 @@
   </table>
 </div>
 
-<script type="module" src="inventory.js?v=55"></script>
+<script type="module" src="inventory.js?v=56"></script>
 <script type="module" src="topbar.js"></script>
 <script type="module" src="navbar.js?v=46"></script>
 

@@ -13,7 +13,9 @@ let creditMap      = {};   // creditId → credit doc
 let knownCustomers = [];
 let currentFilter  = "all";
 let currentView    = "card";
+let creditSearchText = "";
 let payingCreditId = null;
+let waivingCreditId = null;
 let editingCreditId = null;
 
 /* ---------- HELPERS ---------- */
@@ -121,6 +123,10 @@ async function hasRecordedCreditFromSale(userId, sale) {
 }
 
 export async function applyCreditPaymentToSales({ userId, customer, phone, amount }) {
+  return applyCreditReductionToSales({ userId, customer, phone, amount });
+}
+
+async function applyCreditReductionToSales({ userId, customer, phone, amount }) {
   if (!userId || !amount || amount <= 0) return [];
 
   const salesCol = collection(db, "users", userId, "sales");
@@ -255,6 +261,16 @@ onAuthStateChanged(auth, (user) => {
   currentUserId = user.uid;
   const payDateEl = document.getElementById("payDate");
 if (payDateEl) payDateEl.value = today();
+  const waiveDateEl = document.getElementById("waiveDate");
+  if (waiveDateEl) waiveDateEl.value = today();
+  const searchEl = document.getElementById("creditSearch");
+  if (searchEl && !searchEl.dataset.bound) {
+    searchEl.dataset.bound = "1";
+    searchEl.addEventListener("input", () => {
+      creditSearchText = searchEl.value.trim();
+      renderCredit();
+    });
+  }
   bindCreditAutofill();
   loadCredit();
   loadKnownCustomers();
@@ -299,6 +315,13 @@ function renderCredit() {
 
   // filter
   const filtered = entries.filter(c => {
+    const search = normalizeName(creditSearchText);
+    const phoneSearch = normalizePhone(creditSearchText);
+    if (search || phoneSearch) {
+      const nameMatch = search ? normalizeName(c.name || c.customer || "").includes(search) : false;
+      const phoneMatch = phoneSearch ? normalizePhone(c.phone || "").includes(phoneSearch) : false;
+      if (!nameMatch && !phoneMatch) return false;
+    }
     if (currentFilter === "all")     return true;
     if (currentFilter === "cleared") return c.balance <= 0;
     if (currentFilter === "overdue") return getStatus(c) === "overdue";
@@ -367,6 +390,7 @@ function renderCredit() {
         <div class="credit-card-actions">
           ${c.balance > 0 ? `<button class="btn-pay" onclick="openPayModal('${c.id}')">💰 Pay</button>` : ""}
           <button class="btn-history" onclick="openHistoryModal('${c.id}')">📋 History</button>
+          ${c.balance > 0 ? `<button class="btn-waive" onclick="openWaiveModal('${c.id}')">Waive</button>` : ""}
           <button class="btn-edit-c" onclick="openEditCustomerModal('${c.id}')">Edit</button>
           <button class="btn-delete-c" onclick="deleteCredit('${c.id}')">Delete</button>
         </div>
@@ -413,6 +437,7 @@ function renderCreditList(entries) {
           <div class="credit-list-actions">
             ${c.balance > 0 ? `<button class="btn-pay" onclick="openPayModal('${c.id}')">Pay</button>` : ""}
             <button class="btn-history" onclick="openHistoryModal('${c.id}')">History</button>
+            ${c.balance > 0 ? `<button class="btn-waive" onclick="openWaiveModal('${c.id}')">Waive</button>` : ""}
             <button class="btn-edit-c" onclick="openEditCustomerModal('${c.id}')">Edit</button>
             <button class="btn-delete-c" onclick="deleteCredit('${c.id}')">Delete</button>
           </div>
@@ -442,6 +467,13 @@ function getStatus(c) {
   }
 
   return "active";
+}
+
+function creditHistoryTypeMeta(type) {
+  if (type === "credit") return { className: "type-credit", label: "Credit" };
+  if (type === "merge") return { className: "type-payment", label: "Merge" };
+  if (type === "waive") return { className: "type-waive", label: "Waive off" };
+  return { className: "type-payment", label: "Payment" };
 }
 
 /* ---------- UPDATE SUMMARY ---------- */
@@ -789,6 +821,79 @@ window.savePayment = async () => {
   showToast(`✓ ₹${amount.toLocaleString("en-IN")} received from ${c.name}`);
 };
 
+/* ---------- WAIVE OFF MODAL ---------- */
+window.openWaiveModal = (creditId) => {
+  waivingCreditId = creditId;
+  const c = creditMap[creditId];
+  document.getElementById("waiveModalCustomer").textContent =
+    `${c.name} - Balance: Rs ${Math.round(c.balance).toLocaleString("en-IN")}`;
+  document.getElementById("waiveAmount").value = "";
+  document.getElementById("waiveNote").value = "";
+  document.getElementById("waiveDate").value = today();
+  document.getElementById("waiveMsg").textContent = "";
+  document.getElementById("waiveModal").classList.remove("hidden");
+};
+
+window.closeWaiveModal = () => {
+  waivingCreditId = null;
+  document.getElementById("waiveModal").classList.add("hidden");
+};
+
+window.saveWaiveOff = async () => {
+  const amount = Number(document.getElementById("waiveAmount").value);
+  const date = document.getElementById("waiveDate").value;
+  const note = document.getElementById("waiveNote").value.trim();
+  const msg = document.getElementById("waiveMsg");
+
+  if (!amount || amount <= 0) {
+    msg.textContent = "Please enter a valid waive-off amount.";
+    return;
+  }
+  if (!date) {
+    msg.textContent = "Please select a date.";
+    return;
+  }
+
+  const c = creditMap[waivingCreditId];
+  if (!c) return;
+
+  if (amount > Number(c.balance || 0)) {
+    msg.textContent = "Waive-off cannot be more than the current balance.";
+    return;
+  }
+
+  const newBalance = Math.max(0, Number(c.balance || 0) - amount);
+  const allocations = await applyCreditReductionToSales({
+    userId: currentUserId,
+    customer: c.name,
+    phone: c.phone,
+    amount
+  });
+
+  await updateDoc(userDoc("credit", waivingCreditId), {
+    balance: newBalance,
+    totalWaived: Number(c.totalWaived || 0) + amount,
+    lastActivityDate: date,
+    status: newBalance <= 0 ? "cleared" : "active"
+  });
+
+  await addDoc(userCol("creditHistory"), {
+    creditId: waivingCreditId,
+    customerName: c.name,
+    type: "waive",
+    amount,
+    date,
+    note: note || (allocations.length
+      ? `Waived off (${allocations.map(a => a.orderNumber).filter(Boolean).join(", ")})`
+      : "Waived off / rounded off"),
+    allocations,
+    balanceAfter: newBalance
+  });
+
+  closeWaiveModal();
+  showToast(`Rs ${amount.toLocaleString("en-IN")} waived off for ${c.name}`);
+};
+
 /* ---------- HISTORY MODAL ---------- */
 window.openHistoryModal = async (creditId) => {
   const c = creditMap[creditId];
@@ -809,12 +914,13 @@ window.openHistoryModal = async (creditId) => {
     let rows = "";
     snap.forEach(d => {
       const h = d.data();
+      const historyType = creditHistoryTypeMeta(h.type);
       const typeClass = h.type === "credit" ? "type-credit" : "type-payment";
       const typeLabel = h.type === "credit" ? "− Credit" : h.type === "merge" ? "Merge" : "+ Payment";
       rows += `
         <tr>
           <td>${h.date || ""}</td>
-          <td class="${typeClass}">${typeLabel}</td>
+          <td class="${historyType.className}">${historyType.label}</td>
           <td style="font-family:var(--font-mono)">₹${Math.round(h.amount || 0).toLocaleString("en-IN")}</td>
           <td style="font-family:var(--font-mono);color:var(--text-muted)">₹${Math.round(h.balanceAfter || 0).toLocaleString("en-IN")}</td>
           <td style="color:var(--text-muted);font-size:11px">${h.note || "—"}</td>

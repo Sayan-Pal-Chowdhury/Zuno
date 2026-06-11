@@ -1074,8 +1074,13 @@ function renderAlerts() {
 }
 
 /* ---------- TOGGLE SECTION ---------- */
-window.toggleSection = (id) => {
-  document.getElementById(id).classList.toggle("hidden");
+window.toggleSection = (id, heading) => {
+  const section = document.getElementById(id);
+  if (!section) return;
+  const isHidden = section.classList.toggle("hidden");
+  if (heading) {
+    heading.textContent = heading.textContent.replace(/^[▾▸▼]\s*/, `${isHidden ? "▸" : "▾"} `);
+  }
 };
 
 /* ---------- MSG ---------- */
