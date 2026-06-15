@@ -107,7 +107,7 @@ async function createEmbedding(text, taskType = "RETRIEVAL_DOCUMENT") {
   const cleanText = String(text || "").trim().slice(0, 1000);
   if (!cleanText) throw new Error("No text provided");
   const response = await ai.models.embedContent({
-    model: "text-embedding-004",
+    model: "models/gemini-embedding-001",
     contents: [cleanText],
     config: {
       taskType,
