@@ -142,6 +142,18 @@ const AI_HELPER_ENDPOINT = ["localhost", "127.0.0.1"].includes(window.location.h
 const AI_LEGACY_EXTRACT_ENDPOINT = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "/extract-order"
   : "https://zuno-production.up.railway.app/extract-order";
+const AI_BUSINESS_QUERY_ENDPOINT = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? "/business-query"
+  : "https://zuno-production.up.railway.app/business-query";
+const AI_EMBED_ENDPOINT = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? "/embed-text"
+  : "https://zuno-production.up.railway.app/embed-text";
+const VECTOR_MEMORY_UPSERT_ENDPOINT = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? "/vector-memory/upsert"
+  : "https://zuno-production.up.railway.app/vector-memory/upsert";
+const VECTOR_MEMORY_SEARCH_ENDPOINT = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? "/vector-memory/search"
+  : "https://zuno-production.up.railway.app/vector-memory/search";
 
 let currentUserId = null;
 let shopProfile = {};
@@ -156,6 +168,7 @@ let foodMenuPrices = {};
 let foodMenuChoices = [];
 let foodCostRecords = {};
 let inventoryMap = {};
+let businessMemories = [];
 let learnedAliases = {};
 let learnedPaymentAliases = {};
 let learnedStatusAliases = {};
@@ -697,6 +710,7 @@ onAuthStateChanged(auth, async user => {
   listenForSales();
   listenForCredits();
   listenForCustomers();
+  listenForBusinessMemories();
   listenForOrders();
   if (shopProfile.foodMenuEnabled === true) listenForFoodMenu();
 });
@@ -753,6 +767,14 @@ function listenForCredits() {
 function listenForCustomers() {
   onSnapshot(userCol("customers"), snap => {
     savedCustomers = snap.docs.map(customerDoc => customerDoc.data());
+  });
+}
+
+function listenForBusinessMemories() {
+  onSnapshot(userCol("businessMemory"), snap => {
+    businessMemories = snap.docs
+      .map(memoryDoc => ({ id: memoryDoc.id, ...memoryDoc.data() }))
+      .filter(memory => memory.active !== false && memory.text && Array.isArray(memory.embedding));
   });
 }
 
@@ -1189,6 +1211,413 @@ async function processMessage(text) {
   await processActionCommand(text);
 }
 
+function isBusinessQuestion(text) {
+  return /\b(owe|owed|due|credit|baki|udhar|risk|risky|pending|sales?|sold|profit|revenue|income|cash|upi|stock|inventory|restock|low|customer|regular|buy|buyer|product|item|best|top|highest|most|least|today|week|month|slow|fast|moving|order|delivery)\b/i.test(text);
+}
+
+function isMemoryCommand(text) {
+  return /^(remember|note|memory)\b/i.test(text);
+}
+
+function memoryTextFromCommand(text) {
+  return text.replace(/^\s*(remember|note|memory)\s*[:\-]?\s*/i, "").trim();
+}
+
+function classifyMemory(text) {
+  const clean = normalize(text);
+  if (/\b(credit|baki|udhar|pay|pays|late|due|risk)\b/.test(clean)) return "credit";
+  if (/\b(delivery|deliver|time|evening|morning|address|location)\b/.test(clean)) return "delivery";
+  if (/\b(product|item|alias|means|called|price|rate)\b/.test(clean)) return "product";
+  if (/\b(customer|buys|prefers|regular)\b/.test(clean)) return "customer";
+  return "general";
+}
+
+async function embedText(text, taskType = "RETRIEVAL_DOCUMENT") {
+  const response = await fetch(AI_EMBED_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, taskType })
+  });
+  if (!response.ok) throw new Error("Embedding failed");
+  const data = await response.json();
+  return Array.isArray(data.embedding) ? data.embedding.map(Number) : [];
+}
+
+function createMemoryId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `mem-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+async function upsertVectorMemory({ memoryId, text, type }) {
+  const response = await fetch(VECTOR_MEMORY_UPSERT_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: currentUserId,
+      memoryId,
+      text,
+      type
+    })
+  });
+  if (!response.ok) throw new Error("Vector memory upsert failed");
+  return response.json();
+}
+
+async function searchVectorMemories(question, limit = 5) {
+  const response = await fetch(VECTOR_MEMORY_SEARCH_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: currentUserId,
+      question,
+      limit
+    })
+  });
+  if (!response.ok) throw new Error("Vector memory search failed");
+  return response.json();
+}
+
+function cosineSimilarity(a = [], b = []) {
+  const length = Math.min(a.length, b.length);
+  if (!length) return 0;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < length; i += 1) {
+    const av = Number(a[i] || 0);
+    const bv = Number(b[i] || 0);
+    dot += av * bv;
+    normA += av * av;
+    normB += bv * bv;
+  }
+  return normA && normB ? dot / (Math.sqrt(normA) * Math.sqrt(normB)) : 0;
+}
+
+async function rememberBusinessNote(text) {
+  const note = memoryTextFromCommand(text);
+  if (!note) {
+    appendAssistant("Tell me what to remember, for example: Remember Rahul pays late.");
+    return;
+  }
+  const thinkingBubble = appendThinkingBubble("Saving memory");
+  try {
+    const memoryId = createMemoryId();
+    const type = classifyMemory(note);
+    let vectorResult = null;
+    let embedding = [];
+    try {
+      vectorResult = await upsertVectorMemory({ memoryId, text: note, type });
+      embedding = Array.isArray(vectorResult.embedding) ? vectorResult.embedding.map(Number) : [];
+    } catch (error) {
+      console.warn("Vector DB upsert skipped:", error);
+      embedding = await embedText(note, "RETRIEVAL_DOCUMENT");
+      vectorResult = { vectorDb: "firestore-fallback", indexed: false };
+    }
+    if (!embedding.length) throw new Error("Empty embedding");
+    await setDoc(userDoc("businessMemory", memoryId), {
+      text: note.slice(0, 500),
+      type,
+      embedding,
+      vectorDb: vectorResult.vectorDb || "firestore-fallback",
+      vectorIndexed: vectorResult.indexed === true,
+      active: true,
+      createdAt: serverTimestamp()
+    });
+    thinkingBubble.remove();
+    appendAssistant(`Remembered${vectorResult.indexed ? " in vector DB" : ""}: ${note}`, "saved");
+  } catch (error) {
+    console.error("Memory save failed:", error);
+    thinkingBubble.remove();
+    appendAssistant("Could not save that memory right now. Please try again.", "error");
+  }
+}
+
+async function retrieveRelevantMemories(question, limit = 5) {
+  if (!businessMemories.length) return [];
+  try {
+    const vectorResult = await searchVectorMemories(question, limit);
+    if (vectorResult.configured && Array.isArray(vectorResult.memories)) {
+      return vectorResult.memories
+        .filter(memory => memory.text && Number(memory.score || 0) >= 0.35)
+        .slice(0, limit)
+        .map(memory => ({
+          text: memory.text,
+          type: memory.type || "general",
+          score: Number(Number(memory.score || 0).toFixed(3)),
+          source: vectorResult.vectorDb || "qdrant"
+        }));
+    }
+    if (Array.isArray(vectorResult.embedding) && vectorResult.embedding.length) {
+      return retrieveRelevantMemoriesFromEmbedding(vectorResult.embedding, limit);
+    }
+  } catch (error) {
+    console.warn("Vector DB search skipped:", error);
+  }
+  const queryEmbedding = await embedText(question, "RETRIEVAL_QUERY");
+  return retrieveRelevantMemoriesFromEmbedding(queryEmbedding, limit);
+}
+
+function retrieveRelevantMemoriesFromEmbedding(queryEmbedding, limit = 5) {
+  if (!queryEmbedding.length) return [];
+  return businessMemories
+    .map(memory => ({
+      id: memory.id,
+      text: memory.text,
+      type: memory.type || "general",
+      score: cosineSimilarity(queryEmbedding, memory.embedding),
+      source: "firestore-cosine"
+    }))
+    .filter(memory => memory.score >= 0.35)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(memory => ({
+      text: memory.text,
+      type: memory.type,
+      score: Number(memory.score.toFixed(3)),
+      source: memory.source
+    }));
+}
+
+function classifyBusinessQuestion(text) {
+  const clean = normalize(text);
+  if (/\b(owe|owed|due|credit|baki|udhar|risk|risky|follow\s*up)\b/.test(clean)) return "credit";
+  if (/\b(stock|inventory|restock|low|available|left)\b/.test(clean)) return "inventory";
+  if (/\b(profit|margin|loss)\b/.test(clean)) return "profit";
+  if (/\b(customer|regular|buyer|buy|buys)\b/.test(clean)) return "customer";
+  if (/\b(product|item|sold|moving|best|top)\b/.test(clean)) return "product";
+  if (/\b(order|delivery|pending)\b/.test(clean)) return "orders";
+  return "sales";
+}
+
+function saleDateValue(sale) {
+  const value = sale?.date || sale?.createdAt?.toDate?.().toISOString?.().slice(0, 10) || "";
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? time : 0;
+}
+
+function dateRangeForQuestion(text) {
+  const clean = normalize(text);
+  const now = new Date();
+  const todayText = today();
+  if (/\btoday\b/.test(clean)) return { label: "today", from: todayText, days: 1 };
+  if (/\byesterday\b/.test(clean)) {
+    const day = new Date(now);
+    day.setDate(day.getDate() - 1);
+    return { label: "yesterday", from: day.toISOString().slice(0, 10), to: day.toISOString().slice(0, 10), days: 1 };
+  }
+  if (/\b(this\s+)?week\b/.test(clean)) {
+    const day = new Date(now);
+    day.setDate(day.getDate() - 7);
+    return { label: "last 7 days", from: day.toISOString().slice(0, 10), days: 7 };
+  }
+  if (/\b(this\s+)?month\b/.test(clean)) {
+    const day = new Date(now);
+    day.setDate(day.getDate() - 30);
+    return { label: "last 30 days", from: day.toISOString().slice(0, 10), days: 30 };
+  }
+  return { label: "all available data", from: "", days: 0 };
+}
+
+function filterSalesForRange(question) {
+  const range = dateRangeForQuestion(question);
+  if (!range.from) return { range, sales: [...allSales] };
+  const fromTime = Date.parse(range.from);
+  const toTime = Date.parse(range.to || today());
+  return {
+    range,
+    sales: allSales.filter(sale => {
+      const time = saleDateValue(sale);
+      return time >= fromTime && time <= toTime;
+    })
+  };
+}
+
+function compactSale(sale) {
+  return {
+    orderNumber: sale.orderNumber || "",
+    date: sale.date || "",
+    customer: sale.customer || "",
+    paymentMode: sale.paymentMode || "",
+    deliveryStatus: sale.deliveryStatus || "",
+    totalAmount: Math.round(Number(sale.totalAmount || 0)),
+    totalProfit: Math.round(Number(sale.totalProfit || 0)),
+    creditAmount: Math.round(Number(sale.creditAmount || 0)),
+    items: Array.isArray(sale.items)
+      ? sale.items.slice(0, 4).map(item => ({
+          product: item.product || "",
+          qty: Number(item.qty || 0),
+          unit: item.unit || "",
+          price: Math.round(Number(item.price || 0)),
+          profit: item.profit === null || item.profit === undefined ? null : Math.round(Number(item.profit || 0))
+        }))
+      : []
+  };
+}
+
+function addToGroupedTotal(map, key, patch) {
+  const label = key || "Unknown";
+  if (!map[label]) map[label] = { name: label, totalAmount: 0, totalProfit: 0, orders: 0, qty: 0, creditAmount: 0 };
+  Object.entries(patch).forEach(([field, value]) => {
+    map[label][field] = Number(map[label][field] || 0) + Number(value || 0);
+  });
+}
+
+function buildBusinessContext(question) {
+  const intent = classifyBusinessQuestion(question);
+  const { range, sales } = filterSalesForRange(question);
+  const totals = {
+    salesCount: sales.length,
+    totalSales: Math.round(sales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0)),
+    totalProfit: Math.round(sales.reduce((sum, sale) => sum + Number(sale.totalProfit || 0), 0)),
+    creditSales: sales.filter(sale => sale.paymentMode === "credit").length,
+    pendingDeliveries: sales.filter(sale => sale.deliveryStatus === "pending").length
+  };
+  const customerMap = {};
+  const productMap = {};
+  sales.forEach(sale => {
+    addToGroupedTotal(customerMap, sale.customer || "Walk-in", {
+      totalAmount: sale.totalAmount,
+      totalProfit: sale.totalProfit,
+      orders: 1,
+      creditAmount: sale.creditAmount
+    });
+    (sale.items || []).forEach(item => {
+      addToGroupedTotal(productMap, item.product || "Unknown item", {
+        totalAmount: item.price,
+        totalProfit: item.profit,
+        qty: item.qty,
+        orders: 1
+      });
+      productMap[item.product || "Unknown item"].unit = item.unit || productMap[item.product || "Unknown item"].unit || "";
+    });
+  });
+  const topCustomers = Object.values(customerMap)
+    .sort((a, b) => b.totalAmount - a.totalAmount)
+    .slice(0, 8)
+    .map(customer => ({
+      name: customer.name,
+      orders: customer.orders,
+      totalAmount: Math.round(customer.totalAmount),
+      totalProfit: Math.round(customer.totalProfit),
+      creditAmount: Math.round(customer.creditAmount)
+    }));
+  const topProducts = Object.values(productMap)
+    .sort((a, b) => b.totalAmount - a.totalAmount)
+    .slice(0, 10)
+    .map(product => ({
+      product: product.name,
+      qty: Number(product.qty || 0),
+      unit: product.unit || "",
+      orders: product.orders,
+      totalAmount: Math.round(product.totalAmount),
+      totalProfit: Math.round(product.totalProfit)
+    }));
+  const creditRows = creditCustomers
+    .map(customer => ({
+      name: customer.name || customer.customer || "",
+      balance: Math.round(Number(customer.balance || 0)),
+      totalCredit: Math.round(Number(customer.totalCredit || 0)),
+      totalPaid: Math.round(Number(customer.totalPaid || 0)),
+      lastDate: customer.lastDate || customer.updatedAt?.toDate?.().toISOString?.().slice(0, 10) || ""
+    }))
+    .filter(customer => customer.balance > 0)
+    .sort((a, b) => b.balance - a.balance)
+    .slice(0, 10);
+  const lowStock = Object.values(inventoryMap)
+    .map(item => ({
+      product: item.product || "",
+      qty: Number(item.qty || 0),
+      unit: item.unit || "",
+      alertThreshold: Number(item.alertThreshold || 0),
+      totalQtyBought: Number(item.totalQtyBought || 0),
+      totalInvested: Math.round(Number(item.totalInvested || 0))
+    }))
+    .filter(item => item.qty <= Math.max(Number(item.alertThreshold || 0), 1))
+    .sort((a, b) => a.qty - b.qty)
+    .slice(0, 12);
+  const pendingOrders = activeCustomerOrders()
+    .slice(0, 10)
+    .map(order => ({
+      id: order.id,
+      customer: order.customerName || order.customer || "",
+      status: order.status || "",
+      paymentStatus: order.paymentStatus || "",
+      totalAmount: Math.round(Number(order.totalAmount || 0)),
+      date: order.date || order.createdAt?.toDate?.().toISOString?.().slice(0, 10) || ""
+    }));
+  return {
+    intent,
+    dateRange: range.label,
+    totals,
+    topCustomers,
+    creditCustomers: creditRows,
+    lowStock,
+    topProducts,
+    recentSales: [...sales].sort((a, b) => saleDateValue(b) - saleDateValue(a)).slice(0, 10).map(compactSale),
+    pendingOrders,
+    notes: [
+      `Products loaded: ${Object.keys(productCosts).length}`,
+      `Inventory items loaded: ${Object.keys(inventoryMap).length}`,
+      `Saved customers loaded: ${savedCustomers.length}`
+    ]
+  };
+}
+
+function renderBusinessAnswer(data, context) {
+  const insights = (data.insights || []).filter(Boolean).slice(0, 3);
+  const sources = (data.sources || []).filter(Boolean).slice(0, 3);
+  appendBubble("assistant", `
+    <div class="preview-card">
+      <div class="preview-title">Business answer</div>
+      <p>${escapeHtml(data.answer || "I could not find enough business data to answer that yet.")}</p>
+      ${insights.length ? `<ul>${insights.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+      <div class="preview-line"><span>Retrieved</span><strong>${context.totals.salesCount} sales · ${context.creditCustomers.length} credit · ${context.lowStock.length} low stock</strong></div>
+      ${sources.length ? `<p class="edit-help">Based on: ${escapeHtml(sources.join(", "))}</p>` : ""}
+    </div>
+  `);
+}
+
+async function tryBusinessQuery(question) {
+  if (!isBusinessQuestion(question)) return false;
+  const context = buildBusinessContext(question);
+  const thinkingBubble = appendThinkingBubble("Checking business data");
+  try {
+    const memories = await retrieveRelevantMemories(question).catch(error => {
+      console.warn("Memory retrieval skipped:", error);
+      return [];
+    });
+    context.notes = [
+      ...memories.map(memory => ({
+        type: "semantic_memory",
+        memoryType: memory.type,
+        text: memory.text,
+        score: memory.score,
+        source: memory.source || "vector"
+      })),
+      ...(context.notes || [])
+    ].slice(0, 10);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 7000);
+    const response = await fetch(AI_BUSINESS_QUERY_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({ question, context })
+    });
+    clearTimeout(timer);
+    thinkingBubble.remove();
+    if (!response.ok) throw new Error("Business query failed");
+    const data = await response.json();
+    renderBusinessAnswer(data, context);
+    return true;
+  } catch (error) {
+    console.warn("Business query skipped:", error);
+    thinkingBubble.remove();
+    appendAssistant("I checked the local business data, but AI could not answer right now. Try again in a shorter question.", "error");
+    return true;
+  }
+}
+
 async function processActionCommand(text) {
   const clean = normalize(text);
   if (/^(hi|hello|hey|hii|namaste)(\s|$)/.test(clean)) {
@@ -1217,6 +1646,10 @@ async function processActionCommand(text) {
     handleInventoryCommand(text);
     return;
   }
+  if (isMemoryCommand(text)) {
+    await rememberBusinessNote(text);
+    return;
+  }
   if (/\b(sale|sold)\b/.test(clean)) {
     await handleSaleCommand(text);
     return;
@@ -1235,6 +1668,7 @@ async function processActionCommand(text) {
     return;
   }
   if (await tryAiSaleHelper(text)) return;
+  if (await tryBusinessQuery(text)) return;
   renderPossibleQuery(text);
 }
 
