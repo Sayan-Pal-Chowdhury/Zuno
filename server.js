@@ -85,22 +85,42 @@ async function qdrantFetch(pathname, options = {}) {
 
 async function ensureQdrantCollection() {
   if (!isQdrantConfigured()) return false;
+  let collectionExists = true;
   try {
     await qdrantFetch(`/collections/${encodeURIComponent(QDRANT_COLLECTION)}`);
-    return true;
   } catch (error) {
     if (!String(error.message || "").includes("404")) throw error;
+    collectionExists = false;
   }
-  await qdrantFetch(`/collections/${encodeURIComponent(QDRANT_COLLECTION)}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      vectors: {
-        size: VECTOR_SIZE,
-        distance: "Cosine"
-      }
-    })
-  });
+  if (!collectionExists) {
+    await qdrantFetch(`/collections/${encodeURIComponent(QDRANT_COLLECTION)}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        vectors: {
+          size: VECTOR_SIZE,
+          distance: "Cosine"
+        }
+      })
+    });
+  }
+  await ensureQdrantPayloadIndex("userId", "keyword");
+  await ensureQdrantPayloadIndex("active", "bool");
   return true;
+}
+
+async function ensureQdrantPayloadIndex(fieldName, fieldSchema) {
+  try {
+    await qdrantFetch(`/collections/${encodeURIComponent(QDRANT_COLLECTION)}/index`, {
+      method: "PUT",
+      body: JSON.stringify({
+        field_name: fieldName,
+        field_schema: fieldSchema
+      })
+    });
+  } catch (error) {
+    const message = String(error.message || "");
+    if (!message.includes("already exists")) throw error;
+  }
 }
 
 async function createEmbedding(text, taskType = "RETRIEVAL_DOCUMENT") {
